@@ -325,8 +325,8 @@ function LiffApp() {
 // ─────────────────────────────────────────────────────────────
 function HomeScreen({
   onOpenSidebar,
-  deliveryMode,
-  setDeliveryMode,
+  orderType,
+  setOrderType,
   onPickItem,
   onOpenCart,
   totalQty,
@@ -334,8 +334,8 @@ function HomeScreen({
   onOpenMenu,
 }: {
   onOpenSidebar: () => void;
-  deliveryMode: "dinein" | "delivery";
-  setDeliveryMode: (m: "dinein" | "delivery") => void;
+  orderType: OrderType;
+  setOrderType: (m: OrderType) => void;
   onPickItem: (m: MenuItem) => void;
   onOpenCart: () => void;
   totalQty: number;
