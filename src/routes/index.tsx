@@ -24,7 +24,12 @@ import {
   MessageCircle,
   User,
   Star,
+  Utensils,
+  Clock,
+  ChevronRight,
 } from "lucide-react";
+
+type OrderType = "dine-in" | "takeaway" | "delivery";
 
 export const Route = createFileRoute("/")({
   head: () => ({
