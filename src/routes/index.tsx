@@ -173,7 +173,7 @@ function LiffApp() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [cartDrawer, setCartDrawer] = useState(false);
-  const [deliveryMode, setDeliveryMode] = useState<"dinein" | "delivery">("delivery");
+  const [orderType, setOrderType] = useState<OrderType>("delivery");
   const [showSuccess, setShowSuccess] = useState(false);
 
   const totalQty = cart.reduce((s, l) => s + l.qty, 0);
