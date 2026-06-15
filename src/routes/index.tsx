@@ -32,20 +32,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// Local meal images (placed in src/meal)
-import imgKrapao from "../meal/krapao.jpg";
-import imgFriedRice from "../meal/fried_rice.jpg";
-import imgKhaoMooGarlic from "../meal/ข้าวหมูกระเทียม.jpg";
-import imgWater from "../meal/น้ำเปล่า.jpeg";
-import imgShavedIce from "../meal/น้ำแข็งไส.jpg";
-import imgSquid from "../meal/ผัดถั่วฟักยาวทะเล.jpg";
-import imgGrassJelly from "../meal/เฉาก๊วย.webp";
-import imgCokeLocal from "../meal/โค้ก.jpg";
-import imgPadSeeEw from "../meal/ผัดซีอิ๊ว.jpg"
-import imgPadPak from "../meal/ผัดผัก.jpg"
-import imgStirFriedCurry from "../meal/ผัดผงกะพรี่.jpg"
-import imgLonganJuice from "../meal/น้ำลำไย.jpg"
-import imgorangeJuice from "../meal/น้ำส้ม.jpg"
+// Images are served from /meal (public directory)
 
 type OrderType = "dine-in" | "takeaway" | "delivery";
 
@@ -86,7 +73,7 @@ const MENU: MenuItem[] = [
     name: "กระเพราหมูสับ (ข้าวราด)",
     desc: "กระเพราหมูสับผัดกับพริกและกระเทียม เสิร์ฟราดข้าวไทยร้อนๆ",
     price: 60,
-    image: imgKrapao,
+    image: '/meal/krapao.jpg',
     category: "signature",
     options: [
       { id: "spicy", name: "ระดับความเผ็ด", choices: [ { id: "0", label: "ไม่เผ็ด" }, { id: "1", label: "เผ็ดน้อย" }, { id: "2", label: "เผ็ดกลาง" }, { id: "3", label: "เผ็ดมาก" } ] }
@@ -98,7 +85,7 @@ const MENU: MenuItem[] = [
     name: "ผัดพริกเผา (ข้าวราด)",
     desc: "ผัดเครื่องพริกเผาเข้มข้น เคล้ากับเนื้อหรือไก่ตามสั่ง เสิร์ฟพร้อมข้าว",
     price: 65,
-    image: imgSquid,
+    image: '/meal/pad_tua_sea.jpg',
     category: "signature",
     addons: [ { id: "egg", name: "ไข่ดาว", price: 10 } ],
   },
@@ -107,7 +94,7 @@ const MENU: MenuItem[] = [
     name: "ผัดน้ำมันหอย (ข้าว/เส้น)",
     desc: "ผัดด้วยน้ำมันหอยหอมหวาน เลือกเนื้อสัตว์และข้าว/เส้นได้ตามต้องการ",
     price: 65,
-    image: imgKhaoMooGarlic,
+    image: '/meal/khao_moo_garlic.jpg',
     category: "main",
   },
   {
@@ -115,7 +102,7 @@ const MENU: MenuItem[] = [
     name: "ผัดซีอิ๊ว (เส้นใหญ่)",
     desc: "เส้นใหญ่ผัดซีอิ๊วแบบร้านตามสั่ง ปรุงรสกลมกล่อม เสิร์ฟร้อน",
     price: 70,
-    image: imgPadSeeEw,
+    image: '/meal/pad_see_ew.jpg',
     category: "noodles",
   },
   {
@@ -123,7 +110,7 @@ const MENU: MenuItem[] = [
     name: "ข้าวผัดกระเทียม (ข้าวผัด)",
     desc: "ข้าวผัดกลิ่นกระเทียม เจียวจนหอม พร้อมผักและเนื้อสัตว์เลือกได้",
     price: 70,
-    image: imgFriedRice,
+    image: '/meal/fried_rice.jpg',
     category: "rice",
   },
   {
@@ -131,7 +118,7 @@ const MENU: MenuItem[] = [
     name: "ผัดผงกะหรี่ (ไก่/หมู)",
     desc: "ผัดผงกะหรี่รสกลมกล่อม เสิร์ฟพร้อมข้าวร้อนๆ",
     price: 75,
-    image: imgStirFriedCurry,
+    image: '/meal/pad_pong_gari.jpg',
     category: "main",
   },
   {
@@ -139,7 +126,7 @@ const MENU: MenuItem[] = [
     name: "ผัดผักรวม (กับข้าว)",
     desc: "ผัดผักสดหลากหลาย ปรุงรสอ่อนๆ ทานคู่กับข้าวสวย",
     price: 55,
-    image: imgPadPak,
+    image: '/meal/pad_pak.jpg',
     category: "vegetarian",
   },
   {
@@ -147,7 +134,7 @@ const MENU: MenuItem[] = [
     name: "ผัดพริกแกง (ตามสั่ง)",
     desc: "ผัดพริกแกงกลมกล่อม สามารถเลือกเป็นหมู ไก่ หรือทะเลได้",
     price: 80,
-    image: imgSquid,
+    image: '/meal/pad_tua_sea.jpg',
     category: "signature",
   },
   {
@@ -155,7 +142,7 @@ const MENU: MenuItem[] = [
     name: "น้ำเปล่า",
     desc: "น้ำดื่มเย็นๆ ขวดเล็ก",
     price: 15,
-    image: imgWater,
+    image: '/meal/water.jpg',
     category: "drinks",
   },
   {
@@ -163,7 +150,7 @@ const MENU: MenuItem[] = [
     name: "โค้ก (ขวด)",
     desc: "น้ำอัดลม ซีโร่/ปกติ ตามสต็อก",
     price: 35,
-    image: imgCokeLocal,
+    image: '/meal/coke.jpg',
     category: "drinks",
   },
   {
@@ -171,7 +158,7 @@ const MENU: MenuItem[] = [
     name: "น้ำลำไย",
     desc: "น้ำลำไยหวานหอม เสิร์ฟเย็น",
     price: 45,
-    image: imgLonganJuice,
+    image: '/meal/longan_juice.jpg',
     category: "drinks",
   },
   {
@@ -179,7 +166,7 @@ const MENU: MenuItem[] = [
     name: "น้ำส้มคั้น",
     desc: "น้ำส้มคั้นสด หวานอมเปรี้ยว",
     price: 50,
-    image: imgorangeJuice,
+    image: '/meal/orange_juice.jpg',
     category: "drinks",
   },
   {
@@ -187,7 +174,7 @@ const MENU: MenuItem[] = [
     name: "เฉาก๊วย",
     desc: "เฉาก๊วยเย็นหวานกำลังดี ท็อปด้วยน้ำเชื่อม",
     price: 40,
-    image: imgGrassJelly,
+    image: '/meal/grass_jelly.webp',
     category: "dessert",
   },
   {
@@ -195,7 +182,7 @@ const MENU: MenuItem[] = [
     name: "น้ำแข็งไส",
     desc: "น้ำแข็งไสพร้อมท็อปปิ้งหลากหลาย",
     price: 55,
-    image: imgShavedIce,
+    image: '/meal/shaved_ice.jpg',
     category: "dessert",
   },
 ];
@@ -707,7 +694,7 @@ function HomeScreen({
                 className="bg-white rounded-2xl p-3 shadow-soft cursor-pointer active:scale-[0.99] transition-transform min-w-[220px] w-56"
               >
                 <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
-                  <img src={m.image} alt={m.name} className="h-full w-full object-cover" />
+                  <img src={encodeURI(String(m.image))} alt={m.name} className="h-full w-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col">
                   <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
@@ -1187,7 +1174,7 @@ function MenuOverlay({
         <div className="mt-5 space-y-3">
         {items.map((m) => (
           <div key={m.id} className="w-full bg-white rounded-2xl p-3 shadow-soft flex items-start gap-3">
-            <img src={m.image} alt={m.name} className="h-20 w-20 rounded-xl object-cover flex-shrink-0" />
+            <img src={encodeURI(String(m.image))} alt={m.name} className="h-20 w-20 rounded-xl object-cover flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div>
                 <div className="min-w-0">
@@ -1298,7 +1285,7 @@ function CartDrawer({
           )}
           {cart.map((l) => (
             <div key={l.id} className="flex gap-3 bg-[var(--surface)] rounded-2xl p-3">
-              <img src={l.image} alt={l.name} className="h-16 w-16 rounded-xl object-cover" />
+              <img src={encodeURI(String(l.image))} alt={l.name} className="h-16 w-16 rounded-xl object-cover" />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-sm" style={{ color: BRAND }}>
                   {l.name}
@@ -1389,7 +1376,7 @@ function OrderConfirmOverlay({
         {cart.map((l) => (
           <div key={l.id} className="bg-white rounded-2xl p-4 shadow-soft">
             <div className="flex gap-3">
-              <img src={l.image} alt={l.name} className="h-16 w-16 rounded-xl object-cover" />
+              <img src={encodeURI(String(l.image))} alt={l.name} className="h-16 w-16 rounded-xl object-cover" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-semibold text-sm" style={{ color: BRAND }}>
