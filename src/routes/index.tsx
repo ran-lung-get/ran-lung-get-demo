@@ -210,8 +210,8 @@ function LiffApp() {
           {tab === "home" && (
             <HomeScreen
               onOpenSidebar={() => setSidebar(true)}
-              deliveryMode={deliveryMode}
-              setDeliveryMode={setDeliveryMode}
+              orderType={orderType}
+              setOrderType={setOrderType}
               onPickItem={(it) => setSelectedItem(it)}
               onOpenCart={() => setCartDrawer(true)}
               totalQty={totalQty}
