@@ -271,7 +271,6 @@ function LiffApp() {
           {tab === "status" && (
             <StatusScreen
               onOpenSidebar={() => setSidebar(true)}
-              onBackHome={resetAll}
               cart={cart}
               subtotal={subtotal}
             />
@@ -366,7 +365,7 @@ function LiffApp() {
 
         {/* fixed cart bar inside app frame (constrained and centered) */}
         <AnimatePresence>
-          {totalQty > 0 && (
+          {totalQty > 0 && tab !== "status" && (
             <motion.div
               key="fixed-cart-bar"
               initial={{ y: 40, opacity: 0 }}
@@ -397,6 +396,18 @@ function LiffApp() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {tab === "status" && (
+          <div className="absolute bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-sm p-4">
+            <button
+              onClick={resetAll}
+              className="w-full h-12 rounded-full font-semibold"
+              style={{ background: BRAND, color: "white" }}
+            >
+              กลับไปยังหน้าหลัก
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1702,12 +1713,10 @@ function SuccessFlash() {
 // ─────────────────────────────────────────────────────────────
 function StatusScreen({
   onOpenSidebar,
-  onBackHome,
   cart,
   subtotal,
 }: {
   onOpenSidebar: () => void;
-  onBackHome: () => void;
   cart: CartLine[];
   subtotal: number;
 }) {
@@ -1727,7 +1736,7 @@ function StatusScreen({
   const total = cart.length ? subtotal + 40 : 420 + 240 + 40;
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: SURFACE }}>
+    <div className="min-h-full pb-28" style={{ background: SURFACE }}>
       <div className="px-5 py-4 bg-white border-b flex items-center gap-3" style={{ borderColor: "#eef2f6" }}>
         <button
           onClick={onOpenSidebar}
@@ -1847,15 +1856,6 @@ function StatusScreen({
             </div>
           </div>
         </div>
-      </div>
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-sm p-4">
-        <button
-          onClick={onBackHome}
-          className="w-full h-12 rounded-full font-semibold"
-          style={{ background: BRAND, color: "white" }}
-        >
-          กลับไปยังหน้าหลัก
-        </button>
       </div>
     </div>
   );
