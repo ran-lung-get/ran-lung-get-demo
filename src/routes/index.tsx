@@ -30,6 +30,9 @@ import {
   Search,
   CreditCard,
   ChevronRight,
+  History,
+  Receipt,
+  Package,
 } from "lucide-react";
 
 // Images are served from /meal (public directory)
@@ -64,8 +67,7 @@ type MenuItem = {
   addons?: Addon[];
 };
 
-const HERO_IMG =
-  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80";
+const HERO_IMG = "/thai_food_hero.png";
 
 const MENU: MenuItem[] = [
   {
@@ -206,6 +208,17 @@ type CartLine = {
   image: string;
 };
 
+type OrderHistory = {
+  id: string;
+  orderNumber: string;
+  date: string;
+  items: { name: string; qty: number; price: number; image: string }[];
+  subtotal: number;
+  delivery: number;
+  total: number;
+  status: "สำเร็จ" | "กำลังจัดส่ง" | "กำลังเตรียม";
+};
+
 const BRAND = "#002e47";
 const GOLD = "#fcc14a";
 const INK_MUTED = "#5a6e7a";
@@ -217,19 +230,69 @@ const SURFACE = "#f8fafc";
 // ─────────────────────────────────────────────────────────────
 function LiffApp() {
   const [tab, setTab] = useState<"home" | "status">("home");
-  const [overlay, setOverlay] = useState<null | "menu" | "orderConfirm" | "payment">(null);
+  const [overlay, setOverlay] = useState<null | "menu" | "orderConfirm" | "payment" | "history">(null);
   const [sidebar, setSidebar] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [cartDrawer, setCartDrawer] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>("delivery");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hasActiveOrder, setHasActiveOrder] = useState(false);
+  const [activeOrderNumber, setActiveOrderNumber] = useState("");
+  const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([
+    {
+      id: "hist_1",
+      orderNumber: "#AK-2841",
+      date: "17 มิ.ย. 2026 · 18:30",
+      items: [
+        { name: "กระเพราหมูสับ (ข้าวราด)", qty: 2, price: 60, image: "/meal/krapao.jpg" },
+        { name: "น้ำส้มคั้น", qty: 1, price: 50, image: "/meal/orange_juice.jpg" },
+      ],
+      subtotal: 170,
+      delivery: 40,
+      total: 210,
+      status: "สำเร็จ",
+    },
+    {
+      id: "hist_2",
+      orderNumber: "#AK-2835",
+      date: "15 มิ.ย. 2026 · 12:15",
+      items: [
+        { name: "ผัดซีอิ๊ว (เส้นใหญ่)", qty: 1, price: 70, image: "/meal/pad_see_ew.jpg" },
+        { name: "เฉาก๊วย", qty: 1, price: 40, image: "/meal/grass_jelly.webp" },
+      ],
+      subtotal: 110,
+      delivery: 40,
+      total: 150,
+      status: "สำเร็จ",
+    },
+  ]);
 
   const totalQty = cart.reduce((s, l) => s + l.qty, 0);
   const subtotal = cart.reduce((s, l) => s + l.price * l.qty, 0);
 
   const addToCart = (line: CartLine) => setCart((c) => [...c, line]);
   const removeLine = (id: string) => setCart((c) => c.filter((l) => l.id !== id));
+
+  const saveOrderToHistory = () => {
+    if (cart.length === 0) return;
+    const delivery = 40;
+    const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
+    const newOrder: OrderHistory = {
+      id: `hist_${Date.now()}`,
+      orderNumber: orderNum,
+      date: new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " · " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+      items: cart.map((l) => ({ name: l.name, qty: l.qty, price: l.price, image: l.image })),
+      subtotal,
+      delivery,
+      total: subtotal + delivery,
+      status: "สำเร็จ",
+    };
+    setOrderHistory((prev) => [newOrder, ...prev]);
+    setActiveOrderNumber(orderNum);
+    setHasActiveOrder(true);
+  };
+
   const resetAll = () => {
     setCart([]);
     setOverlay(null);
@@ -266,13 +329,15 @@ function LiffApp() {
               totalQty={totalQty}
               subtotal={subtotal}
               onOpenMenu={() => setOverlay("menu")}
+              hasActiveOrder={hasActiveOrder}
+              activeOrderNumber={activeOrderNumber}
+              onGoToStatus={() => setTab("status")}
             />
           )}
           {tab === "status" && (
             <StatusScreen
               onOpenSidebar={() => setSidebar(true)}
-              cart={cart}
-              subtotal={subtotal}
+              activeOrder={orderHistory.find((o) => o.orderNumber === activeOrderNumber) || orderHistory[0]}
             />
           )}
         </div>
@@ -319,6 +384,7 @@ function LiffApp() {
               total={subtotal + 40}
               onBack={() => setOverlay("orderConfirm")}
               onSuccess={() => {
+                saveOrderToHistory();
                 setShowSuccess(true);
                 setTimeout(() => {
                   setShowSuccess(false);
@@ -326,6 +392,16 @@ function LiffApp() {
                   setTab("status");
                 }, 1500);
               }}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {overlay === "history" && (
+            <HistoryOverlay
+              key="history"
+              orderHistory={orderHistory}
+              onBack={() => setOverlay(null)}
             />
           )}
         </AnimatePresence>
@@ -354,7 +430,9 @@ function LiffApp() {
               onNavigate={(t) => {
                 setSidebar(false);
                 if (t === "home" || t === "status") setTab(t);
+                if (t === "history") setOverlay("history");
               }}
+              orderHistory={orderHistory}
             />
           )}
         </AnimatePresence>
@@ -413,56 +491,124 @@ function LiffApp() {
   );
 }
 
-function DeliveryBlock() {
+function DeliveryBlock({ onOpenMenu }: { onOpenMenu: () => void }) {
   const [address, setAddress] = useState("");
   const [addressType, setAddressType] = useState<"home" | "work" | "dorm">("home");
+  const [deliveryMethod, setDeliveryMethod] = useState<"leave" | "pickup" | null>(null);
+  const [touched, setTouched] = useState(false);
+
+  const isReady = address.trim().length >= 5 && deliveryMethod !== null;
+
+  const DELIVERY_METHODS = [
+    {
+      id: "leave" as const,
+      label: "วางไว้ที่หน้าประตู",
+      sublabel: "เราวางอาหารไว้ให้",
+      icon: <HomeIcon size={20} />,
+    },
+    {
+      id: "pickup" as const,
+      label: "ลงมารับเอง",
+      sublabel: "รับที่จุดรับอาหาร",
+      icon: <User size={20} />,
+    },
+  ];
 
   return (
-    <div>
+    <div className="space-y-4">
+      {/* Address */}
       <div className="flex items-start gap-3">
         <div className="grid h-10 w-10 place-items-center rounded-full shrink-0" style={{ background: LINEN, color: BRAND }}>
           <MapPin size={18} />
         </div>
         <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: INK_MUTED }}>
-            จัดส่ง
+          <p className="text-[10px] uppercase tracking-[0.12em] mb-1" style={{ color: INK_MUTED }}>
+            ที่อยู่จัดส่ง
           </p>
           <input
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={(e) => { setAddress(e.target.value); setTouched(true); }}
+            onBlur={() => setTouched(true)}
             placeholder="กรอกที่อยู่ เช่น ถนนสุขุมวิท 31"
-            className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-            style={{ borderColor: "#ece4d6" }}
+            className="w-full rounded-xl border px-3 py-2.5 text-sm transition"
+            style={{
+              borderColor: touched && address.trim().length < 5 ? "#ef4444" : address.trim().length >= 5 ? "#16a34a" : "#ece4d6",
+              outline: "none",
+            }}
           />
-
-          <div className="mt-3 flex gap-2">
-            {[
-              { id: "home", label: "บ้าน" },
-              { id: "work", label: "ที่ทำงาน" },
-              { id: "dorm", label: "หอพัก" },
-            ].map((a) => (
-              <button
-                key={a.id}
-                onClick={() => setAddressType(a.id as any)}
-                className={`px-3 py-1 rounded-full border text-sm`}
-                style={{
-                  borderColor: addressType === a.id ? BRAND : "#ece4d6",
-                  background: addressType === a.id ? BRAND : "white",
-                  color: addressType === a.id ? GOLD : BRAND,
-                }}
-              >
-                {a.label}
-              </button>
-            ))}
-          </div>
-
-          {address && (
-            <p className="mt-2 text-xs" style={{ color: INK_MUTED }}>
-              ที่อยู่: {address} — ประเภท: {addressType === "home" ? "บ้าน" : addressType === "work" ? "ที่ทำงาน" : "หอพัก"}
-            </p>
+          {touched && address.trim().length < 5 && (
+            <p className="mt-1 text-[11px] text-red-500">กรุณากรอกที่อยู่ให้ครบถ้วน (อย่างน้อย 5 ตัวอักษร)</p>
           )}
+          <div className="mt-2.5 flex gap-2">
+            {(["home", "work", "dorm"] as const).map((id) => {
+              const labels = { home: "บ้าน", work: "ที่ทำงาน", dorm: "หอพัก" };
+              return (
+                <button
+                  key={id}
+                  onClick={() => setAddressType(id)}
+                  className="px-3 py-1 rounded-full border text-xs font-medium transition"
+                  style={{
+                    borderColor: addressType === id ? BRAND : "#ece4d6",
+                    background: addressType === id ? BRAND : "white",
+                    color: addressType === id ? GOLD : BRAND,
+                  }}
+                >
+                  {labels[id]}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Delivery method */}
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.12em] mb-2" style={{ color: INK_MUTED }}>
+          รูปแบบการรับอาหาร
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {DELIVERY_METHODS.map((m) => {
+            const active = deliveryMethod === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => setDeliveryMethod(m.id)}
+                className="flex flex-col items-start gap-1.5 rounded-xl border-2 p-3 text-left transition"
+                style={{
+                  borderColor: active ? BRAND : "#ece4d6",
+                  background: active ? "#f0f6fa" : "white",
+                }}
+              >
+                <div
+                  className="grid h-9 w-9 place-items-center rounded-lg"
+                  style={{ background: active ? BRAND : LINEN, color: active ? GOLD : BRAND }}
+                >
+                  {m.icon}
+                </div>
+                <span className="text-xs font-semibold leading-tight" style={{ color: BRAND }}>{m.label}</span>
+                <span className="text-[10px]" style={{ color: INK_MUTED }}>{m.sublabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <AnimatePresence>
+        {isReady && (
+          <motion.button
+            key="delivery-cta"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            onClick={onOpenMenu}
+            className="w-full rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2 shadow-sm"
+            style={{ background: BRAND, color: "white" }}
+          >
+            สั่งอาหารเลย <ChevronRight size={16} />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -511,6 +657,9 @@ function HomeScreen({
   totalQty,
   subtotal,
   onOpenMenu,
+  hasActiveOrder,
+  activeOrderNumber,
+  onGoToStatus,
 }: {
   onOpenSidebar: () => void;
   orderType: OrderType;
@@ -520,6 +669,9 @@ function HomeScreen({
   totalQty: number;
   subtotal: number;
   onOpenMenu: () => void;
+  hasActiveOrder: boolean;
+  activeOrderNumber: string;
+  onGoToStatus: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const scroll = (direction: "left" | "right") => {
@@ -605,6 +757,24 @@ function HomeScreen({
         </div>
       </div>
 
+      {/* Mini order status tracker */}
+      <AnimatePresence>
+        {hasActiveOrder && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ type: "spring", damping: 20, stiffness: 260 }}
+            className="px-5 mt-4"
+          >
+            <MiniOrderTracker
+              orderNumber={activeOrderNumber}
+              onGoToStatus={onGoToStatus}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Order type tiles */}
       <div className="px-5 mt-4">
           <h3 className="text-sm font-medium mb-3" style={{ color: BRAND }}>ช่องทางการรับอาหาร</h3>
@@ -655,7 +825,7 @@ function HomeScreen({
             transition={{ duration: 0.18 }}
             className="w-full bg-white rounded-2xl px-4 py-4 shadow-soft border border-[#ece4d6]"
           >
-            {orderType === "delivery" && <DeliveryBlock />}
+            {orderType === "delivery" && <DeliveryBlock onOpenMenu={onOpenMenu} />}
             {orderType === "dine-in" && (
               <DineInBlock selectedTable={selectedTable} onOpenPicker={() => setShowTablePicker(true)} />
             )}
@@ -669,71 +839,74 @@ function HomeScreen({
           <h2 className="text-lg font-bold" style={{ color: BRAND }}>
             เมนูแนะนำ
           </h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => scroll("left")}
-              className="grid h-8 w-8 place-items-center rounded-full bg-white border border-[#ece4d6] hover:bg-slate-50 transition shadow-sm"
-              style={{ color: BRAND }}
-              aria-label="เลื่อนซ้าย"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={() => scroll("right")}
-              className="grid h-8 w-8 place-items-center rounded-full bg-white border border-[#ece4d6] hover:bg-slate-50 transition shadow-sm"
-              style={{ color: BRAND }}
-              aria-label="เลื่อนขวา"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
         </div>
-        <div ref={scrollRef} className="-mx-5 px-5 overflow-x-auto no-scrollbar scroll-smooth">
-          <div className="flex gap-4">
-            {MENU.map((m, i) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                onClick={() => onPickItem(m)}
-                className="bg-white rounded-2xl p-3 shadow-soft cursor-pointer active:scale-[0.99] transition-transform min-w-[220px] w-56"
-              >
-                <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
-                  <img src={encodeURI(String(m.image))} alt={m.name} className="h-full w-full object-cover" />
-                </div>
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
-                    <Star size={10} fill={GOLD} stroke={GOLD} />
-                    <span style={{ color: INK_MUTED }}>Chef's pick</span>
+        <div className="relative">
+          {/* Left arrow */}
+          <button
+            onClick={() => scroll("left")}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white border border-[#ece4d6] hover:bg-slate-50 transition shadow-md"
+            style={{ color: BRAND, marginLeft: -4 }}
+            aria-label="เลื่อนซ้าย"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <div ref={scrollRef} className="-mx-5 px-10 overflow-x-auto no-scrollbar scroll-smooth">
+            <div className="flex gap-4">
+              {MENU.filter((m) => m.category !== "drinks" && m.category !== "dessert").map((m, i) => (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  onClick={() => onPickItem(m)}
+                  className="bg-white rounded-2xl p-3 shadow-soft cursor-pointer active:scale-[0.99] transition-transform min-w-[220px] w-56 shrink-0"
+                >
+                  <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
+                    <img src={encodeURI(String(m.image))} alt={m.name} className="h-full w-full object-cover" />
                   </div>
-                  <h3 className="font-semibold text-[15px] truncate mt-1" style={{ color: BRAND }}>
-                    {m.name}
-                  </h3>
-                  <p className="text-xs mt-1 line-clamp-2" style={{ color: INK_MUTED }}>
-                    {m.desc}
-                  </p>
-                  <div className="mt-3 flex items-end justify-between">
-                    <span className="font-bold text-base" style={{ color: BRAND }}>
-                      ฿{m.price}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPickItem(m);
-                      }}
-                      className="grid h-9 w-9 place-items-center rounded-full shadow-soft"
-                      style={{ background: BRAND, color: GOLD }}
-                    >
-                      <Plus size={18} />
-                    </button>
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
+                      <Star size={10} fill={GOLD} stroke={GOLD} />
+                      <span style={{ color: INK_MUTED }}>Chef's pick</span>
+                    </div>
+                    <h3 className="font-semibold text-[15px] truncate mt-1" style={{ color: BRAND }}>
+                      {m.name}
+                    </h3>
+                    <p className="text-xs mt-1 line-clamp-2" style={{ color: INK_MUTED }}>
+                      {m.desc}
+                    </p>
+                    <div className="mt-3 flex items-end justify-between">
+                      <span className="font-bold text-base" style={{ color: BRAND }}>
+                        ฿{m.price}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPickItem(m);
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-full shadow-soft"
+                        style={{ background: BRAND, color: GOLD }}
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </div>
           </div>
+          {/* Right arrow */}
+          <button
+            onClick={() => scroll("right")}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white border border-[#ece4d6] hover:bg-slate-50 transition shadow-md"
+            style={{ color: BRAND, marginRight: -4 }}
+            aria-label="เลื่อนขวา"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
+
 
       {/* Inline cart removed — using fixed cart bar inside app frame */}
           {/* Persistent CTA when cart empty */}
@@ -846,54 +1019,63 @@ function TablePickerBottomSheet({
           {sortedTables.map((table) => {
             const available = table.status === "available";
             const isReserved = table.status === "reserved";
-            const statusLabel = table.status === "available" ? "ว่าง" : table.status === "occupied" ? "ไม่ว่าง" : "จองแล้ว";
+            const isOccupied = table.status === "occupied";
+            const statusLabel = available ? "ว่าง" : isOccupied ? "ไม่ว่าง" : "จองแล้ว";
             const statusStyle: React.CSSProperties =
-              table.status === "available"
-                ? { background: "#dcfce7", color: "#065f46", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 }
-                : table.status === "occupied"
-                ? { background: "#fee2e2", color: "#7f1d1d", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 }
-                : { background: "#fee2e2", color: "#b91c1c", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 };
+              available
+                ? { background: "#bbf7d0", color: "#14532d", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 }
+                : isOccupied
+                ? { background: "#fecaca", color: "#7f1d1d", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 }
+                : { background: "#fde68a", color: "#78350f", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 };
+
+            // Light pastel background + dark border per status
+            const boxBg = selectedTable === table.id
+              ? BRAND
+              : available
+              ? "#dcfce7"   // green-100
+              : isOccupied
+              ? "#fee2e2"   // red-100
+              : "#fef9c3";  // yellow-100 for reserved
+
+            const boxBorder = selectedTable === table.id
+              ? BRAND
+              : available
+              ? "#15803d"   // green-700
+              : isOccupied
+              ? "#dc2626"   // red-600
+              : "#d97706";  // amber-600 for reserved
+
+            const boxText = selectedTable === table.id ? GOLD : available ? "#14532d" : isOccupied ? "#7f1d1d" : "#78350f";
+            const boxSubText = selectedTable === table.id ? "rgba(252,193,74,0.7)" : available ? "#166534" : isOccupied ? "#991b1b" : "#92400e";
 
             return (
               <button
                 key={table.id}
                 disabled={!available}
                 onClick={() => available && onSelect(table.id)}
-                className="rounded-3xl p-4 text-left border transition"
+                className="rounded-2xl p-4 text-left transition active:scale-95"
                 style={{
-                  background: selectedTable === table.id 
-                    ? BRAND 
-                    : isReserved 
-                    ? "#fef2f2" 
-                    : available 
-                    ? "#f8fafc" 
-                    : "#f5f5f5",
-                  color: selectedTable === table.id ? GOLD : "#0f172a",
-                  borderColor: selectedTable === table.id 
-                    ? BRAND 
-                    : isReserved 
-                    ? "#ef4444" 
-                    : available 
-                    ? "#e2e8f0" 
-                    : "#d1d5db",
-                  borderWidth: isReserved ? "2px" : "1px",
+                  background: boxBg,
+                  color: boxText,
+                  border: `2px solid ${boxBorder}`,
+                  opacity: !available && selectedTable !== table.id ? 0.9 : 1,
                 }}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold">{table.label}</span>
+                  <span className="font-semibold text-sm">{table.label}</span>
                   <span style={statusStyle}>{statusLabel}</span>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">พื้นที่นั่งสบายสำหรับ 2-4 คน</p>
+                <p className="mt-2 text-xs" style={{ color: boxSubText }}>พื้นที่นั่งสบายสำหรับ 2-4 คน</p>
               </button>
             );
           })}
         </div>
-        <div className="mt-5 rounded-3xl bg-slate-50 p-4">
-          <p className="text-sm font-semibold">สถานะโต๊ะ</p>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-            <span style={{ background: "#dcfce7", color: "#065f46", padding: "6px 10px", borderRadius: 9999, fontWeight: 700 }}>ว่าง</span>
-            <span style={{ background: "#fee2e2", color: "#7f1d1d", padding: "6px 10px", borderRadius: 9999, fontWeight: 700 }}>ไม่ว่าง</span>
-            <span style={{ background: "#fee2e2", color: "#b91c1c", padding: "6px 10px", borderRadius: 9999, fontWeight: 700 }}>จองแล้ว</span>
+        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-700">สถานะโต๊ะ</p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span style={{ background: "#dcfce7", color: "#14532d", border: "2px solid #15803d", padding: "5px 14px", borderRadius: 9999, fontWeight: 700 }}>ว่าง</span>
+            <span style={{ background: "#fee2e2", color: "#7f1d1d", border: "2px solid #dc2626", padding: "5px 14px", borderRadius: 9999, fontWeight: 700 }}>ไม่ว่าง</span>
+            <span style={{ background: "#fef9c3", color: "#78350f", border: "2px solid #d97706", padding: "5px 14px", borderRadius: 9999, fontWeight: 700 }}>จองแล้ว</span>
           </div>
         </div>
       </motion.div>
@@ -1103,7 +1285,7 @@ function ItemModal({
                 })
               }
               className="flex-1 h-12 rounded-full font-semibold flex items-center justify-between px-5"
-              style={{ background: BRAND, color: GOLD }}
+              style={{ background: BRAND, color: "white" }}
             >
               <span>เพิ่มลงตะกร้า</span>
               <span>฿{total}</span>
@@ -1138,7 +1320,8 @@ function MenuOverlay({
     { id: "drinks", label: "เครื่องดื่ม" },
     { id: "dessert", label: "ของหวาน" },
   ];
-  const items = activeCat === "all" ? MENU : MENU.filter((m) => m.category === activeCat);
+  // "แนะนำ" tab shows only signature items (like the home page recommend section)
+  const items = activeCat === "all" ? MENU.filter((m) => m.category === "signature") : MENU.filter((m) => m.category === activeCat);
 
   return (
     <motion.div
@@ -1213,7 +1396,7 @@ function MenuOverlay({
                   <p className="text-xs mt-1 text-slate-500 whitespace-normal">{m.desc}</p>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="font-bold text-lg" style={{ color: GOLD }}>฿{m.price}</span>
+                  <span className="font-bold text-lg" style={{ color: "#a16207" }}>฿{m.price}</span>
                   <div className="flex-shrink-0 grid place-items-center">
                     <button
                       onClick={(e) => {
@@ -1350,7 +1533,7 @@ function CartDrawer({
             <button
               onClick={onCheckout}
               className="w-full h-12 rounded-full font-semibold"
-              style={{ background: BRAND, color: GOLD }}
+              style={{ background: BRAND, color: "white" }}
             >
               ดำเนินการสั่งซื้อ
             </button>
@@ -1482,7 +1665,7 @@ function OrderConfirmOverlay({
             onProceed();
           }}
           className="w-full h-12 rounded-full font-semibold flex items-center justify-center gap-2"
-          style={{ background: BRAND, color: GOLD }}
+          style={{ background: BRAND, color: "white" }}
         >
           <CreditCard size={16} /> ไปยังช่องทางชำระเงิน · ฿{grand}
         </button>
@@ -1649,7 +1832,7 @@ function PaymentOverlay({
             onClick={onSuccess}
             disabled={!slip}
             className="w-full h-12 rounded-full font-semibold disabled:opacity-50"
-            style={{ background: BRAND, color: GOLD }}
+            style={{ background: BRAND, color: "white" }}
           >
             ยืนยันการชำระเงินเรียบร้อย
           </button>
@@ -1733,12 +1916,10 @@ function SuccessFlash() {
 // ─────────────────────────────────────────────────────────────
 function StatusScreen({
   onOpenSidebar,
-  cart,
-  subtotal,
+  activeOrder,
 }: {
   onOpenSidebar: () => void;
-  cart: CartLine[];
-  subtotal: number;
+  activeOrder?: OrderHistory;
 }) {
   const steps = [
     { id: 1, label: "รับออเดอร์", icon: Check, done: true },
@@ -1747,13 +1928,13 @@ function StatusScreen({
     { id: 4, label: "ส่งถึงแล้ว", icon: PartyPopper, done: false },
   ];
 
-  const orderItems = cart.length
-    ? cart
+  const orderItems = activeOrder
+    ? activeOrder.items
     : ([
         { name: "Premium Wagyu Don", qty: 1, price: 420 },
         { name: "Matcha Latte", qty: 2, price: 120 },
       ] as { name: string; qty: number; price: number }[]);
-  const total = cart.length ? subtotal + 40 : 420 + 240 + 40;
+  const total = activeOrder ? activeOrder.total : 420 + 240 + 40;
 
   return (
     <div className="min-h-full pb-28" style={{ background: SURFACE }}>
@@ -1794,7 +1975,7 @@ function StatusScreen({
               หมายเลขออเดอร์
             </p>
             <p className="text-sm font-bold" style={{ color: BRAND }}>
-              #AK-2847
+              {activeOrder ? activeOrder.orderNumber : "#AK-2847"}
             </p>
           </div>
           <div className="space-y-2">
@@ -1882,18 +2063,295 @@ function StatusScreen({
 }
 
 // ─────────────────────────────────────────────────────────────
+// Mini Order Tracker (Home Page)
+// ─────────────────────────────────────────────────────────────
+function MiniOrderTracker({ orderNumber, onGoToStatus }: { orderNumber: string; onGoToStatus: () => void }) {
+  const steps = [
+    { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+    { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
+    { id: 3, label: "ออกจัดส่ง", icon: Bike, done: false, active: true },
+    { id: 4, label: "ส่งถึงแล้ว", icon: PartyPopper, done: false },
+  ];
+
+  const doneCount = steps.filter((s) => s.done).length;
+  const progressPercent = ((doneCount + 0.5) / steps.length) * 100; // halfway through active step
+
+  return (
+    <div
+      className="bg-white rounded-2xl p-3 shadow-soft border overflow-hidden"
+      style={{ borderColor: "#ece4d6" }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <div
+            className="grid h-7 w-7 place-items-center rounded-lg"
+            style={{ background: "rgba(255, 203, 68, 0.15)" }}
+          >
+            <ClipboardList size={14} style={{ color: "#ffcb44" }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-bold" style={{ color: BRAND }}>
+              สถานะ Order ของคุณ
+            </p>
+            <p className="text-[9px]" style={{ color: INK_MUTED }}>
+              {orderNumber}
+            </p>
+          </div>
+        </div>
+        <motion.span
+          animate={{ scale: [1, 1.03, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1"
+          style={{ background: "rgba(59,130,246,0.08)", color: "#2563eb" }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+          กำลังดำเนินการ
+        </motion.span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="relative h-1.5 rounded-full bg-slate-100 mb-3 overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ background: "#ffcb44" }}
+        />
+      </div>
+
+      {/* Step icons row with connection line behind them */}
+      <div className="relative flex items-center justify-between mb-3">
+        {/* Gray connecting line */}
+        <div
+          className="absolute left-[12.5%] right-[12.5%] top-4 h-[2px] -translate-y-1/2"
+          style={{ background: "#eef2f6" }}
+        />
+        {/* Yellow active connecting line */}
+        <div
+          className="absolute left-[12.5%] top-4 h-[2px] -translate-y-1/2 transition-all duration-500"
+          style={{
+            background: "#ffcb44",
+            width: `${Math.max(0, (doneCount - 1) / (steps.length - 1)) * 75}%`,
+          }}
+        />
+        {steps.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div key={s.id} className="flex flex-col items-center gap-1 flex-1 relative z-10">
+              <div className="relative">
+                <div
+                  className="grid h-8 w-8 place-items-center rounded-full transition-all relative z-10"
+                  style={{
+                    background: s.done ? BRAND : s.active ? "#ffcb44" : "#eef2f6",
+                    color: s.done ? "#ffcb44" : s.active ? BRAND : INK_MUTED,
+                    boxShadow: s.active ? "0 0 0 3px rgba(255, 203, 68, 0.3)" : "none",
+                  }}
+                >
+                  <Icon size={14} />
+                </div>
+                {s.active && (
+                  <motion.span
+                    className="absolute inset-0 rounded-full z-0"
+                    style={{ border: `2px solid #ffcb44` }}
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                )}
+              </div>
+              <span
+                className="text-[8px] font-medium text-center leading-tight mt-1"
+                style={{ color: s.done || s.active ? BRAND : INK_MUTED }}
+              >
+                {s.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Underlined text link to status screen */}
+      <div className="text-center mt-2.5">
+        <button
+          onClick={onGoToStatus}
+          className="text-xs font-semibold underline transition hover:opacity-80"
+          style={{ color: BRAND }}
+        >
+          ดูรายละเอียดสถานะทั้งหมด
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// History Overlay (Full Page)
+// ─────────────────────────────────────────────────────────────
+function HistoryOverlay({
+  orderHistory,
+  onBack,
+}: {
+  orderHistory: OrderHistory[];
+  onBack: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ x: "100%" }}
+      animate={{ x: 0 }}
+      exit={{ x: "100%" }}
+      transition={{ type: "tween", duration: 0.3 }}
+      className="absolute inset-0 z-30 bg-[var(--surface)] flex flex-col"
+    >
+      {/* Header */}
+      <div className="px-5 pt-5 pb-4" style={{ background: BRAND, color: "white" }}>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
+          >
+            <ChevronLeft size={20} color={GOLD} />
+          </button>
+          <div>
+            <h1 className="text-lg font-bold">ประวัติการสั่งซื้อ</h1>
+            <p className="text-xs text-white/60">{orderHistory.length} รายการ</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-5 pb-8 space-y-4">
+        {orderHistory.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Package size={48} className="mb-4" style={{ color: INK_MUTED }} />
+            <p className="text-sm font-medium" style={{ color: INK_MUTED }}>
+              ยังไม่มีประวัติการสั่งซื้อ
+            </p>
+            <p className="text-xs mt-1" style={{ color: INK_MUTED }}>
+              เริ่มสั่งอาหารเลย!
+            </p>
+          </div>
+        ) : (
+          orderHistory.map((order, idx) => (
+            <motion.div
+              key={order.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.06 }}
+              className="bg-white rounded-2xl shadow-soft overflow-hidden"
+            >
+              {/* Order header */}
+              <div
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ background: "rgba(0,46,71,0.03)", borderBottom: "1px solid #f1ece4" }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="grid h-10 w-10 place-items-center rounded-xl"
+                    style={{ background: BRAND, color: GOLD }}
+                  >
+                    <Receipt size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: BRAND }}>
+                      {order.orderNumber}
+                    </p>
+                    <p className="text-[10px]" style={{ color: INK_MUTED }}>
+                      {order.date}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className="px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5"
+                  style={{
+                    background:
+                      order.status === "สำเร็จ"
+                        ? "#dcfce7"
+                        : order.status === "กำลังจัดส่ง"
+                        ? "#dbeafe"
+                        : "#fef9c3",
+                    color:
+                      order.status === "สำเร็จ"
+                        ? "#15803d"
+                        : order.status === "กำลังจัดส่ง"
+                        ? "#1d4ed8"
+                        : "#a16207",
+                  }}
+                >
+                  {order.status === "สำเร็จ" && <CheckCircle size={12} />}
+                  {order.status === "กำลังจัดส่ง" && <Bike size={12} />}
+                  {order.status === "กำลังเตรียม" && <ChefHat size={12} />}
+                  {order.status}
+                </span>
+              </div>
+
+              {/* Order items */}
+              <div className="px-4 py-3 space-y-2.5">
+                {order.items.map((item, itemIdx) => (
+                  <div key={itemIdx} className="flex items-center gap-3">
+                    <img
+                      src={encodeURI(String(item.image))}
+                      alt={item.name}
+                      className="h-12 w-12 rounded-xl object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: BRAND }}>
+                        {item.name}
+                      </p>
+                      <p className="text-xs" style={{ color: INK_MUTED }}>
+                        × {item.qty} · ฿{item.price}/ชิ้น
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold" style={{ color: BRAND }}>
+                      ฿{item.price * item.qty}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Order total */}
+              <div
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ background: "#fafbfc", borderTop: "1px solid #f1ece4" }}
+              >
+                <div className="text-xs" style={{ color: INK_MUTED }}>
+                  <span>อาหาร ฿{order.subtotal}</span>
+                  <span className="mx-1.5">·</span>
+                  <span>จัดส่ง ฿{order.delivery}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: INK_MUTED }}>
+                    รวม
+                  </span>
+                  <span className="text-lg font-bold" style={{ color: BRAND }}>
+                    ฿{order.total}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // Sidebar
 // ─────────────────────────────────────────────────────────────
 function Sidebar({
   onClose,
   onNavigate,
+  orderHistory,
 }: {
   onClose: () => void;
   onNavigate: (t: string) => void;
+  orderHistory: OrderHistory[];
 }) {
   const items = [
     { id: "home", label: "หน้าแรก", icon: HomeIcon },
     { id: "status", label: "สถานะการสั่งซื้อ", icon: ClipboardList },
+    { id: "history", label: "ประวัติการสั่งซื้อ", icon: History },
     { id: "contact", label: "ติดต่อเรา", icon: MessageCircle },
   ];
 
@@ -1927,7 +2385,7 @@ function Sidebar({
             </div>
           </div>
         </div>
-        <div className="flex-1 p-3">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-3">
           {activeTab === "main" ? (
             <nav className="space-y-1">
               {items.map((it) => (
@@ -1938,12 +2396,18 @@ function Sidebar({
                       setActiveTab("contact");
                       return;
                     }
+                    // history now navigates to full-page overlay
                     onNavigate(it.id);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left hover:bg-white/5"
                 >
                   <it.icon size={18} color={GOLD} />
                   <span className="font-medium text-sm">{it.label}</span>
+                  {it.id === "history" && orderHistory.length > 0 && (
+                    <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: GOLD, color: BRAND }}>
+                      {orderHistory.length}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -1977,24 +2441,6 @@ function Sidebar({
           )}
         </div>
         <div className="p-5 border-t border-white/10 space-y-4">
-          <div className="rounded-2xl bg-white/10 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-white/70 mb-2">Location</p>
-            <p className="text-sm font-semibold">Sukhumvit 31, กรุงเทพฯ</p>
-          </div>
-          <div className="rounded-2xl bg-white/10 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-white/70 mb-2">เบอร์โทร</p>
-            <p className="text-sm font-semibold">02-123-4567</p>
-          </div>
-          <div className="rounded-2xl bg-white/10 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-white/70 mb-2">รีวิวร้าน</p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">4.8</span>
-              <div className="flex items-center gap-1 text-white/90">
-                <Star size={14} /> <Star size={14} /> <Star size={14} /> <Star size={14} /> <Star size={14} />
-              </div>
-            </div>
-            <p className="text-xs text-white/70 mt-1">“บรรยากาศดี อาหารอร่อย บริการไว”</p>
-          </div>
           <button
             onClick={onClose}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium"
@@ -2002,7 +2448,7 @@ function Sidebar({
           >
             <LogOut size={16} /> ออกจากระบบ
           </button>
-          <p className="mt-4 text-center text-[10px] text-white/40">
+          <p className="mt-2 text-center text-[10px] text-white/40">
             © 2026 Epicurean · LINE LIFF
           </p>
         </div>
