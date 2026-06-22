@@ -332,6 +332,7 @@ type OrderHistory = {
   delivery: number;
   total: number;
   status: "สำเร็จ" | "กำลังจัดส่ง" | "กำลังเตรียม";
+  orderType?: OrderType;
 };
 
 const BRAND = "#002e47";
@@ -350,10 +351,27 @@ function LiffApp() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [cartDrawer, setCartDrawer] = useState(false);
-  const [orderType, setOrderType] = useState<OrderType>("delivery");
+  const [orderType, setOrderType] = useState<OrderType | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [activeOrderNumber, setActiveOrderNumber] = useState("");
+  const [selectedTable, setSelectedTable] = useState("");
+  const [tables, setTables] = useState([
+    { id: "1", label: "โต๊ะ 1", status: "available" },
+    { id: "2", label: "โต๊ะ 2", status: "occupied" },
+    { id: "3", label: "โต๊ะ 3", status: "available" },
+    { id: "4", label: "โต๊ะ 4", status: "available" },
+    { id: "5", label: "โต๊ะ 5", status: "available" },
+    { id: "6", label: "โต๊ะ 6", status: "occupied" },
+    { id: "7", label: "โต๊ะ 7", status: "available" },
+    { id: "8", label: "โต๊ะ 8", status: "available" },
+  ]);
+  const [address, setAddress] = useState("");
+  const [addressType, setAddressType] = useState<"home" | "work" | "dorm">("home");
+  const [deliveryMethod, setDeliveryMethod] = useState<"leave" | "pickup" | null>(null);
+  const [showAddressError, setShowAddressError] = useState(false);
+  const [showTypeError, setShowTypeError] = useState(false);
+
   const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([
     {
       id: "hist_1",
@@ -367,6 +385,7 @@ function LiffApp() {
       delivery: 40,
       total: 210,
       status: "สำเร็จ",
+      orderType: "delivery",
     },
     {
       id: "hist_2",
@@ -380,18 +399,19 @@ function LiffApp() {
       delivery: 40,
       total: 150,
       status: "สำเร็จ",
+      orderType: "delivery",
     },
   ]);
 
   const totalQty = cart.reduce((s, l) => s + l.qty, 0);
   const subtotal = cart.reduce((s, l) => s + l.price * l.qty, 0);
+  const deliveryFee = orderType === "delivery" ? 40 : 0;
 
   const addToCart = (line: CartLine) => setCart((c) => [...c, line]);
   const removeLine = (id: string) => setCart((c) => c.filter((l) => l.id !== id));
 
   const saveOrderToHistory = () => {
     if (cart.length === 0) return;
-    const delivery = 40;
     const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
     const newOrder: OrderHistory = {
       id: `hist_${Date.now()}`,
@@ -399,13 +419,20 @@ function LiffApp() {
       date: new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " · " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
       items: cart.map((l) => ({ name: l.name, qty: l.qty, price: l.price, image: l.image })),
       subtotal,
-      delivery,
-      total: subtotal + delivery,
+      delivery: deliveryFee,
+      total: subtotal + deliveryFee,
       status: "สำเร็จ",
+      orderType: orderType || "delivery",
     };
     setOrderHistory((prev) => [newOrder, ...prev]);
     setActiveOrderNumber(orderNum);
     setHasActiveOrder(true);
+
+    if (orderType === "dine-in" && selectedTable) {
+      setTables((prev) =>
+        prev.map((t) => (t.id === selectedTable ? { ...t, status: "occupied" } : t))
+      );
+    }
   };
 
   const resetAll = () => {
@@ -414,6 +441,11 @@ function LiffApp() {
     setCartDrawer(false);
     setSelectedItem(null);
     setTab("home");
+    setSelectedTable("");
+    setAddress("");
+    setDeliveryMethod(null);
+    setShowAddressError(false);
+    setShowTypeError(false);
   };
 
   return (
@@ -447,6 +479,20 @@ function LiffApp() {
               hasActiveOrder={hasActiveOrder}
               activeOrderNumber={activeOrderNumber}
               onGoToStatus={() => setTab("status")}
+              selectedTable={selectedTable}
+              setSelectedTable={setSelectedTable}
+              tables={tables}
+              activeOrderType={orderHistory.find((o) => o.orderNumber === activeOrderNumber)?.orderType}
+              address={address}
+              setAddress={setAddress}
+              addressType={addressType}
+              setAddressType={setAddressType}
+              deliveryMethod={deliveryMethod}
+              setDeliveryMethod={setDeliveryMethod}
+              showAddressError={showAddressError}
+              setShowAddressError={setShowAddressError}
+              showTypeError={showTypeError}
+              setShowTypeError={setShowTypeError}
             />
           )}
           {tab === "status" && (
@@ -488,6 +534,7 @@ function LiffApp() {
               key="confirm"
               cart={cart}
               subtotal={subtotal}
+              deliveryFee={deliveryFee}
               onBack={() => setOverlay("menu")}
               onRemove={removeLine}
               onProceed={() => setOverlay("payment")}
@@ -496,7 +543,7 @@ function LiffApp() {
           {overlay === "payment" && (
             <PaymentOverlay
               key="pay"
-              total={subtotal + 40}
+              total={subtotal + deliveryFee}
               onBack={() => setOverlay("orderConfirm")}
               onSuccess={() => {
                 saveOrderToHistory();
@@ -613,12 +660,28 @@ function LiffApp() {
   );
 }
 
-function DeliveryBlock({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const [address, setAddress] = useState("");
-  const [addressType, setAddressType] = useState<"home" | "work" | "dorm">("home");
-  const [deliveryMethod, setDeliveryMethod] = useState<"leave" | "pickup" | null>(null);
+function DeliveryBlock({
+  onOpenMenu,
+  address,
+  setAddress,
+  addressType,
+  setAddressType,
+  deliveryMethod,
+  setDeliveryMethod,
+  showAddressError,
+  setShowAddressError,
+}: {
+  onOpenMenu: () => void;
+  address: string;
+  setAddress: (val: string) => void;
+  addressType: "home" | "work" | "dorm";
+  setAddressType: (val: "home" | "work" | "dorm") => void;
+  deliveryMethod: "leave" | "pickup" | null;
+  setDeliveryMethod: (val: "leave" | "pickup" | null) => void;
+  showAddressError: boolean;
+  setShowAddressError: (val: boolean) => void;
+}) {
   const [touched, setTouched] = useState(false);
-
   const isReady = address.trim().length >= 5 && deliveryMethod !== null;
 
   const DELIVERY_METHODS = [
@@ -636,6 +699,21 @@ function DeliveryBlock({ onOpenMenu }: { onOpenMenu: () => void }) {
     },
   ];
 
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    setTouched(true);
+    if (val.trim().length >= 5 && deliveryMethod) {
+      setShowAddressError(false);
+    }
+  };
+
+  const handleDeliveryMethodChange = (method: "leave" | "pickup" | null) => {
+    setDeliveryMethod(method);
+    if (address.trim().length >= 5 && method) {
+      setShowAddressError(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Address */}
@@ -649,16 +727,16 @@ function DeliveryBlock({ onOpenMenu }: { onOpenMenu: () => void }) {
           </p>
           <input
             value={address}
-            onChange={(e) => { setAddress(e.target.value); setTouched(true); }}
+            onChange={(e) => handleAddressChange(e.target.value)}
             onBlur={() => setTouched(true)}
             placeholder="กรอกที่อยู่ เช่น ถนนสุขุมวิท 31"
             className="w-full rounded-xl border px-3 py-2.5 text-sm transition"
             style={{
-              borderColor: touched && address.trim().length < 5 ? "#ef4444" : address.trim().length >= 5 ? "#16a34a" : "#ece4d6",
+              borderColor: showAddressError || (touched && address.trim().length < 5) ? "#ef4444" : address.trim().length >= 5 ? "#16a34a" : "#ece4d6",
               outline: "none",
             }}
           />
-          {touched && address.trim().length < 5 && (
+          {(showAddressError || (touched && address.trim().length < 5)) && (
             <p className="mt-1 text-[11px] text-red-500">กรุณากรอกที่อยู่ให้ครบถ้วน (อย่างน้อย 5 ตัวอักษร)</p>
           )}
           <div className="mt-2.5 flex gap-2">
@@ -688,13 +766,16 @@ function DeliveryBlock({ onOpenMenu }: { onOpenMenu: () => void }) {
         <p className="text-[10px] uppercase tracking-[0.12em] mb-2" style={{ color: INK_MUTED }}>
           รูปแบบการรับอาหาร
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        {showAddressError && !deliveryMethod && (
+          <p className="text-xs text-red-500 font-semibold mb-2">* กรุณาเลือกรูปแบบการรับอาหาร</p>
+        )}
+        <div className="grid grid-cols-2 gap-2" style={{ border: showAddressError && !deliveryMethod ? "1px solid #ef4444" : "none", padding: showAddressError && !deliveryMethod ? "4px" : "0px", borderRadius: "12px" }}>
           {DELIVERY_METHODS.map((m) => {
             const active = deliveryMethod === m.id;
             return (
               <button
                 key={m.id}
-                onClick={() => setDeliveryMethod(m.id)}
+                onClick={() => handleDeliveryMethodChange(m.id)}
                 className="flex flex-col items-start gap-1.5 rounded-xl border-2 p-3 text-left transition"
                 style={{
                   borderColor: active ? BRAND : "#ece4d6",
@@ -714,6 +795,7 @@ function DeliveryBlock({ onOpenMenu }: { onOpenMenu: () => void }) {
           })}
         </div>
       </div>
+
 
       {/* CTA */}
       <AnimatePresence>
@@ -782,10 +864,24 @@ function HomeScreen({
   hasActiveOrder,
   activeOrderNumber,
   onGoToStatus,
+  selectedTable,
+  setSelectedTable,
+  tables,
+  activeOrderType,
+  address,
+  setAddress,
+  addressType,
+  setAddressType,
+  deliveryMethod,
+  setDeliveryMethod,
+  showAddressError,
+  setShowAddressError,
+  showTypeError,
+  setShowTypeError,
 }: {
   onOpenSidebar: () => void;
-  orderType: OrderType;
-  setOrderType: (m: OrderType) => void;
+  orderType: OrderType | null;
+  setOrderType: (m: OrderType | null) => void;
   onPickItem: (m: MenuItem) => void;
   onOpenCart: () => void;
   totalQty: number;
@@ -794,6 +890,20 @@ function HomeScreen({
   hasActiveOrder: boolean;
   activeOrderNumber: string;
   onGoToStatus: () => void;
+  selectedTable: string;
+  setSelectedTable: (t: string) => void;
+  tables: { id: string; label: string; status: string }[];
+  activeOrderType?: OrderType;
+  address: string;
+  setAddress: (val: string) => void;
+  addressType: "home" | "work" | "dorm";
+  setAddressType: (val: "home" | "work" | "dorm") => void;
+  deliveryMethod: "leave" | "pickup" | null;
+  setDeliveryMethod: (val: "leave" | "pickup" | null) => void;
+  showAddressError: boolean;
+  setShowAddressError: (val: boolean) => void;
+  showTypeError: boolean;
+  setShowTypeError: (val: boolean) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const scroll = (direction: "left" | "right") => {
@@ -806,19 +916,8 @@ function HomeScreen({
     }
   };
 
-  const [selectedTable, setSelectedTable] = useState("");
   const [showTablePicker, setShowTablePicker] = useState(false);
-
-  const tables = [
-    { id: "1", label: "โต๊ะ 1", status: "available" },
-    { id: "2", label: "โต๊ะ 2", status: "occupied" },
-    { id: "3", label: "โต๊ะ 3", status: "available" },
-    { id: "4", label: "โต๊ะ 4", status: "available" },
-    { id: "5", label: "โต๊ะ 5", status: "reserved" },
-    { id: "6", label: "โต๊ะ 6", status: "occupied" },
-    { id: "7", label: "โต๊ะ 7", status: "available" },
-    { id: "8", label: "โต๊ะ 8", status: "available" },
-  ];
+  const orderTypeRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="pb-36" style={{ background: LINEN }}>
@@ -864,13 +963,23 @@ function HomeScreen({
             </div>
             <button
               onClick={() => {
+                if (!orderType) {
+                  setShowTypeError(true);
+                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                  return;
+                }
                 if (orderType === "dine-in" && !selectedTable) {
                   setShowTablePicker(true);
                   return;
                 }
+                if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                  setShowAddressError(true);
+                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                  return;
+                }
                 onOpenMenu();
               }}
-              className="inline-flex items-center justify-center rounded-full bg-[#ffcb44] px-4 py-2 text-sm font-semibold shadow-sm"
+              className="inline-flex items-center justify-center rounded-full bg-[#ffcb44] px-4 py-2 text-sm font-semibold shadow-sm cursor-pointer"
               style={{ color: BRAND }}
             >
               สั่งอาหาร <ChevronRight size={14} />
@@ -892,21 +1001,35 @@ function HomeScreen({
             <MiniOrderTracker
               orderNumber={activeOrderNumber}
               onGoToStatus={onGoToStatus}
+              orderType={activeOrderType || "delivery"}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Order type tiles */}
-      <div className="px-5 mt-4">
-        <h3 className="text-sm font-medium mb-3" style={{ color: BRAND }}>ช่องทางการรับอาหาร</h3>
-        <div className="grid grid-cols-2 gap-3">
+      <div ref={orderTypeRef} className="px-5 mt-4">
+        <h3 className="text-sm font-medium mb-3 flex flex-wrap items-center gap-x-1.5" style={{ color: BRAND }}>
+          <span>ช่องทางการรับอาหาร <span className="text-red-500">*</span></span>
+          {orderType === null && (
+            <span className="text-xs text-slate-400 font-normal">
+              (กรุณาเลือกช่องทางการรับอาหารด้านบนเพื่อระบุรายละเอียด)
+            </span>
+          )}
+        </h3>
+        {showTypeError && (
+          <p className="text-xs text-red-500 font-semibold mb-3">
+            * กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน หรือ จัดส่งถึงที่) ก่อนเริ่มสั่งซื้อ
+          </p>
+        )}
+        <div className={`grid grid-cols-2 gap-3 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
           <button
             onClick={() => {
               setOrderType("dine-in");
+              setShowTypeError(false);
               setShowTablePicker(true);
             }}
-            className="rounded-xl p-4 text-left flex flex-col gap-2"
+            className="rounded-xl p-4 text-left flex flex-col gap-2 cursor-pointer transition active:scale-95"
             style={{ background: orderType === "dine-in" ? BRAND : "white", color: orderType === "dine-in" ? GOLD : BRAND }}
           >
             <div className="flex items-center justify-between">
@@ -919,8 +1042,11 @@ function HomeScreen({
           </button>
 
           <button
-            onClick={() => setOrderType("delivery")}
-            className="rounded-xl p-4 text-left flex flex-col gap-2"
+            onClick={() => {
+              setOrderType("delivery");
+              setShowTypeError(false);
+            }}
+            className="rounded-xl p-4 text-left flex flex-col gap-2 cursor-pointer transition active:scale-95"
             style={{ background: orderType === "delivery" ? "#f7fafb" : "white", border: `1px solid ${orderType === "delivery" ? BRAND : "#ece4d6"}`, color: BRAND }}
           >
             <div className="flex items-center justify-between">
@@ -932,28 +1058,40 @@ function HomeScreen({
             {orderType === "delivery" && <div className="text-xs">กรอกที่อยู่เพื่อจัดส่ง</div>}
           </button>
         </div>
-
-
       </div>
 
       {/* Conditional input for order type */}
-      <div className="px-5 mt-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={orderType}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.18 }}
-            className="w-full bg-white rounded-2xl px-4 py-4 shadow-soft border border-[#ece4d6]"
-          >
-            {orderType === "delivery" && <DeliveryBlock onOpenMenu={onOpenMenu} />}
-            {orderType === "dine-in" && (
-              <DineInBlock selectedTable={selectedTable} onOpenPicker={() => setShowTablePicker(true)} />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      {orderType !== null && (
+        <div className="px-5 mt-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={orderType}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="w-full bg-white rounded-2xl px-4 py-4 shadow-soft border border-[#ece4d6]"
+            >
+              {orderType === "delivery" && (
+                <DeliveryBlock
+                  onOpenMenu={onOpenMenu}
+                  address={address}
+                  setAddress={setAddress}
+                  addressType={addressType}
+                  setAddressType={setAddressType}
+                  deliveryMethod={deliveryMethod}
+                  setDeliveryMethod={setDeliveryMethod}
+                  showAddressError={showAddressError}
+                  setShowAddressError={setShowAddressError}
+                />
+              )}
+              {orderType === "dine-in" && (
+                <DineInBlock selectedTable={selectedTable} onOpenPicker={() => setShowTablePicker(true)} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Menu list (horizontal slider) */}
       <div className="px-5 mt-6">
@@ -980,7 +1118,23 @@ function HomeScreen({
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  onClick={() => onPickItem(m)}
+                  onClick={() => {
+                    if (!orderType) {
+                      setShowTypeError(true);
+                      orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                      return;
+                    }
+                    if (orderType === "dine-in" && !selectedTable) {
+                      setShowTablePicker(true);
+                      return;
+                    }
+                    if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                      setShowAddressError(true);
+                      orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                      return;
+                    }
+                    onPickItem(m);
+                  }}
                   className="bg-white rounded-2xl p-3 shadow-soft cursor-pointer active:scale-[0.99] transition-transform min-w-[220px] w-56 shrink-0"
                 >
                   <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
@@ -1004,9 +1158,23 @@ function HomeScreen({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!orderType) {
+                            setShowTypeError(true);
+                            orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                            return;
+                          }
+                          if (orderType === "dine-in" && !selectedTable) {
+                            setShowTablePicker(true);
+                            return;
+                          }
+                          if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                            setShowAddressError(true);
+                            orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                            return;
+                          }
                           onPickItem(m);
                         }}
-                        className="grid h-9 w-9 place-items-center rounded-full shadow-soft"
+                        className="grid h-9 w-9 place-items-center rounded-full shadow-soft cursor-pointer"
                         style={{ background: BRAND, color: GOLD }}
                       >
                         <Plus size={18} />
@@ -1089,13 +1257,7 @@ function TablePickerBottomSheet({
   };
 
   const sortedTables = useMemo(() => {
-    return [...tables].sort((a, b) => {
-      const aReserved = a.status === "reserved";
-      const bReserved = b.status === "reserved";
-      if (aReserved && !bReserved) return 1;
-      if (!aReserved && bReserved) return -1;
-      return 0;
-    });
+    return [...tables].sort((a, b) => Number(a.id) - Number(b.id));
   }, [tables]);
 
   return (
@@ -1140,35 +1302,28 @@ function TablePickerBottomSheet({
         <div className="grid grid-cols-2 gap-3">
           {sortedTables.map((table) => {
             const available = table.status === "available";
-            const isReserved = table.status === "reserved";
             const isOccupied = table.status === "occupied";
-            const statusLabel = available ? "ว่าง" : isOccupied ? "ไม่ว่าง" : "จองแล้ว";
+            const statusLabel = available ? "ว่าง" : "ไม่ว่าง";
             const statusStyle: React.CSSProperties =
               available
                 ? { background: "#bbf7d0", color: "#14532d", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 }
-                : isOccupied
-                  ? { background: "#fecaca", color: "#7f1d1d", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 }
-                  : { background: "#fde68a", color: "#78350f", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 };
+                : { background: "#fecaca", color: "#7f1d1d", padding: "4px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 700 };
 
             // Light pastel background + dark border per status
             const boxBg = selectedTable === table.id
               ? BRAND
               : available
                 ? "#dcfce7"   // green-100
-                : isOccupied
-                  ? "#fee2e2"   // red-100
-                  : "#fef9c3";  // yellow-100 for reserved
+                : "#fee2e2";  // red-100
 
             const boxBorder = selectedTable === table.id
               ? BRAND
               : available
                 ? "#15803d"   // green-700
-                : isOccupied
-                  ? "#dc2626"   // red-600
-                  : "#d97706";  // amber-600 for reserved
+                : "#dc2626";  // red-600
 
-            const boxText = selectedTable === table.id ? GOLD : available ? "#14532d" : isOccupied ? "#7f1d1d" : "#78350f";
-            const boxSubText = selectedTable === table.id ? "rgba(252,193,74,0.7)" : available ? "#166534" : isOccupied ? "#991b1b" : "#92400e";
+            const boxText = selectedTable === table.id ? GOLD : available ? "#14532d" : "#7f1d1d";
+            const boxSubText = selectedTable === table.id ? "rgba(252,193,74,0.7)" : available ? "#166534" : "#991b1b";
 
             return (
               <button
@@ -1197,7 +1352,6 @@ function TablePickerBottomSheet({
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span style={{ background: "#dcfce7", color: "#14532d", border: "2px solid #15803d", padding: "5px 14px", borderRadius: 9999, fontWeight: 700 }}>ว่าง</span>
             <span style={{ background: "#fee2e2", color: "#7f1d1d", border: "2px solid #dc2626", padding: "5px 14px", borderRadius: 9999, fontWeight: 700 }}>ไม่ว่าง</span>
-            <span style={{ background: "#fef9c3", color: "#78350f", border: "2px solid #d97706", padding: "5px 14px", borderRadius: 9999, fontWeight: 700 }}>จองแล้ว</span>
           </div>
         </div>
       </motion.div>
@@ -1893,20 +2047,21 @@ function CartDrawer({
 function OrderConfirmOverlay({
   cart,
   subtotal,
+  deliveryFee,
   onBack,
   onRemove,
   onProceed,
 }: {
   cart: CartLine[];
   subtotal: number;
+  deliveryFee: number;
   onBack: () => void;
   onRemove: (id: string) => void;
   onProceed: () => void;
 }) {
   const [phone, setPhone] = useState("");
   const [err, setErr] = useState("");
-  const delivery = 40;
-  const grand = subtotal + delivery;
+  const grand = subtotal + deliveryFee;
 
   return (
     <motion.div
@@ -1973,7 +2128,7 @@ function OrderConfirmOverlay({
             สรุปคำสั่งซื้อ
           </h3>
           <Row label="ยอดรวมอาหาร" value={`฿${subtotal}`} />
-          <Row label="ค่าจัดส่ง" value={`฿${delivery}`} />
+          <Row label="ค่าจัดส่ง" value={`฿${deliveryFee}`} />
           <div className="border-t pt-2.5 mt-2.5" style={{ borderColor: "#f1ece4" }}>
             <Row label="รวมทั้งหมด" value={`฿${grand}`} bold />
           </div>
@@ -2264,12 +2419,19 @@ function StatusScreen({
   onOpenSidebar: () => void;
   activeOrder?: OrderHistory;
 }) {
-  const steps = [
-    { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-    { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
-    { id: 3, label: "ออกจัดส่ง", icon: Bike, done: false, active: true },
-    { id: 4, label: "ส่งถึงแล้ว", icon: PartyPopper, done: false },
-  ];
+  const orderType = activeOrder?.orderType || "delivery";
+  const steps = orderType === "dine-in"
+    ? [
+        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
+        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+      ]
+    : [
+        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
+        { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
+        { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+      ];
 
   const orderItems = activeOrder
     ? activeOrder.items
@@ -2307,7 +2469,7 @@ function StatusScreen({
           รายการสำเร็จ
         </h2>
         <p className="mt-1 text-sm" style={{ color: INK_MUTED }}>
-          รอรับอาหารในอีก 14 นาที
+          {orderType === "dine-in" ? "รอเสิร์ฟอาหารในอีก 10 นาที" : "รอรับอาหารในอีก 14 นาที"}
         </p>
       </div>
 
@@ -2351,7 +2513,7 @@ function StatusScreen({
             <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-[#eef2f6]" />
             <motion.div
               initial={{ height: 0 }}
-              animate={{ height: "50%" }}
+              animate={{ height: orderType === "dine-in" ? "50%" : "66%" }}
               transition={{ duration: 1.2, ease: "easeOut" }}
               className="absolute left-[19px] top-2 w-0.5"
               style={{ background: BRAND }}
@@ -2408,13 +2570,27 @@ function StatusScreen({
 // ─────────────────────────────────────────────────────────────
 // Mini Order Tracker (Home Page)
 // ─────────────────────────────────────────────────────────────
-function MiniOrderTracker({ orderNumber, onGoToStatus }: { orderNumber: string; onGoToStatus: () => void }) {
-  const steps = [
-    { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-    { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
-    { id: 3, label: "ออกจัดส่ง", icon: Bike, done: false, active: true },
-    { id: 4, label: "ส่งถึงแล้ว", icon: PartyPopper, done: false },
-  ];
+function MiniOrderTracker({
+  orderNumber,
+  onGoToStatus,
+  orderType,
+}: {
+  orderNumber: string;
+  onGoToStatus: () => void;
+  orderType: OrderType;
+}) {
+  const steps = orderType === "dine-in"
+    ? [
+        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
+        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+      ]
+    : [
+        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
+        { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
+        { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+      ];
 
   const doneCount = steps.filter((s) => s.done).length;
   const progressPercent = ((doneCount + 0.5) / steps.length) * 100; // halfway through active step
@@ -2434,10 +2610,10 @@ function MiniOrderTracker({ orderNumber, onGoToStatus }: { orderNumber: string; 
             <ClipboardList size={14} style={{ color: "#ffcb44" }} />
           </div>
           <div>
-            <p className="text-[11px] font-bold" style={{ color: BRAND }}>
+            <p className="text-xs font-bold" style={{ color: BRAND }}>
               สถานะ Order ของคุณ
             </p>
-            <p className="text-[9px]" style={{ color: INK_MUTED }}>
+            <p className="text-[10px]" style={{ color: INK_MUTED }}>
               {orderNumber}
             </p>
           </div>
@@ -2445,7 +2621,7 @@ function MiniOrderTracker({ orderNumber, onGoToStatus }: { orderNumber: string; 
         <motion.span
           animate={{ scale: [1, 1.03, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1"
+          className="px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1"
           style={{ background: "rgba(59,130,246,0.08)", color: "#2563eb" }}
         >
           <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -2468,15 +2644,16 @@ function MiniOrderTracker({ orderNumber, onGoToStatus }: { orderNumber: string; 
       <div className="relative flex items-center justify-between mb-3">
         {/* Gray connecting line */}
         <div
-          className="absolute left-[12.5%] right-[12.5%] top-4 h-[2px] -translate-y-1/2"
-          style={{ background: "#eef2f6" }}
+          className="absolute top-4 h-[2px] -translate-y-1/2"
+          style={{ background: "#eef2f6", left: 16, right: 16 }}
         />
         {/* Yellow active connecting line */}
         <div
-          className="absolute left-[12.5%] top-4 h-[2px] -translate-y-1/2 transition-all duration-500"
+          className="absolute top-4 h-[2px] -translate-y-1/2 transition-all duration-500"
           style={{
             background: "#ffcb44",
-            width: `${Math.max(0, (doneCount - 1) / (steps.length - 1)) * 75}%`,
+            left: 16,
+            width: `calc((${Math.max(0, (doneCount - 1) / (steps.length - 1))} * (100% - 32px)))`,
           }}
         />
         {steps.map((s, i) => {
@@ -2504,7 +2681,7 @@ function MiniOrderTracker({ orderNumber, onGoToStatus }: { orderNumber: string; 
                 )}
               </div>
               <span
-                className="text-[8px] font-medium text-center leading-tight mt-1"
+                className="text-[10px] font-semibold text-center leading-tight mt-1"
                 style={{ color: s.done || s.active ? BRAND : INK_MUTED }}
               >
                 {s.label}
