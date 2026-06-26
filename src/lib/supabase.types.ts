@@ -32,6 +32,7 @@ export type Database = {
     Enums: {
       order_status: "pending" | "preparing" | "delivering" | "completed" | "cancelled";
       order_type: "dine-in" | "takeaway" | "delivery";
+      user_role: "admin" | "staff" | "customer";
     };
   };
 };
@@ -44,6 +45,7 @@ export type UserRow = {
   picture_url: string | null;
   status_message: string | null;
   is_active: boolean;
+  role: "admin" | "staff" | "customer";
   created_at: string;
   updated_at: string;
   last_login_at: string;
@@ -56,6 +58,7 @@ export type UserInsert = {
   picture_url?: string | null;
   status_message?: string | null;
   is_active?: boolean;
+  role?: "admin" | "staff" | "customer";
   created_at?: string;
   updated_at?: string;
   last_login_at?: string;

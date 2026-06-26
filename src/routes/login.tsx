@@ -94,7 +94,7 @@ function LoginPage() {
         // Already logged in via LINE — sync & go
         const { getLiffProfile } = await import("../lib/liff");
         const profile = await getLiffProfile();
-        await syncLineUserToSupabase(profile).catch(() => {});
+        await syncLineUserToSupabase(profile).catch((e) => { console.error("[Login] syncLineUserToSupabase error:", e); });
         navigate({ to: "/" });
       } else {
         liffLogin(); // redirects to LINE
