@@ -68,11 +68,11 @@ function RootRedirector() {
 
         // 5. เปลี่ยนเส้นทางไปยังหน้า Dashboard ของแต่ละ Role
         if (role === "admin") {
-          navigate({ to: "/admin" });
+          navigate({ to: "/admin/" });
         } else if (role === "staff") {
-          navigate({ to: "/staff" });
+          navigate({ to: "/staff/" });
         } else {
-          navigate({ to: "/customer" });
+          navigate({ to: "/customer/" });
         }
 
       } catch (err) {
@@ -96,7 +96,13 @@ function RootRedirector() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#050c14]">
+    <div
+      className="min-h-screen w-full flex items-center justify-center"
+      style={{
+        background:
+          "radial-gradient(circle at 20% 20%, #11304a 0%, #050c14 60%, #02060b 100%)",
+      }}
+    >
       <div className="flex flex-col items-center gap-4">
         <div
           style={{
@@ -109,9 +115,7 @@ function RootRedirector() {
             animation: "spin 0.9s linear infinite",
           }}
         />
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
-          กำลังตรวจสอบสิทธิ์การเข้าใช้งาน…
-        </p>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>กำลังตรวจสอบการเข้าสู่ระบบ…</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
