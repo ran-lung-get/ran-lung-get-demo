@@ -79,8 +79,17 @@ function LoginPage() {
 
     // Also check LINE login (silent)
     initLiff()
-      .then(() => {
-        if (isLiffLoggedIn()) navigate({ to: "/" });
+      .then(async () => {
+        if (isLiffLoggedIn()) {
+          try {
+            const { getLiffProfile } = await import("../lib/liff");
+            const profile = await getLiffProfile();
+            await syncLineUserToSupabase(profile);
+          } catch (e) {
+            console.error("[Login] silent syncLineUserToSupabase error:", e);
+          }
+          navigate({ to: "/" });
+        }
       })
       .catch(() => {}); // LIFF not configured — ignore
 
