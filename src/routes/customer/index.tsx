@@ -66,8 +66,8 @@ export const Route = createFileRoute("/customer/")({
 // ─────────────────────────────────────────────────────────────
 // Data
 // ─────────────────────────────────────────────────────────────
-type Addon = { id: string; name: string; price: number };
-type MenuItem = {
+export type Addon = { id: string; name: string; price: number };
+export type MenuItem = {
   id: string;
   name: string;
   desc: string;
@@ -348,6 +348,9 @@ type OrderHistory = {
   cancelReason?: string;
   cancelNote?: string;
   refundPromptPay?: string;
+  queueNumber?: string;
+  tableNumber?: string;
+  note?: string;
 };
 
 const BRAND = "#002e47";
@@ -600,6 +603,24 @@ function LiffApp() {
   const saveOrderToHistory = () => {
     if (cart.length === 0) return;
     const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
+    const selectedTableObj = tables.find((t) => t.id === selectedTable);
+    const tableNumStr = orderType === "dine-in" && selectedTableObj ? selectedTableObj.label : undefined;
+
+    // Calculate queue number for takeaway
+    let takeawayQueueNum: string | undefined = undefined;
+    if (orderType === "takeaway") {
+      const currentQueueCounter = localStorage.getItem("ran-lung-get-takeaway-queue-counter");
+      let nextQueue = 1;
+      if (currentQueueCounter) {
+        const parsed = parseInt(currentQueueCounter);
+        if (!isNaN(parsed)) {
+          nextQueue = parsed + 1;
+        }
+      }
+      localStorage.setItem("ran-lung-get-takeaway-queue-counter", String(nextQueue));
+      takeawayQueueNum = `Q-${String(nextQueue).padStart(2, "0")}`;
+    }
+
     const newOrder: OrderHistory = {
       id: `hist_${Date.now()}`,
       orderNumber: orderNum,
@@ -610,6 +631,8 @@ function LiffApp() {
       total: subtotal + deliveryFee,
       status: "รอรับออเดอร์",
       orderType: orderType || "delivery",
+      tableNumber: tableNumStr,
+      queueNumber: takeawayQueueNum,
     };
     const updatedHistory = [newOrder, ...orderHistory];
     setOrderHistory(updatedHistory);
@@ -633,6 +656,7 @@ function LiffApp() {
       items: newOrder.items,
       table_id: orderType === "dine-in" ? selectedTable : null,
       address: orderType === "delivery" ? address : null,
+      queue_number: takeawayQueueNum || null,
       created_at: new Date().toISOString(),
     });
   };
@@ -1326,26 +1350,45 @@ function HomeScreen({
         </h3>
         {showTypeError && (
           <p className="text-xs text-red-500 font-semibold mb-3">
-            * กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน หรือ จัดส่งถึงที่) ก่อนเริ่มสั่งซื้อ
+            * กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน, จัดส่งถึงที่ หรือ รับกลับบ้าน) ก่อนเริ่มสั่งซื้อ
           </p>
         )}
-        <div className={`grid grid-cols-2 gap-3 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
+        <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
           <button
             onClick={() => {
               setOrderType("dine-in");
               setShowTypeError(false);
               onOpenTablePicker();
             }}
-            className="rounded-xl p-4 text-left flex flex-col gap-2 cursor-pointer transition active:scale-95"
-            style={{ background: orderType === "dine-in" ? BRAND : "white", color: orderType === "dine-in" ? GOLD : BRAND }}
+            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            style={{
+              background: orderType === "dine-in" ? BRAND : "white",
+              color: orderType === "dine-in" ? GOLD : BRAND,
+              borderColor: orderType === "dine-in" ? BRAND : "#ece4d6"
+            }}
           >
-            <div className="flex items-center justify-between">
-              <div className="grid h-10 w-10 place-items-center rounded-md" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
-                <Utensils size={18} />
-              </div>
+            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
+              <Utensils size={15} />
             </div>
-            <div className="font-semibold">ทานที่ร้าน</div>
-            {orderType === "dine-in" && <div className="text-xs">เลือกโต๊ะและเชื่อมต่อ QR</div>}
+            <div className="font-bold text-[12px]">ทานที่ร้าน</div>
+          </button>
+
+          <button
+            onClick={() => {
+              setOrderType("takeaway");
+              setShowTypeError(false);
+            }}
+            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            style={{
+              background: orderType === "takeaway" ? BRAND : "white",
+              color: orderType === "takeaway" ? GOLD : BRAND,
+              borderColor: orderType === "takeaway" ? BRAND : "#ece4d6"
+            }}
+          >
+            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "takeaway" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "takeaway" ? GOLD : BRAND }}>
+              <ShoppingBag size={15} />
+            </div>
+            <div className="font-bold text-[12px]">รับกลับบ้าน</div>
           </button>
 
           <button
@@ -1353,16 +1396,17 @@ function HomeScreen({
               setOrderType("delivery");
               setShowTypeError(false);
             }}
-            className="rounded-xl p-4 text-left flex flex-col gap-2 cursor-pointer transition active:scale-95"
-            style={{ background: orderType === "delivery" ? "#f7fafb" : "white", border: `1px solid ${orderType === "delivery" ? BRAND : "#ece4d6"}`, color: BRAND }}
+            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            style={{
+              background: orderType === "delivery" ? BRAND : "white",
+              color: orderType === "delivery" ? GOLD : BRAND,
+              borderColor: orderType === "delivery" ? BRAND : "#ece4d6"
+            }}
           >
-            <div className="flex items-center justify-between">
-              <div className="grid h-10 w-10 place-items-center rounded-md" style={{ background: LINEN, color: BRAND }}>
-                <Bike size={18} />
-              </div>
+            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "delivery" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "delivery" ? GOLD : BRAND }}>
+              <Bike size={15} />
             </div>
-            <div className="font-semibold">จัดส่งถึงที่</div>
-            {orderType === "delivery" && <div className="text-xs">กรอกที่อยู่เพื่อจัดส่ง</div>}
+            <div className="font-bold text-[12px]">จัดส่งถึงที่</div>
           </button>
         </div>
       </div>
@@ -1394,6 +1438,17 @@ function HomeScreen({
               )}
               {orderType === "dine-in" && (
                 <DineInBlock selectedTable={selectedTable} onOpenPicker={onOpenTablePicker} />
+              )}
+              {orderType === "takeaway" && (
+                <div className="space-y-1.5 p-1 text-center sm:text-left">
+                  <h4 className="font-bold text-sm text-[#002e47] flex items-center justify-center sm:justify-start gap-1.5">
+                    <ShoppingBag size={16} /> รับกลับบ้าน (Take Away)
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-normal font-semibold">
+                    ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น 
+                    <strong className="text-[#059669] mx-1">"พร้อมเสิร์ฟ"</strong>
+                  </p>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>
@@ -2887,6 +2942,12 @@ function StatusScreen({
         { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
         { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
       ]
+    : orderType === "takeaway"
+    ? [
+        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+        { id: 3, label: "พร้อมรับอาหาร", icon: ShoppingBag, done: currentStatus === "สำเร็จ", active: false },
+      ]
     : [
         { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
         { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "กำลังจัดส่ง" || currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
@@ -3055,6 +3116,24 @@ function StatusScreen({
         <p className="mt-1 text-sm max-w-xs mx-auto leading-relaxed" style={{ color: INK_MUTED }}>
           {statusTheme.subtitle}
         </p>
+
+        {activeOrder?.orderType === "takeaway" && activeOrder?.queueNumber && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-4 px-6 py-2.5 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-purple-50 border-purple-200 w-[90%] mx-auto"
+          >
+            <span className="text-[10px] uppercase font-black tracking-widest text-purple-600">
+              คิวรับอาหารกลับบ้าน (Takeaway Queue)
+            </span>
+            <span className="text-3xl font-black mt-0.5" style={{ color: BRAND }}>
+              {activeOrder.queueNumber}
+            </span>
+            <span className="text-[10px] text-slate-400 mt-1 text-center leading-normal font-bold">
+              * โปรดแสดงหมายเลขคิวนี้ต่อพนักงานที่เคาน์เตอร์เพื่อรับอาหาร
+            </span>
+          </motion.div>
+        )}
       </div>
 
       <div className="px-5 space-y-4">
