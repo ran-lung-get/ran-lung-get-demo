@@ -32,6 +32,8 @@ function LoginPage() {
   const [tab, setTab] = useState<Tab>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [role, setRole] = useState<"customer" | "staff">("customer");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lineLoading, setLineLoading] = useState(false);
@@ -107,6 +109,10 @@ function LoginPage() {
       setFormError("กรุณากรอกอีเมลและรหัสผ่าน");
       return;
     }
+    if (tab === "register" && !nickname.trim()) {
+      setFormError("กรุณากรอกชื่อเล่นของคุณ");
+      return;
+    }
     setLoading(true);
     try {
       if (tab === "login") {
@@ -115,20 +121,52 @@ function LoginPage() {
           setFormError(translateAuthError(error.message));
           setLoading(false);
         }
-        // If success, onAuthStateChange will handle the redirect, keeping the spinner active
+        // If success, onAuthStateChange will handle the redirect
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        // Register: pass nickname & role as user_metadata
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: nickname.trim(),
+              display_name: nickname.trim(),
+              role,
+            },
+          },
+        });
         if (error) {
           setFormError(translateAuthError(error.message));
-        } else {
+          setLoading(false);
+        } else if (data.user) {
+          // Sync to public.users with the chosen role
+          try {
+            const client = supabase as any;
+            const now = new Date().toISOString();
+            await client.from("users").upsert(
+              {
+                auth_user_id: data.user.id,
+                display_name: nickname.trim(),
+                email: data.user.email,
+                role,
+                is_active: true,
+                updated_at: now,
+                last_login_at: now,
+              },
+              { onConflict: "auth_user_id", ignoreDuplicates: false }
+            );
+          } catch (syncErr) {
+            console.error("[Register] sync to users error:", syncErr);
+          }
+
           if (data.session) {
-            setFormSuccess("สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...");
+            setFormSuccess(`สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ ${nickname} 🎉`);
           } else {
-            setFormSuccess("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ (หรือยืนยันอีเมลหากระบบต้องการ)");
+            setFormSuccess(`สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ ${nickname} 🎉 กรุณาเข้าสู่ระบบ`);
             setTab("login");
           }
+          setLoading(false);
         }
-        setLoading(false);
       }
     } catch {
       setLoading(false);
@@ -184,11 +222,18 @@ function LoginPage() {
   }
 
   function translateAuthError(msg: string): string {
-    if (msg.includes("Invalid login credentials")) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-    if (msg.includes("Email not confirmed")) return "โปรดยืนยันอีเมลก่อนเข้าสู่ระบบ";
-    if (msg.includes("User already registered")) return "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ";
-    if (msg.includes("Password should be")) return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
-    if (msg.includes("rate limit")) return "คุณพยายามสมัครบ่อยเกินไป กรุณารอสักครู่ (หรือตั้งค่าปลดล็อค Rate Limit ใน Supabase)";
+    if (msg.includes("Invalid login credentials"))
+      return "อีเมลหรือรหัสผ่านไม่ถูกต้อง (หรือยังไม่ยืนยันอีเมล)";
+    if (msg.includes("Email not confirmed"))
+      return "กรุณายืนยันอีเมลก่อน — ตรวจสอบกล่องจดหมาย แล้วกดลิงก์ยืนยัน";
+    if (msg.includes("User already registered"))
+      return "อีเมลนี้มีบัญชีอยู่แล้ว — กรุณาเข้าสู่ระบบแทน";
+    if (msg.includes("Password should be"))
+      return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+    if (msg.includes("rate limit"))
+      return "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
+    if (msg.includes("over_email_send_rate_limit"))
+      return "ระบบส่งอีเมลบ่อยเกินไป กรุณารอ 1 นาทีแล้วลองใหม่";
     return msg;
   }
 
@@ -315,6 +360,68 @@ function LoginPage() {
 
           {/* Email/Password form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+
+            {/* ── Register-only fields ── */}
+            {tab === "register" && (
+              <>
+                {/* Nickname */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="nickname-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    ชื่อเล่น
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                      <UserIcon />
+                    </span>
+                    <input
+                      id="nickname-input"
+                      type="text"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      placeholder="เช่น แมว, น้องอ้น, พี่เบส"
+                      autoComplete="nickname"
+                      className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
+                      style={{
+                        background: "rgba(0,46,71,0.05)",
+                        border: "1.5px solid rgba(0,46,71,0.12)",
+                        color: INK,
+                        fontFamily: "'Prompt', sans-serif",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                    />
+                  </div>
+                </div>
+
+                {/* Role selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold" style={{ color: INK_MUTED }}>สมัครในฐานะ</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: "customer", label: "👤 ลูกค้า", desc: "สั่งอาหาร" },
+                      { value: "staff",    label: "👨‍🍳 พนักงาน", desc: "จัดการออเดอร์" },
+                      { value: "admin",    label: "👑 แอดมิน", desc: "จัดการระบบ" },
+                    ] as const).map((r) => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        id={`role-${r.value}-btn`}
+                        onClick={() => setRole(r.value)}
+                        className="flex flex-col items-center gap-0.5 rounded-2xl py-3 px-2 text-sm font-semibold transition-all"
+                        style={{
+                          border: role === r.value ? `2px solid ${BRAND}` : "2px solid rgba(0,46,71,0.12)",
+                          background: role === r.value ? `rgba(0,46,71,0.08)` : "rgba(0,46,71,0.03)",
+                          color: role === r.value ? BRAND : INK_MUTED,
+                        }}
+                      >
+                        <span className="text-base">{r.label}</span>
+                        <span className="text-[10px] font-normal opacity-70">{r.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Email */}
             <div className="flex flex-col gap-1.5">
@@ -456,73 +563,70 @@ function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
-            <span className="text-xs" style={{ color: INK_MUTED }}>
-              หรือเข้าสู่ระบบด้วย
-            </span>
-            <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
-          </div>
+          {/* Divider — show social login only on login tab */}
+          {tab === "login" && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
+              <span className="text-xs" style={{ color: INK_MUTED }}>
+                หรือเข้าสู่ระบบด้วย
+              </span>
+              <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
+            </div>
+          )}
 
-          {/* LINE Login Button */}
-          <button
-            id="line-login-btn"
-            onClick={handleLineLogin}
-            disabled={lineLoading}
-            className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
-            style={{
-              background: lineLoading
-                ? "rgba(6,199,85,0.4)"
-                : `linear-gradient(135deg, ${LINE_GREEN} 0%, #05a847 100%)`,
-              boxShadow: lineLoading ? "none" : "0 6px 24px rgba(6,199,85,0.35)",
-            }}
-          >
-            {lineLoading ? (
-              <>
-                <SpinnerIcon />
-                กำลังเชื่อมต่อ LINE…
-              </>
-            ) : (
-              <>
-                <LineIcon size={22} />
-                เข้าสู่ระบบด้วย LINE
-              </>
-            )}
-          </button>
+          {/* Social Login Buttons — login tab only */}
+          {tab === "login" && (
+            <>
+              {/* LINE Login Button */}
+              <button
+                id="line-login-btn"
+                onClick={handleLineLogin}
+                disabled={lineLoading}
+                className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
+                style={{
+                  background: lineLoading
+                    ? "rgba(6,199,85,0.4)"
+                    : `linear-gradient(135deg, ${LINE_GREEN} 0%, #05a847 100%)`,
+                  boxShadow: lineLoading ? "none" : "0 6px 24px rgba(6,199,85,0.35)",
+                }}
+              >
+                {lineLoading ? (
+                  <><SpinnerIcon />กำลังเชื่อมต่อ LINE…</>
+                ) : (
+                  <><LineIcon size={22} />เข้าสู่ระบบด้วย LINE</>
+                )}
+              </button>
 
-          {/* Google Login Button */}
-          <button
-            id="google-login-btn"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            type="button"
-            className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97]"
-            style={{
-              background: loading ? "rgba(255,255,255,0.7)" : "#ffffff",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-              border: "1px solid rgba(0,0,0,0.1)",
-            }}
-          >
-            {loading ? (
-              <>
-                <SpinnerIcon />
-                กำลังเชื่อมต่อ Google…
-              </>
-            ) : (
-              <>
-                <GoogleIcon size={22} />
-                เข้าสู่ระบบด้วย Google
-              </>
-            )}
-          </button>
+              {/* Google Login Button */}
+              <button
+                id="google-login-btn"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                type="button"
+                className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97]"
+                style={{
+                  background: loading ? "rgba(255,255,255,0.7)" : "#ffffff",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                }}
+              >
+                {loading ? (
+                  <><SpinnerIcon />กำลังเชื่อมต่อ Google…</>
+                ) : (
+                  <><GoogleIcon size={22} />เข้าสู่ระบบด้วย Google</>
+                )}
+              </button>
+            </>
+          )}
 
           {/* Privacy note */}
           <p
             className="text-center text-[11px] leading-relaxed px-4"
             style={{ color: "rgba(0,46,71,0.35)" }}
           >
-            การเข้าสู่ระบบแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน
+            {tab === "register"
+              ? "การสมัครสมาชิกแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"
+              : "การเข้าสู่ระบบแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"}
             <br />
             ข้อมูลของคุณจะถูกเก็บเป็นความลับ
           </p>
@@ -609,6 +713,15 @@ function EyeOffIcon() {
       <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
       <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
       <line x1="2" x2="22" y1="2" y2="22" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
   );
 }

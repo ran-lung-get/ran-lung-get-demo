@@ -1165,12 +1165,28 @@ function KitchenMonitor() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [view, setView] = useState<"kitchen" | "dashboard" | "menu">("kitchen");
 
-  // Auth Check for Staff (supports both Supabase role and mock token)
+  // Auth Check for Staff — ใช้ Supabase session แทน localStorage token
   useEffect(() => {
-    const token = localStorage.getItem("ran-lung-get-staff-token");
-    if (!token) {
-      window.location.href = "/login";
+    async function checkAuth() {
+      const { data: { session } } = await (await import("../../lib/supabase")).supabase.auth.getSession();
+      if (!session) {
+        window.location.href = "/login";
+        return;
+      }
+      // ตรวจสอบ role จาก users table
+      const { supabase } = await import("../../lib/supabase");
+      const { data } = await (supabase as any)
+        .from("users")
+        .select("role")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+      const role = data?.role ?? "customer";
+      if (role !== "staff" && role !== "admin") {
+        // ถ้าไม่ใช่ staff หรือ admin ให้ไปหน้า customer แทน
+        window.location.href = "/customer";
+      }
     }
+    checkAuth();
   }, []);
 
   // Load orders from localStorage

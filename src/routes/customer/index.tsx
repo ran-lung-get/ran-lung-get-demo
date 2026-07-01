@@ -502,13 +502,13 @@ function LiffApp() {
     if (simulateClosed) return true;
     if (bypassRealClosed) return false;
 
-    // Bangkok timezone ICT (UTC+7)
+    // Bangkok timezone (UTC+7)
     const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const thTime = new Date(utc + 3600000 * 7);
-    const day = thTime.getUTCDay(); // 0 is Sunday, 6 is Saturday
-    const hour = thTime.getUTCHours();
-    const minute = thTime.getUTCMinutes();
+    const thTimeStr = now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+    const thTime = new Date(thTimeStr);
+    const day = thTime.getDay(); // 0 is Sunday, 6 is Saturday
+    const hour = thTime.getHours();
+    const minute = thTime.getMinutes();
 
     // Closed all day Saturday (6)
     if (day === 6) {
@@ -3521,9 +3521,9 @@ function StoreClosedOverlay({
 }) {
   const todayDay = useMemo(() => {
     const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const thTime = new Date(utc + 3600000 * 7);
-    return thTime.getUTCDay();
+    const thTimeStr = now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+    const thTime = new Date(thTimeStr);
+    return thTime.getDay();
   }, []);
 
   const daysInfo = [
