@@ -66,8 +66,8 @@ export const Route = createFileRoute("/customer/")({
 // ─────────────────────────────────────────────────────────────
 // Data
 // ─────────────────────────────────────────────────────────────
-type Addon = { id: string; name: string; price: number };
-type MenuItem = {
+export type Addon = { id: string; name: string; price: number };
+export type MenuItem = {
   id: string;
   name: string;
   desc: string;
@@ -343,8 +343,14 @@ type OrderHistory = {
   subtotal: number;
   delivery: number;
   total: number;
-  status: "สำเร็จ" | "กำลังจัดส่ง" | "กำลังเตรียม";
+  status: "สำเร็จ" | "กำลังจัดส่ง" | "กำลังเตรียม" | "รอรับออเดอร์" | "ขอคืนเงิน" | "ยกเลิกแล้ว" | "รอดำเนินการ";
   orderType?: OrderType;
+  cancelReason?: string;
+  cancelNote?: string;
+  refundPromptPay?: string;
+  queueNumber?: string;
+  tableNumber?: string;
+  note?: string;
 };
 
 const BRAND = "#002e47";
@@ -432,6 +438,31 @@ function LiffApp() {
       if (authListener) authListener.unsubscribe();
     };
   }, [navigate]);
+
+  // Load orders from localStorage and listen for changes (cross-tab sync)
+  useEffect(() => {
+    const saved = localStorage.getItem("ran-lung-get-orders");
+    if (saved) {
+      try {
+        setOrderHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse orders from storage:", e);
+      }
+    }
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "ran-lung-get-orders" && e.newValue) {
+        try {
+          const updated: OrderHistory[] = JSON.parse(e.newValue);
+          setOrderHistory(updated);
+        } catch (err) {
+          console.error("Failed to parse synced orders:", err);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   const [tab, setTab] = useState<"home" | "status">("home");
   const [overlay, setOverlay] = useState<null | "menu" | "orderConfirm" | "payment" | "history" | "contact">(null);
@@ -572,6 +603,24 @@ function LiffApp() {
   const saveOrderToHistory = () => {
     if (cart.length === 0) return;
     const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
+    const selectedTableObj = tables.find((t) => t.id === selectedTable);
+    const tableNumStr = orderType === "dine-in" && selectedTableObj ? selectedTableObj.label : undefined;
+
+    // Calculate queue number for takeaway
+    let takeawayQueueNum: string | undefined = undefined;
+    if (orderType === "takeaway") {
+      const currentQueueCounter = localStorage.getItem("ran-lung-get-takeaway-queue-counter");
+      let nextQueue = 1;
+      if (currentQueueCounter) {
+        const parsed = parseInt(currentQueueCounter);
+        if (!isNaN(parsed)) {
+          nextQueue = parsed + 1;
+        }
+      }
+      localStorage.setItem("ran-lung-get-takeaway-queue-counter", String(nextQueue));
+      takeawayQueueNum = `Q-${String(nextQueue).padStart(2, "0")}`;
+    }
+
     const newOrder: OrderHistory = {
       id: `hist_${Date.now()}`,
       orderNumber: orderNum,
@@ -580,10 +629,14 @@ function LiffApp() {
       subtotal,
       delivery: deliveryFee,
       total: subtotal + deliveryFee,
-      status: "สำเร็จ",
+      status: "รอรับออเดอร์",
       orderType: orderType || "delivery",
+      tableNumber: tableNumStr,
+      queueNumber: takeawayQueueNum,
     };
-    setOrderHistory((prev) => [newOrder, ...prev]);
+    const updatedHistory = [newOrder, ...orderHistory];
+    setOrderHistory(updatedHistory);
+    localStorage.setItem("ran-lung-get-orders", JSON.stringify(updatedHistory));
     setActiveOrderNumber(orderNum);
     setHasActiveOrder(true);
 
@@ -603,6 +656,7 @@ function LiffApp() {
       items: newOrder.items,
       table_id: orderType === "dine-in" ? selectedTable : null,
       address: orderType === "delivery" ? address : null,
+      queue_number: takeawayQueueNum || null,
       created_at: new Date().toISOString(),
     });
   };
@@ -1296,26 +1350,45 @@ function HomeScreen({
         </h3>
         {showTypeError && (
           <p className="text-xs text-red-500 font-semibold mb-3">
-            * กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน หรือ จัดส่งถึงที่) ก่อนเริ่มสั่งซื้อ
+            * กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน, จัดส่งถึงที่ หรือ รับกลับบ้าน) ก่อนเริ่มสั่งซื้อ
           </p>
         )}
-        <div className={`grid grid-cols-2 gap-3 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
+        <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
           <button
             onClick={() => {
               setOrderType("dine-in");
               setShowTypeError(false);
               onOpenTablePicker();
             }}
-            className="rounded-xl p-4 text-left flex flex-col gap-2 cursor-pointer transition active:scale-95"
-            style={{ background: orderType === "dine-in" ? BRAND : "white", color: orderType === "dine-in" ? GOLD : BRAND }}
+            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            style={{
+              background: orderType === "dine-in" ? BRAND : "white",
+              color: orderType === "dine-in" ? GOLD : BRAND,
+              borderColor: orderType === "dine-in" ? BRAND : "#ece4d6"
+            }}
           >
-            <div className="flex items-center justify-between">
-              <div className="grid h-10 w-10 place-items-center rounded-md" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
-                <Utensils size={18} />
-              </div>
+            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
+              <Utensils size={15} />
             </div>
-            <div className="font-semibold">ทานที่ร้าน</div>
-            {orderType === "dine-in" && <div className="text-xs">เลือกโต๊ะและเชื่อมต่อ QR</div>}
+            <div className="font-bold text-[12px]">ทานที่ร้าน</div>
+          </button>
+
+          <button
+            onClick={() => {
+              setOrderType("takeaway");
+              setShowTypeError(false);
+            }}
+            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            style={{
+              background: orderType === "takeaway" ? BRAND : "white",
+              color: orderType === "takeaway" ? GOLD : BRAND,
+              borderColor: orderType === "takeaway" ? BRAND : "#ece4d6"
+            }}
+          >
+            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "takeaway" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "takeaway" ? GOLD : BRAND }}>
+              <ShoppingBag size={15} />
+            </div>
+            <div className="font-bold text-[12px]">รับกลับบ้าน</div>
           </button>
 
           <button
@@ -1323,16 +1396,17 @@ function HomeScreen({
               setOrderType("delivery");
               setShowTypeError(false);
             }}
-            className="rounded-xl p-4 text-left flex flex-col gap-2 cursor-pointer transition active:scale-95"
-            style={{ background: orderType === "delivery" ? "#f7fafb" : "white", border: `1px solid ${orderType === "delivery" ? BRAND : "#ece4d6"}`, color: BRAND }}
+            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            style={{
+              background: orderType === "delivery" ? BRAND : "white",
+              color: orderType === "delivery" ? GOLD : BRAND,
+              borderColor: orderType === "delivery" ? BRAND : "#ece4d6"
+            }}
           >
-            <div className="flex items-center justify-between">
-              <div className="grid h-10 w-10 place-items-center rounded-md" style={{ background: LINEN, color: BRAND }}>
-                <Bike size={18} />
-              </div>
+            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "delivery" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "delivery" ? GOLD : BRAND }}>
+              <Bike size={15} />
             </div>
-            <div className="font-semibold">จัดส่งถึงที่</div>
-            {orderType === "delivery" && <div className="text-xs">กรอกที่อยู่เพื่อจัดส่ง</div>}
+            <div className="font-bold text-[12px]">จัดส่งถึงที่</div>
           </button>
         </div>
       </div>
@@ -1364,6 +1438,17 @@ function HomeScreen({
               )}
               {orderType === "dine-in" && (
                 <DineInBlock selectedTable={selectedTable} onOpenPicker={onOpenTablePicker} />
+              )}
+              {orderType === "takeaway" && (
+                <div className="space-y-1.5 p-1 text-center sm:text-left">
+                  <h4 className="font-bold text-sm text-[#002e47] flex items-center justify-center sm:justify-start gap-1.5">
+                    <ShoppingBag size={16} /> รับกลับบ้าน (Take Away)
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-normal font-semibold">
+                    ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น 
+                    <strong className="text-[#059669] mx-1">"พร้อมเสิร์ฟ"</strong>
+                  </p>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>
@@ -2833,7 +2918,6 @@ function SuccessFlash() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
 // Status Screen
 // ─────────────────────────────────────────────────────────────
 function StatusScreen({
@@ -2843,18 +2927,32 @@ function StatusScreen({
   onOpenSidebar: () => void;
   activeOrder?: OrderHistory;
 }) {
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [selectedReason, setSelectedReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const [promptPayNumber, setPromptPayNumber] = useState("");
+  const [errorText, setErrorText] = useState("");
+
   const orderType = activeOrder?.orderType || "delivery";
+  const currentStatus = activeOrder?.status || "รอรับออเดอร์";
+
   const steps = orderType === "dine-in"
     ? [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
-        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
+      ]
+    : orderType === "takeaway"
+    ? [
+        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+        { id: 3, label: "พร้อมรับอาหาร", icon: ShoppingBag, done: currentStatus === "สำเร็จ", active: false },
       ]
     : [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
-        { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
-        { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "กำลังจัดส่ง" || currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+        { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังจัดส่ง" },
+        { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
       ];
 
   const orderItems = activeOrder
@@ -2865,8 +2963,130 @@ function StatusScreen({
     ] as { name: string; qty: number; price: number }[]);
   const total = activeOrder ? activeOrder.total : 420 + 240 + 40;
 
+  // Dynamic status text & theme based on order state
+  const statusTheme = useMemo(() => {
+    if (currentStatus === "ขอคืนเงิน") {
+      return {
+        title: "ยื่นขอคืนเงินแล้ว",
+        subtitle: "ร้านค้ากำลังตรวจสอบและโอนเงินคืนตามพร้อมเพย์ที่ท่านระบุ",
+        color: "#f59e0b", // Amber
+        bg: "rgba(245, 158, 11, 0.08)",
+        iconColor: "#f59e0b"
+      };
+    }
+    if (currentStatus === "ยกเลิกแล้ว") {
+      return {
+        title: "ออเดอร์ถูกยกเลิกแล้ว",
+        subtitle: "การคืนเงินสำเร็จหรือยกเลิกคำสั่งซื้อเรียบร้อยแล้ว",
+        color: "#ef4444", // Red
+        bg: "rgba(239, 68, 68, 0.08)",
+        iconColor: "#ef4444"
+      };
+    }
+    if (currentStatus === "รอรับออเดอร์") {
+      return {
+        title: "กำลังรอรับออเดอร์",
+        subtitle: "ร้านค้ากำลังตรวจสอบสลิปและเตรียมเข้าครัว",
+        color: "#3b82f6", // Blue
+        bg: "rgba(59, 130, 246, 0.08)",
+        iconColor: "#3b82f6"
+      };
+    }
+    // สำหรับสถานะเตรียมอาหาร หรือจัดส่งสำเร็จ
+    return {
+      title: currentStatus === "สำเร็จ" ? "รายการสำเร็จ" : "กำลังดำเนินการ",
+      subtitle: orderType === "dine-in" ? "รอเสิร์ฟอาหารในอีก 10 นาที" : "รอรับอาหารในอีก 14 นาที",
+      color: "#10b981", // Emerald
+      bg: "rgba(16, 185, 129, 0.08)",
+      iconColor: "#10b981"
+    };
+  }, [currentStatus, orderType]);
+
+  const cancelReasonsList = [
+    "สั่งอาหารผิดเมนู / ลืมเพิ่มบางรายการ",
+    "ต้องการเปลี่ยนที่อยู่จัดส่ง / วิธีรับอาหาร",
+    "รอนานเกินไป / เปลี่ยนใจไม่ทานแล้ว",
+    "อื่น ๆ (ระบุด้านล่าง)"
+  ];
+
+  const handleRequestCancel = () => {
+    if (!selectedReason) {
+      setErrorText("กรุณาเลือกเหตุผลในการยกเลิก");
+      return;
+    }
+    if (selectedReason === "อื่น ๆ (ระบุด้านล่าง)" && !customReason.trim()) {
+      setErrorText("กรุณาระบุรายละเอียดเหตุผลเพิ่มเติม");
+      return;
+    }
+    if (!promptPayNumber.trim()) {
+      setErrorText("กรุณากรอกเบอร์พร้อมเพย์ หรือเลขบัญชีธนาคารสำหรับรับเงินคืน");
+      return;
+    }
+
+    // Save cancellation state to localStorage
+    const saved = localStorage.getItem("ran-lung-get-orders");
+    if (saved && activeOrder) {
+      try {
+        const history: OrderHistory[] = JSON.parse(saved);
+        const updated = history.map(o => {
+          if (o.orderNumber === activeOrder.orderNumber) {
+            return {
+              ...o,
+              status: "ขอคืนเงิน" as const,
+              cancelReason: selectedReason,
+              cancelNote: customReason,
+              refundPromptPay: promptPayNumber
+            };
+          }
+          return o;
+        });
+        localStorage.setItem("ran-lung-get-orders", JSON.stringify(updated));
+        // dispatch storage event manually for same-page listeners if needed
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: "ran-lung-get-orders",
+          newValue: JSON.stringify(updated)
+        }));
+      } catch (e) {
+        console.error("Cancel failed:", e);
+      }
+    }
+
+    setShowCancelDialog(false);
+    setErrorText("");
+  };
+
   return (
-    <div className="min-h-full pb-28" style={{ background: SURFACE }}>
+    <div className="min-h-full pb-28 relative" style={{ background: SURFACE }}>
+      {/* Reassurance Banner */}
+      {currentStatus === "ขอคืนเงิน" && (
+        <div className="mx-5 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col gap-1.5 shadow-sm">
+          <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
+            <span className="animate-pulse">●</span>
+            <span>กำลังดำเนินการคืนเงิน</span>
+          </div>
+          <p className="text-xs text-amber-700 leading-relaxed font-medium">
+            ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน 
+            <strong className="text-amber-900 mx-1">฿{total.toLocaleString()}</strong> 
+            ไปที่พร้อมเพย์: <strong className="text-amber-900">{activeOrder?.refundPromptPay}</strong>
+          </p>
+          <p className="text-[10px] text-amber-600">
+            หากต้องการสอบถามเพิ่มเติม โทรหาร้านค้าได้โดยตรงที่ด้านล่าง
+          </p>
+        </div>
+      )}
+
+      {currentStatus === "ยกเลิกแล้ว" && (
+        <div className="mx-5 mt-4 p-4 rounded-2xl bg-red-50 border border-red-200 flex flex-col gap-1 shadow-sm">
+          <div className="flex items-center gap-2 text-red-800 font-bold text-sm">
+            <span>●</span>
+            <span>ยกเลิกออเดอร์สำเร็จ</span>
+          </div>
+          <p className="text-xs text-red-700 font-medium">
+            ออเดอร์นี้ได้ทำการยกเลิกและคืนเงินเรียบร้อยแล้ว
+          </p>
+        </div>
+      )}
+
       <div className="px-5 py-4 bg-white border-b flex items-center gap-3" style={{ borderColor: "#eef2f6" }}>
         <button
           onClick={onOpenSidebar}
@@ -2885,16 +3105,35 @@ function StatusScreen({
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", damping: 12, stiffness: 180 }}
-          className="grid h-24 w-24 place-items-center rounded-full bg-green-500 shadow-lift"
+          className="grid h-24 w-24 place-items-center rounded-full"
+          style={{ background: statusTheme.bg, color: statusTheme.color }}
         >
-          <CheckCircle size={56} color="white" strokeWidth={2} />
+          <CheckCircle size={56} color={statusTheme.iconColor} strokeWidth={2} />
         </motion.div>
         <h2 className="mt-5 text-2xl font-bold" style={{ color: BRAND }}>
-          รายการสำเร็จ
+          {statusTheme.title}
         </h2>
-        <p className="mt-1 text-sm" style={{ color: INK_MUTED }}>
-          {orderType === "dine-in" ? "รอเสิร์ฟอาหารในอีก 10 นาที" : "รอรับอาหารในอีก 14 นาที"}
+        <p className="mt-1 text-sm max-w-xs mx-auto leading-relaxed" style={{ color: INK_MUTED }}>
+          {statusTheme.subtitle}
         </p>
+
+        {activeOrder?.orderType === "takeaway" && activeOrder?.queueNumber && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-4 px-6 py-2.5 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-purple-50 border-purple-200 w-[90%] mx-auto"
+          >
+            <span className="text-[10px] uppercase font-black tracking-widest text-purple-600">
+              คิวรับอาหารกลับบ้าน (Takeaway Queue)
+            </span>
+            <span className="text-3xl font-black mt-0.5" style={{ color: BRAND }}>
+              {activeOrder.queueNumber}
+            </span>
+            <span className="text-[10px] text-slate-400 mt-1 text-center leading-normal font-bold">
+              * โปรดแสดงหมายเลขคิวนี้ต่อพนักงานที่เคาน์เตอร์เพื่อรับอาหาร
+            </span>
+          </motion.div>
+        )}
       </div>
 
       <div className="px-5 space-y-4">
@@ -2929,64 +3168,195 @@ function StatusScreen({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-soft">
-          <h3 className="font-bold mb-4" style={{ color: BRAND }}>
-            ติดตามสถานะ
-          </h3>
-          <div className="relative">
-            <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-[#eef2f6]" />
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: orderType === "dine-in" ? "50%" : "66%" }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-              className="absolute left-[19px] top-2 w-0.5"
-              style={{ background: BRAND }}
-            />
-            <div className="space-y-5">
-              {steps.map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <div key={s.id} className="relative flex items-center gap-3">
-                    <div
-                      className="relative z-10 grid h-10 w-10 place-items-center rounded-full"
-                      style={{
-                        background: s.done ? BRAND : s.active ? GOLD : "#eef2f6",
-                        color: s.done ? GOLD : s.active ? BRAND : INK_MUTED,
-                      }}
-                    >
-                      <Icon size={18} />
-                      {s.active && (
-                        <motion.span
-                          className="absolute inset-0 rounded-full"
-                          style={{ background: GOLD }}
-                          animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0, 0.4] }}
-                          transition={{ duration: 1.8, repeat: Infinity }}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p
-                        className="text-sm font-semibold"
-                        style={{ color: s.done || s.active ? BRAND : INK_MUTED }}
+        {/* Dynamic Tracking Status Block */}
+        {currentStatus !== "ขอคืนเงิน" && currentStatus !== "ยกเลิกแล้ว" && (
+          <div className="bg-white rounded-2xl p-5 shadow-soft">
+            <h3 className="font-bold mb-4" style={{ color: BRAND }}>
+              ติดตามสถานะ
+            </h3>
+            <div className="relative">
+              <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-[#eef2f6]" />
+              <motion.div
+                initial={{ height: 0 }}
+                animate={{ height: orderType === "dine-in" ? "50%" : "66%" }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+                className="absolute left-[19px] top-2 w-0.5"
+                style={{ background: BRAND }}
+              />
+              <div className="space-y-5">
+                {steps.map((s, i) => {
+                  const Icon = s.icon;
+                  const isCurrent = s.active;
+                  const isDone = s.done;
+                  return (
+                    <div key={s.id} className="relative flex items-center gap-3">
+                      <div
+                        className="relative z-10 grid h-10 w-10 place-items-center rounded-full"
+                        style={{
+                          background: isDone ? BRAND : isCurrent ? GOLD : "#eef2f6",
+                          color: isDone ? GOLD : isCurrent ? BRAND : INK_MUTED,
+                        }}
                       >
-                        {s.label}
-                      </p>
-                      <p className="text-xs" style={{ color: INK_MUTED }}>
-                        {s.done ? "เสร็จสมบูรณ์" : s.active ? "กำลังดำเนินการ" : "รอดำเนินการ"}
-                      </p>
+                        <Icon size={18} />
+                        {isCurrent && (
+                          <motion.span
+                            className="absolute inset-0 rounded-full"
+                            style={{ background: GOLD }}
+                            animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0, 0.4] }}
+                            transition={{ duration: 1.8, repeat: Infinity }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: isDone || isCurrent ? BRAND : INK_MUTED }}
+                        >
+                          {s.label}
+                        </p>
+                        <p className="text-xs" style={{ color: INK_MUTED }}>
+                          {isDone ? "เสร็จสมบูรณ์" : isCurrent ? "กำลังดำเนินการ" : "รอดำเนินการ"}
+                        </p>
+                      </div>
                     </div>
-                    {i === steps.length - 1 && (
-                      <span className="text-xs" style={{ color: INK_MUTED }}>
-                        14 นาที
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Cancellation Actions */}
+        <div className="mt-6 space-y-3">
+          {currentStatus === "รอรับออเดอร์" && (
+            <button
+              onClick={() => setShowCancelDialog(true)}
+              className="w-full py-3.5 rounded-full font-bold text-sm transition-all hover:bg-red-50 border border-red-200 text-red-500 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span>ยกเลิกและขอคืนเงิน</span>
+            </button>
+          )}
+
+          {/* Contact Support button (Always active as fallback) */}
+          <a
+            href="tel:0891234567"
+            className="w-full py-3.5 rounded-full font-bold text-sm bg-white border border-[#ece4d6] text-[#002e47] cursor-pointer active:scale-95 flex items-center justify-center gap-2 hover:bg-slate-50 transition"
+          >
+            <span>📞 ติดต่อร้านลุงเกตุ (ด่วน)</span>
+          </a>
         </div>
       </div>
+
+      {/* Cancellation Dialog Overlay */}
+      <AnimatePresence>
+        {showCancelDialog && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCancelDialog(false)}
+              className="absolute inset-0 bg-black"
+            />
+
+            {/* Dialog Content */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "tween", duration: 0.25 }}
+              className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl overflow-y-auto max-h-[85vh] z-10 text-[#002e47]"
+            >
+              <h3 className="text-lg font-black tracking-tight mb-2">ยกเลิกคำสั่งซื้อและขอคืนเงิน</h3>
+              <p className="text-xs text-slate-500 mb-4">
+                กรุณาระบุเหตุผลและข้อมูลพร้อมเพย์สำหรับรับเงินคืนจำนวน <strong>฿{total.toLocaleString()}</strong>
+              </p>
+
+              {errorText && (
+                <div className="mb-3 px-3 py-2 rounded-xl bg-red-50 border border-red-155 text-red-600 text-xs font-bold">
+                  {errorText}
+                </div>
+              )}
+
+              {/* Reasons list */}
+              <div className="space-y-2 mb-4">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">เหตุผลในการยกเลิก</p>
+                {cancelReasonsList.map((reason) => (
+                  <label
+                    key={reason}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer text-sm font-semibold ${
+                      selectedReason === reason
+                        ? "border-[#002e47] bg-[#fffcf5]"
+                        : "border-[#ece4d6] hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="cancel_reason"
+                      value={reason}
+                      checked={selectedReason === reason}
+                      onChange={() => {
+                        setSelectedReason(reason);
+                        setErrorText("");
+                      }}
+                      className="accent-[#002e47]"
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Textarea for custom reason */}
+              {selectedReason === "อื่น ๆ (ระบุด้านล่าง)" && (
+                <div className="mb-4">
+                  <textarea
+                    placeholder="พิมพ์ระบุเหตุผลการยกเลิกที่นี่..."
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    rows={3}
+                    className="w-full bg-[#fcfbf9] border border-[#ece4d6] rounded-2xl px-4 py-2.5 text-sm font-bold text-[#002e47] focus:outline-none focus:border-[#002e47]/30 transition"
+                  />
+                </div>
+              )}
+
+              {/* PromptPay account details */}
+              <div className="mb-6">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ข้อมูลการรับเงินคืน</p>
+                <input
+                  type="text"
+                  placeholder="เบอร์พร้อมเพย์ หรือ บัญชีธนาคาร + ชื่อบัญชี"
+                  value={promptPayNumber}
+                  onChange={(e) => {
+                    setPromptPayNumber(e.target.value);
+                    setErrorText("");
+                  }}
+                  className="w-full bg-[#fcfbf9] border border-[#ece4d6] rounded-2xl px-4 py-2.5 text-sm font-bold text-[#002e47] placeholder-slate-400 focus:outline-none focus:border-[#002e47]/30 transition shadow-inner"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelDialog(false)}
+                  className="w-full py-3.5 rounded-full font-bold text-xs bg-slate-100 text-slate-500 cursor-pointer hover:bg-slate-200 transition"
+                >
+                  ย้อนกลับ
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRequestCancel}
+                  className="w-full py-3.5 rounded-full font-bold text-xs text-white cursor-pointer hover:opacity-95 transition"
+                  style={{ background: BRAND }}
+                >
+                  ยืนยันขอยกเลิก
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
