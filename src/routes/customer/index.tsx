@@ -4094,7 +4094,7 @@ function Sidebar({
             )}
             <div>
               <p className="font-bold">{profile?.displayName ?? "ผู้ใช้งาน"}</p>
-              <p className="text-xs text-white/60">LINE Account</p>
+              <p className="text-xs text-white/60">บัญชีผู้ใช้</p>
             </div>
           </div>
         </div>
@@ -4148,10 +4148,10 @@ function Sidebar({
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium"
             style={{ background: "rgba(255,255,255,0.08)", color: "white" }}
           >
-            <LogOut size={16} /> ออกจากระบบ LINE
+            <LogOut size={16} /> ออกจากระบบ
           </button>
           <p className="mt-2 text-center text-[10px] text-white/40">
-            © 2026 Epicurean · LINE LIFF
+            © 2026 ร้านลุงเก้ต
           </p>
         </div>
 
