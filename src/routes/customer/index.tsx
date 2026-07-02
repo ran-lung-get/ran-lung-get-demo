@@ -374,6 +374,15 @@ function LiffApp() {
 
     async function bootstrap(sessionToCheck?: any) {
       try {
+        // 0. ตรวจสอบ Guest mode
+        if (localStorage.getItem("ran-lung-get-guest") === "true") {
+          if (!cancelled) {
+            setProfile({ userId: "guest", displayName: "ลูกค้าหน้าร้าน" } as LiffProfile);
+            setLiffReady(true);
+          }
+          return;
+        }
+
         // 1. ตรวจสอบ Supabase session (email/password login)
         const { data: { session } } = await supabase.auth.getSession();
         const finalSession = sessionToCheck || session;
@@ -478,11 +487,11 @@ function LiffApp() {
   const [showTablePicker, setShowTablePicker] = useState(false);
   const [tables, setTables] = useState([
     { id: "1", label: "โต๊ะ 1", status: "available" },
-    { id: "2", label: "โต๊ะ 2", status: "occupied" },
+    { id: "2", label: "โต๊ะ 2", status: "available" },
     { id: "3", label: "โต๊ะ 3", status: "available" },
     { id: "4", label: "โต๊ะ 4", status: "available" },
     { id: "5", label: "โต๊ะ 5", status: "available" },
-    { id: "6", label: "โต๊ะ 6", status: "occupied" },
+    { id: "6", label: "โต๊ะ 6", status: "available" },
     { id: "7", label: "โต๊ะ 7", status: "available" },
     { id: "8", label: "โต๊ะ 8", status: "available" },
   ]);
@@ -674,25 +683,31 @@ function LiffApp() {
   if (!liffReady) {
     return (
       <div
-        className="min-h-screen w-full flex items-center justify-center"
+        className="min-h-screen w-full flex items-center justify-center relative"
         style={{
           background:
-            "radial-gradient(circle at 20% 20%, #11304a 0%, #050c14 60%, #02060b 100%)",
+            "radial-gradient(circle at 20% 20%, #0d2d42 0%, #050d15 65%, #020609 100%)",
         }}
       >
-        <div className="flex flex-col items-center gap-4">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgba(252,193,74,0.05) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="flex flex-col items-center gap-4 z-10">
           <div
             style={{
-              width: 52,
-              height: 52,
+              width: 40,
+              height: 40,
               borderRadius: "50%",
-              border: "4px solid transparent",
+              border: "3px solid rgba(255,255,255,0.1)",
               borderTopColor: "#fcc14a",
-              borderBottomColor: "#002e47",
-              animation: "spin 0.9s linear infinite",
+              animation: "spin 0.8s linear infinite",
             }}
           />
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>กำลังตรวจสอบการเข้าสู่ระบบ…</p>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
@@ -701,14 +716,22 @@ function LiffApp() {
 
   return (
     <div
-      className="min-h-screen w-full flex items-center justify-center"
+      className="min-h-screen w-full flex items-center justify-center relative"
       style={{
         background:
-          "radial-gradient(circle at 20% 20%, #11304a 0%, #050c14 60%, #02060b 100%)",
+          "radial-gradient(circle at 20% 20%, #0d2d42 0%, #050d15 65%, #020609 100%)",
       }}
     >
       <div
-        className="relative overflow-hidden bg-[var(--linen)] no-scrollbar"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(252,193,74,0.05) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+      <div
+        className="relative overflow-hidden bg-[var(--linen)] no-scrollbar z-10"
         style={{
           width: "min(430px, 100vw)",
           height: "min(932px, 100vh)",
@@ -876,6 +899,10 @@ function LiffApp() {
               }}
               profile={profile}
               onLogout={async () => {
+                // Prevent flash during logout
+                setLiffReady(false);
+                // Remove guest token
+                localStorage.removeItem("ran-lung-get-guest");
                 // Sign out จาก Supabase Auth
                 await supabase.auth.signOut().catch(() => {});
                 // Sign out จาก LIFF (ถ้า login อยู่)

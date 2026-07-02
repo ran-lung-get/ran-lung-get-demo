@@ -33,6 +33,7 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
   const [role, setRole] = useState<"customer" | "staff">("customer");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -110,7 +111,11 @@ function LoginPage() {
       return;
     }
     if (tab === "register" && !nickname.trim()) {
-      setFormError("กรุณากรอกชื่อเล่นของคุณ");
+      setFormError("กรุณากรอกชื่อของคุณ");
+      return;
+    }
+    if (tab === "register" && !phone.trim()) {
+      setFormError("กรุณากรอกเบอร์โทร");
       return;
     }
     setLoading(true);
@@ -131,6 +136,7 @@ function LoginPage() {
             data: {
               full_name: nickname.trim(),
               display_name: nickname.trim(),
+              phone: phone.trim(),
               role,
             },
           },
@@ -367,7 +373,7 @@ function LoginPage() {
                 {/* Nickname */}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="nickname-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
-                    ชื่อเล่น
+                    ชื่อ
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
@@ -378,8 +384,37 @@ function LoginPage() {
                       type="text"
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
-                      placeholder="เช่น แมว, น้องอ้น, พี่เบส"
+                      placeholder=""
                       autoComplete="nickname"
+                      className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
+                      style={{
+                        background: "rgba(0,46,71,0.05)",
+                        border: "1.5px solid rgba(0,46,71,0.12)",
+                        color: INK,
+                        fontFamily: "'Prompt', sans-serif",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="phone-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    เบอร์โทร
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                      <PhoneIcon />
+                    </span>
+                    <input
+                      id="phone-input"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder=""
+                      autoComplete="tel"
                       className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
                       style={{
                         background: "rgba(0,46,71,0.05)",
@@ -430,7 +465,7 @@ function LoginPage() {
                 className="text-xs font-semibold"
                 style={{ color: INK_MUTED }}
               >
-                อีเมล (Gmail หรืออีเมลอื่น)
+                อีเมล
               </label>
               <div className="relative">
                 <span
@@ -563,6 +598,23 @@ function LoginPage() {
             </button>
           </form>
 
+          {/* Guest / Storefront Button */}
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem("ran-lung-get-guest", "true");
+              navigate({ to: "/customer" });
+            }}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#002e47] text-[16px] transition-all active:scale-[0.97]"
+            style={{
+              background: `linear-gradient(135deg, ${GOLD} 0%, #f59e0b 100%)`,
+              boxShadow: "0 6px 20px rgba(245,158,11,0.4)",
+              marginTop: "4px"
+            }}
+          >
+            <span className="text-xl">🛍️</span> สั่งหน้าร้าน
+          </button>
+
           {/* Divider — show social login only on login tab */}
           {tab === "login" && (
             <div className="flex items-center gap-3">
@@ -645,6 +697,10 @@ function LoginPage() {
         {/* Keyframe */}
         <style>{`
           @keyframes spin-btn { to { transform: rotate(360deg); } }
+          @keyframes glow-border {
+            0% { box-shadow: 0 0 5px rgba(252,193,74,0.5), 0 0 10px rgba(245,158,11,0.5), 0 0 15px rgba(234,88,12,0.5); }
+            100% { box-shadow: 0 0 10px rgba(252,193,74,1), 0 0 20px rgba(245,158,11,1), 0 0 30px rgba(234,88,12,1), 0 0 40px rgba(234,88,12,1); }
+          }
         `}</style>
       </div>
     </div>
@@ -738,6 +794,14 @@ function SpinnerIcon() {
       style={{ animation: "spin-btn 0.8s linear infinite" }}
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }

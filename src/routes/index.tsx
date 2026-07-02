@@ -138,25 +138,31 @@ function RootRedirector() {
 
   return (
     <div
-      className="min-h-screen w-full flex items-center justify-center"
+      className="min-h-screen w-full flex items-center justify-center relative"
       style={{
         background:
-          "radial-gradient(circle at 20% 20%, #11304a 0%, #050c14 60%, #02060b 100%)",
+          "radial-gradient(circle at 20% 20%, #0d2d42 0%, #050d15 65%, #020609 100%)",
       }}
     >
-      <div className="flex flex-col items-center gap-4">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(252,193,74,0.05) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+      <div className="flex flex-col items-center gap-4 z-10">
         <div
           style={{
-            width: 52,
-            height: 52,
+            width: 40,
+            height: 40,
             borderRadius: "50%",
-            border: "4px solid transparent",
+            border: "3px solid rgba(255,255,255,0.1)",
             borderTopColor: "#fcc14a",
-            borderBottomColor: "#002e47",
-            animation: "spin 0.9s linear infinite",
+            animation: "spin 0.8s linear infinite",
           }}
         />
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>กำลังตรวจสอบการเข้าสู่ระบบ…</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
