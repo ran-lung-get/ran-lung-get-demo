@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { initLiff, isLiffLoggedIn, liffLogin } from "../lib/liff";
-import { syncLineUserToSupabase, syncAuthUserToSupabase } from "../lib/supabase.service";
-
+import { syncAuthUserToSupabase } from "../lib/supabase.service";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
@@ -21,8 +19,6 @@ const GOLD = "#fcc14a";
 const LINEN = "#fff8f2";
 const INK = "#0f1f2b";
 const INK_MUTED = "#5a6e7a";
-const LINE_GREEN = "#06C755";
-
 type Tab = "login" | "register";
 
 function LoginPage() {
@@ -37,7 +33,6 @@ function LoginPage() {
   const [role, setRole] = useState<"customer" | "staff">("customer");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [lineLoading, setLineLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const emailRef = useRef<HTMLInputElement>(null);
@@ -79,22 +74,6 @@ function LoginPage() {
         navigate({ to: "/" });
       }
     });
-
-    // Also check LINE login (silent)
-    initLiff()
-      .then(async () => {
-        if (isLiffLoggedIn()) {
-          try {
-            const { getLiffProfile } = await import("../lib/liff");
-            const profile = await getLiffProfile();
-            await syncLineUserToSupabase(profile);
-          } catch (e) {
-            console.error("[Login] silent syncLineUserToSupabase error:", e);
-          }
-          navigate({ to: "/" });
-        }
-      })
-      .catch(() => {}); // LIFF not configured — ignore
 
     return () => {
       authListener.subscription.unsubscribe();
@@ -176,27 +155,6 @@ function LoginPage() {
       }
     } catch {
       setLoading(false);
-    }
-  }
-
-  // ── LINE Login ────────────────────────────────────────────────
-  async function handleLineLogin() {
-    setFormError("");
-    setLineLoading(true);
-    try {
-      await initLiff();
-      if (isLiffLoggedIn()) {
-        // Already logged in via LINE — sync & go
-        const { getLiffProfile } = await import("../lib/liff");
-        const profile = await getLiffProfile();
-        await syncLineUserToSupabase(profile).catch((e) => { console.error("[Login] syncLineUserToSupabase error:", e); });
-        navigate({ to: "/" });
-      } else {
-        liffLogin(); // redirects to LINE
-      }
-    } catch {
-      setFormError("ไม่สามารถเชื่อมต่อ LINE ได้ในขณะนี้ กรุณาใช้ Email แทน");
-      setLineLoading(false);
     }
   }
 
@@ -313,16 +271,6 @@ function LoginPage() {
             สั่งอาหารง่าย ๆ ผ่านระบบออนไลน์
           </p>
 
-          {/* LINE logo badge */}
-          <div
-            className="mt-5 flex items-center gap-2 rounded-full px-3.5 py-1.5"
-            style={{ background: "rgba(6,199,85,0.15)", border: "1px solid rgba(6,199,85,0.3)" }}
-          >
-            <LineIcon size={16} />
-            <span style={{ color: "#06C755", fontSize: 12, fontWeight: 600 }}>
-              รองรับการเข้าสู่ระบบด้วย LINE
-            </span>
-          </div>
         </div>
 
         {/* Wave */}
@@ -629,26 +577,6 @@ function LoginPage() {
           {/* Social Login Buttons — login tab only */}
           {tab === "login" && (
             <>
-              {/* LINE Login Button */}
-              <button
-                id="line-login-btn"
-                onClick={handleLineLogin}
-                disabled={lineLoading}
-                className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
-                style={{
-                  background: lineLoading
-                    ? "rgba(6,199,85,0.4)"
-                    : `linear-gradient(135deg, ${LINE_GREEN} 0%, #05a847 100%)`,
-                  boxShadow: lineLoading ? "none" : "0 6px 24px rgba(6,199,85,0.35)",
-                }}
-              >
-                {lineLoading ? (
-                  <><SpinnerIcon />กำลังเชื่อมต่อ LINE…</>
-                ) : (
-                  <><LineIcon size={22} />เข้าสู่ระบบด้วย LINE</>
-                )}
-              </button>
-
               {/* Google Login Button */}
               <button
                 id="google-login-btn"
@@ -690,7 +618,7 @@ function LoginPage() {
           style={{ borderColor: "rgba(0,46,71,0.07)" }}
         >
           <p className="text-[10px]" style={{ color: "rgba(0,46,71,0.3)" }}>
-            © 2026 ร้านลุงเก้ต · Powered by Supabase & LINE LIFF
+            © 2026 ร้านลุงเก้ต · Powered by Supabase
           </p>
         </div>
 
