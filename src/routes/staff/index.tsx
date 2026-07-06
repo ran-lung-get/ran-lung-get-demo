@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { supabase } from "../../lib/supabase";
+import { adjustStockFromOrder, getIngredients, updateIngredientStock, addIngredient, deleteIngredient } from "../../lib/supabase.service";
 import { MENU, MenuItem } from "../customer/index";
 import {
   ChefHat,
@@ -26,7 +28,11 @@ import {
   TrendingUp,
   Users,
   DollarSign,
-  BarChart3
+  BarChart3,
+  Edit2,
+  X,
+  LayoutGrid,
+  Table
 } from "lucide-react";
 
 // Types matching index.tsx
@@ -79,7 +85,7 @@ function playNotificationSound() {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
-    
+
     // Play a "Ding-Dong" chime (D5 followed by A4)
     // Ding
     const osc1 = ctx.createOscillator();
@@ -92,7 +98,7 @@ function playNotificationSound() {
     gain1.connect(ctx.destination);
     osc1.start();
     osc1.stop(ctx.currentTime + 0.6);
-    
+
     // Dong
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
@@ -117,7 +123,7 @@ function OrderTimer({ id }: { id: string }) {
 
   useEffect(() => {
     const timestamp = getTimestampFromOrderId(id);
-    
+
     const updateTimer = () => {
       const diffSecs = Math.floor((Date.now() - timestamp) / 1000);
       const minutes = Math.floor(diffSecs / 60);
@@ -132,11 +138,10 @@ function OrderTimer({ id }: { id: string }) {
   }, [id]);
 
   return (
-    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border font-mono font-bold text-[11px] tracking-wider transition ${
-      isDelayed 
-        ? "text-red-600 bg-red-50 border-red-200 animate-pulse" 
+    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border font-mono font-bold text-[11px] tracking-wider transition ${isDelayed
+        ? "text-red-600 bg-red-50 border-red-200 animate-pulse"
         : "text-[#5a6e7a] bg-[#f8fafc] border-slate-200/80"
-    }`}>
+      }`}>
       <Clock size={10} className={isDelayed ? "text-red-500" : "text-[#5a6e7a]"} />
       <span>{elapsed}</span>
     </div>
@@ -199,7 +204,7 @@ function HistoryOrderRow({ order }: { order: OrderHistory }) {
         <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-[#5a6e7a]/40 bg-[#f8fafc] text-[#5a6e7a] flex items-center justify-center shrink-0 shadow-sm">
           <Check size={20} className="stroke-[3]" />
         </div>
-        
+
         {/* Order channel / account details */}
         <div>
           <div className="flex items-center gap-1 text-[10px] font-bold text-[#5a6e7a] uppercase tracking-wide">
@@ -250,7 +255,7 @@ function OrderCard({
   let borderClass = "border-[#ece4d6]";
   let actionBtnText = "เริ่มทำ";
   let actionBtnColor = "bg-[#002e47] text-white hover:bg-[#001f30]";
-  
+
   if (isWaiting) {
     borderClass = "border-amber-400/80 shadow-[0_8px_20px_rgba(245,158,11,0.06)]";
     actionBtnText = "เริ่มปรุงอาหาร";
@@ -383,7 +388,7 @@ function OrderCard({
                 )}
               </div>
               <div className="shrink-0 flex items-center justify-center">
-                <span 
+                <span
                   className="text-base font-black text-[#002e47] px-2.5 py-1 rounded-lg border border-[#002e47]/10 shadow-sm min-w-[42px] text-center"
                   style={{ background: GOLD }}
                 >
@@ -419,7 +424,7 @@ function OrderCard({
             <RotateCcw size={16} />
           </button>
         )}
-        
+
         {/* Progress status button */}
         {!isCompleted ? (
           <>
@@ -469,8 +474,8 @@ function KitchenSidebarContent({
   setView,
   onClose,
 }: {
-  view: "kitchen" | "dashboard" | "menu";
-  setView: (v: "kitchen" | "dashboard" | "menu") => void;
+  view: "kitchen" | "dashboard" | "menu" | "tables";
+  setView: (v: "kitchen" | "dashboard" | "menu" | "tables") => void;
   onClose?: () => void;
 }) {
   return (
@@ -512,11 +517,10 @@ function KitchenSidebarContent({
                 setView("kitchen");
                 if (onClose) onClose();
               }}
-              className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
-                view === "kitchen"
+              className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${view === "kitchen"
                   ? "bg-white/10 text-white shadow-inner font-black border-l-4 border-[#fcc14a]"
                   : "text-white/70 hover:text-white hover:bg-white/5 font-medium border-l-4 border-transparent"
-              }`}
+                }`}
             >
               <ChefHat size={18} className={view === "kitchen" ? "text-[#fcc14a]" : "text-white/60"} />
               <span className="text-sm">จอจัดการครัว</span>
@@ -524,14 +528,27 @@ function KitchenSidebarContent({
 
             <button
               onClick={() => {
+                setView("tables");
+                if (onClose) onClose();
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${view === "tables"
+                  ? "bg-white/10 text-white shadow-inner font-black border-l-4 border-[#fcc14a]"
+                  : "text-white/70 hover:text-white hover:bg-white/5 font-medium border-l-4 border-transparent"
+                }`}
+            >
+              <Table size={18} className={view === "tables" ? "text-[#fcc14a]" : "text-white/60"} />
+              <span className="text-sm">ผังโต๊ะอาหาร</span>
+            </button>
+
+            <button
+              onClick={() => {
                 setView("dashboard");
                 if (onClose) onClose();
               }}
-              className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
-                view === "dashboard"
+              className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${view === "dashboard"
                   ? "bg-white/10 text-white shadow-inner font-black border-l-4 border-[#fcc14a]"
                   : "text-white/70 hover:text-white hover:bg-white/5 font-medium border-l-4 border-transparent"
-              }`}
+                }`}
             >
               <LayoutDashboard size={18} className={view === "dashboard" ? "text-[#fcc14a]" : "text-white/60"} />
               <span className="text-sm">แดชบอร์ด</span>
@@ -542,16 +559,15 @@ function KitchenSidebarContent({
                 setView("menu");
                 if (onClose) onClose();
               }}
-              className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
-                view === "menu"
+              className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${view === "menu"
                   ? "bg-white/10 text-white shadow-inner font-black border-l-4 border-[#fcc14a]"
                   : "text-white/70 hover:text-white hover:bg-white/5 font-medium border-l-4 border-transparent"
-              }`}
+                }`}
             >
               <ClipboardList size={18} className={view === "menu" ? "text-[#fcc14a]" : "text-white/60"} />
               <span className="text-sm">จัดการสต็อกอาหาร</span>
             </button>
-            
+
             <a
               href="/customer"
               onClick={(e) => {
@@ -666,7 +682,7 @@ function DashboardView({ orders }: { orders: OrderHistory[] }) {
   // Aggregate sales & customers
   const totalOrders = 85 + orders.length;
   const totalRevenue = 48500 + orders.reduce((sum, o) => sum + o.total, 0);
-  
+
   // Unique customers computation
   const totalCustomers = 32 + useMemo(() => {
     const seen = new Set<string>();
@@ -824,12 +840,12 @@ function DashboardView({ orders }: { orders: OrderHistory[] }) {
               5 อันดับเมนูขายดีที่สุด
             </h2>
           </div>
-          
+
           <div className="space-y-5">
             {mergedPopularItems.slice(0, 5).map((item, index) => {
               const maxCount = mergedPopularItems[0]?.count || 1;
               const pct = (item.count / maxCount) * 100;
-              
+
               let medalColor = "";
               if (index === 0) medalColor = "bg-[#fcc14a] text-[#002e47]";
               else if (index === 1) medalColor = "bg-slate-200 text-slate-700";
@@ -883,12 +899,12 @@ function DashboardView({ orders }: { orders: OrderHistory[] }) {
                 </thead>
                 <tbody className="divide-y divide-slate-50 font-medium text-slate-700">
                   {mergedRecentOrders.map((o) => {
-                    const typeLabel = o.orderType === "dine-in" 
-                      ? (o.tableNumber || "ทานที่ร้าน") 
-                      : o.orderType === "delivery" 
-                        ? "เดลิเวอรี่" 
+                    const typeLabel = o.orderType === "dine-in"
+                      ? (o.tableNumber || "ทานที่ร้าน")
+                      : o.orderType === "delivery"
+                        ? "เดลิเวอรี่"
                         : "กลับบ้าน";
-                    
+
                     const typeColor = o.orderType === "dine-in"
                       ? "text-amber-600 bg-amber-50"
                       : o.orderType === "delivery"
@@ -968,9 +984,26 @@ function DashboardView({ orders }: { orders: OrderHistory[] }) {
 }
 
 function MenuManagementView() {
+  const [activeSubView, setActiveSubView] = useState<"menu" | "ingredients">("menu");
   const [outOfStockIds, setOutOfStockIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Ingredients states
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [loadingIngredients, setLoadingIngredients] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newIngName, setNewIngName] = useState("");
+  const [newIngQty, setNewIngQty] = useState("");
+  const [newIngUnit, setNewIngUnit] = useState("g");
+  const [newIngThreshold, setNewIngThreshold] = useState("");
+
+  // Edit ingredient states
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editQty, setEditQty] = useState("");
+  const [editUnit, setEditUnit] = useState("g");
+  const [editThreshold, setEditThreshold] = useState("");
 
   // Load out-of-stock IDs from localStorage
   useEffect(() => {
@@ -999,6 +1032,77 @@ function MenuManagementView() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
+  const fetchIngredients = async () => {
+    setLoadingIngredients(true);
+    try {
+      const data = await getIngredients();
+      if (data && data.length > 0) {
+        setIngredients(data);
+      } else if (data && data.length === 0) {
+        // Auto seed standard ingredients when database table is empty!
+        console.log("Database table is empty, auto-seeding standard ingredients...");
+        const defaults = [
+          { name: "หมูสับ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "หมูกรอบ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "หมูชิ้น", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "ไก่สับ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "ไก่ต้ม", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "เนื้อ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "หมึก", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "กุ้ง", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "หอยลาย", quantity: 1000, unit: "g", min_threshold: 200 },
+          { name: "ไข่ไก่", quantity: 100, unit: "pcs", min_threshold: 15 },
+          { name: "ไส้กรอก", quantity: 50, unit: "pcs", min_threshold: 10 },
+          { name: "กุนเชียง", quantity: 50, unit: "pcs", min_threshold: 10 }
+        ];
+        const client = supabase as any;
+        const { error } = await client.from("ingredients").insert(defaults);
+        if (!error) {
+          const freshData = await getIngredients();
+          if (freshData) {
+            setIngredients(freshData);
+          }
+        } else {
+          setIngredients([]);
+        }
+      } else {
+        setIngredients([]);
+      }
+    } catch (err) {
+      console.warn("Error loading stock from DB, using local mock fallback:", err);
+      // Fallback to localStorage mock data
+      const localIng = localStorage.getItem("ran-lung-get-mock-ingredients");
+      if (localIng) {
+        setIngredients(JSON.parse(localIng));
+      } else {
+        const defaults = [
+          { id: "mock-1", name: "หมูสับ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-2", name: "หมูกรอบ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-3", name: "หมูชิ้น", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-4", name: "ไก่สับ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-5", name: "ไก่ต้ม", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-6", name: "เนื้อ", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-7", name: "หมึก", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-8", name: "กุ้ง", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-9", name: "หอยลาย", quantity: 1000, unit: "g", min_threshold: 200 },
+          { id: "mock-10", name: "ไข่ไก่", quantity: 100, unit: "pcs", min_threshold: 15 },
+          { id: "mock-11", name: "ไส้กรอก", quantity: 50, unit: "pcs", min_threshold: 10 },
+          { id: "mock-12", name: "กุนเชียง", quantity: 50, unit: "pcs", min_threshold: 10 }
+        ];
+        setIngredients(defaults);
+        localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(defaults));
+      }
+    } finally {
+      setLoadingIngredients(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubView === "ingredients") {
+      fetchIngredients();
+    }
+  }, [activeSubView]);
+
   const toggleStock = (itemId: string) => {
     let updated: string[];
     if (outOfStockIds.includes(itemId)) {
@@ -1014,6 +1118,161 @@ function MenuManagementView() {
     }));
   };
 
+  const adjustIngredientQty = async (id: string, amount: number) => {
+    const item = ingredients.find(i => i.id === id);
+    if (!item) return;
+    const newQty = Math.max(0, Number(item.quantity) + amount);
+
+    const updated = ingredients.map(i => i.id === id ? { ...i, quantity: newQty } : i);
+    setIngredients(updated);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(updated));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-mock-ingredients",
+      newValue: JSON.stringify(updated)
+    }));
+
+    try {
+      await updateIngredientStock(id, newQty);
+    } catch (err) {
+      console.warn("Supabase update skipped (using local mock data).");
+    }
+  };
+
+  const handleAddIngredient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = parseFloat(newIngQty);
+    const t = parseFloat(newIngThreshold);
+    if (!newIngName.trim() || isNaN(q) || isNaN(t)) {
+      alert("กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง");
+      return;
+    }
+
+    const newItem = {
+      id: "mock-" + Date.now(),
+      name: newIngName.trim(),
+      quantity: q,
+      unit: newIngUnit,
+      min_threshold: t,
+      is_active: true,
+      status: "active"
+    };
+
+    const updated = [newItem, ...ingredients];
+    setIngredients(updated);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(updated));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-mock-ingredients",
+      newValue: JSON.stringify(updated)
+    }));
+
+    setNewIngName("");
+    setNewIngQty("");
+    setNewIngThreshold("");
+    setShowAddForm(false);
+
+    try {
+      await addIngredient(newIngName.trim(), q, newIngUnit, t);
+      fetchIngredients();
+    } catch (err: any) {
+      console.warn("Supabase insert skipped (using local mock data).");
+    }
+  };
+
+  const startEdit = (item: any) => {
+    setEditingId(item.id);
+    setEditName(item.name);
+    setEditQty(item.quantity.toString());
+    setEditUnit(item.unit);
+    setEditThreshold(item.min_threshold.toString());
+  };
+
+  const saveEdit = async (id: string) => {
+    const q = parseFloat(editQty);
+    const t = parseFloat(editThreshold);
+    if (!editName.trim() || isNaN(q) || isNaN(t)) {
+      alert("กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง");
+      return;
+    }
+
+    const updated = ingredients.map(i => i.id === id ? {
+      ...i,
+      name: editName.trim(),
+      quantity: q,
+      unit: editUnit,
+      min_threshold: t
+    } : i);
+    setIngredients(updated);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(updated));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-mock-ingredients",
+      newValue: JSON.stringify(updated)
+    }));
+    setEditingId(null);
+
+    try {
+      await updateIngredientStock(id, q, editName.trim(), editUnit, t);
+    } catch (err) {
+      console.warn("Supabase update skipped (using local mock data).");
+    }
+  };
+
+  const handleDeleteIngredient = async (id: string, name: string) => {
+    if (!confirm(`คุณต้องการลบวัตถุดิบ "${name}" ใช่หรือไม่? สูตรอาหารทั้งหมดที่ผูกกับวัตถุดิบนี้จะถูกลบไปด้วย`)) return;
+    
+    const updated = ingredients.filter(i => i.id !== id);
+    setIngredients(updated);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(updated));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-mock-ingredients",
+      newValue: JSON.stringify(updated)
+    }));
+
+    try {
+      await deleteIngredient(id);
+    } catch (err) {
+      console.warn("Supabase delete skipped (using local mock data).");
+    }
+  };
+
+  const toggleIngredientActive = async (id: string) => {
+    const item = ingredients.find(i => i.id === id);
+    if (!item) return;
+    const newActive = item.is_active === false ? true : false;
+    const newStatus = newActive ? "active" : "disabled";
+
+    const updated = ingredients.map(i => i.id === id ? { ...i, is_active: newActive, status: newStatus } : i);
+    setIngredients(updated);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(updated));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-mock-ingredients",
+      newValue: JSON.stringify(updated)
+    }));
+
+    try {
+      const client = supabase as any;
+      await client.from("ingredients").update({ is_active: newActive, status: newStatus }).eq("id", id);
+    } catch (err) {
+      console.warn("Supabase update active status skipped (using local mock data).");
+    }
+  };
+
+  const formatUnitAndQty = (qty: number, unit: string) => {
+    if (unit === "g") {
+      if (qty >= 1000) {
+        return `${Number((qty / 1000).toFixed(2))} kg`;
+      }
+      return `${qty} g`;
+    }
+    return `${qty} ${unit}`;
+  };
+
+  const formatThreshold = (qty: number, unit: string) => {
+    if (unit === "g" && qty >= 1000) {
+      return `${Number((qty / 1000).toFixed(2))} kg`;
+    }
+    return `${qty} ${unit}`;
+  };
+
   const categories = [
     { id: "all", label: "ทั้งหมด" },
     { id: "signature", label: "Signature" },
@@ -1027,132 +1286,1028 @@ function MenuManagementView() {
 
   const filteredMenuItems = useMemo(() => {
     return MENU.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            item.desc.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.desc.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [searchQuery, selectedCategory]);
+
+  const renderIngredientCard = (item: any) => {
+    const isLowStock = Number(item.quantity) <= Number(item.min_threshold);
+    const isEditing = editingId === item.id;
+
+    return (
+      <div
+        key={item.id}
+        className={`bg-white border rounded-2xl p-4 shadow-sm hover:shadow transition relative flex flex-col justify-between gap-3 min-h-[140px] ${
+          isLowStock ? "border-red-200 bg-red-50/5" : "border-[#ece4d6]/80"
+        }`}
+      >
+        {isEditing ? (
+          <div className="flex flex-col gap-2 w-full">
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 font-bold text-xs text-[#002e47] focus:outline-none"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                value={editQty}
+                onChange={(e) => setEditQty(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 font-bold text-xs text-[#002e47] focus:outline-none"
+              />
+              <select
+                value={editUnit}
+                onChange={(e) => setEditUnit(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs text-[#002e47] focus:outline-none"
+              >
+                <option value="g">g</option>
+                <option value="pcs">pcs</option>
+                <option value="ml">ml</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[9px] font-bold text-[#5a6e7a] mb-1">ขั้นต่ำแจ้งเตือน</label>
+              <input
+                type="number"
+                value={editThreshold}
+                onChange={(e) => setEditThreshold(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 font-bold text-xs text-[#002e47] focus:outline-none"
+              />
+            </div>
+            <div className="flex gap-1.5 justify-end mt-1">
+              <button
+                type="button"
+                onClick={() => saveEdit(item.id)}
+                className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold text-[10px] cursor-pointer hover:bg-emerald-700"
+              >
+                บันทึก
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="bg-slate-100 text-[#5a6e7a] px-2.5 py-1.5 rounded-lg font-bold text-[10px] cursor-pointer hover:bg-slate-200"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col min-w-0">
+                <span className="font-extrabold text-[#002e47] truncate text-xs flex items-center gap-1.5" title={item.name}>
+                  {item.name}
+                  {isLowStock && (
+                    <span className="bg-red-500 text-white font-black text-[8px] px-1.5 py-0.5 rounded animate-pulse">
+                      เหลือน้อย!
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold mt-0.5">
+                  ขั้นต่ำ: {formatThreshold(Number(item.min_threshold), item.unit)}
+                </span>
+              </div>
+              <div className="flex gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => startEdit(item)}
+                  className="p-1 text-slate-400 hover:text-[#002e47] transition hover:bg-slate-100 rounded-lg cursor-pointer"
+                  title="แก้ไขวัตถุดิบ"
+                >
+                  <Edit2 size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteIngredient(item.id, item.name)}
+                  className="p-1 text-slate-400 hover:text-red-600 transition hover:bg-red-50 rounded-lg cursor-pointer"
+                  title="ลบวัตถุดิบ"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-1">
+              <span className={`text-base font-black tracking-tight ${isLowStock ? "text-red-600" : "text-emerald-700"}`}>
+                {formatUnitAndQty(Number(item.quantity), item.unit)}
+              </span>
+            </div>
+
+            <div className="flex gap-1 mt-2 pt-2 border-t border-slate-100">
+              {item.unit === "g" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => adjustIngredientQty(item.id, 100)}
+                    className="flex-1 border border-[#ece4d6] hover:bg-slate-50 text-[10px] font-black py-1 rounded-lg text-[#002e47] transition cursor-pointer"
+                  >
+                    +100g
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adjustIngredientQty(item.id, 1000)}
+                    className="flex-1 border border-[#ece4d6] hover:bg-slate-50 text-[10px] font-black py-1 rounded-lg text-[#002e47] transition cursor-pointer"
+                  >
+                    +1kg
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => adjustIngredientQty(item.id, 10)}
+                  className="flex-1 border border-[#ece4d6] hover:bg-slate-50 text-[10px] font-black py-1 rounded-lg text-[#002e47] transition cursor-pointer"
+                >
+                  +10 pcs
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderRow = (item: any) => {
+    const isLowStock = Number(item.quantity) <= Number(item.min_threshold);
+    const isEditing = editingId === item.id;
+
+    return (
+      <tr key={item.id} className={`hover:bg-slate-50/30 transition ${isLowStock ? "bg-red-50/5" : ""}`}>
+        {/* Column 1: ชื่อวัตถุดิบ */}
+        <td className="py-3 px-4 font-extrabold text-[#002e47]">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 font-bold text-xs text-[#002e47] focus:outline-none"
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <span>{item.name}</span>
+              {isLowStock && (
+                <span className="bg-red-500 text-white font-black text-[8px] px-1.5 py-0.5 rounded animate-pulse">
+                  เหลือน้อย!
+                </span>
+              )}
+            </div>
+          )}
+        </td>
+
+        {/* Column 2: เปิด-ปิดการขาย */}
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-extrabold tracking-wide ${
+              item.is_active !== false && item.status !== "disabled" ? "text-emerald-600" : "text-red-500"
+            }`}>
+              {item.is_active !== false && item.status !== "disabled" ? "เปิดขาย" : "ปิดขาย"}
+            </span>
+            <button
+              type="button"
+              onClick={() => toggleIngredientActive(item.id)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                item.is_active !== false && item.status !== "disabled" ? "bg-emerald-500" : "bg-red-400"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  item.is_active !== false && item.status !== "disabled" ? "translate-x-4" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </td>
+
+        {/* Column 2: ปริมาณคงเหลือ */}
+        <td className="py-3 px-4">
+          {isEditing ? (
+            <div className="flex gap-1.5 items-center">
+              <input
+                type="number"
+                value={editQty}
+                onChange={(e) => setEditQty(e.target.value)}
+                className="w-20 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 font-bold text-xs text-[#002e47] focus:outline-none"
+              />
+              <select
+                value={editUnit}
+                onChange={(e) => setEditUnit(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-[#002e47] focus:outline-none"
+              >
+                <option value="g">g</option>
+                <option value="pcs">pcs</option>
+                <option value="ml">ml</option>
+              </select>
+            </div>
+          ) : (
+            <span className={`font-black ${isLowStock ? "text-red-600" : "text-emerald-700"}`}>
+              {formatUnitAndQty(Number(item.quantity), item.unit)}
+            </span>
+          )}
+        </td>
+
+        {/* Column 3: ระดับแจ้งเตือนขั้นต่ำ */}
+        <td className="py-3 px-4 text-slate-500 font-bold">
+          {isEditing ? (
+            <input
+              type="number"
+              value={editThreshold}
+              onChange={(e) => setEditThreshold(e.target.value)}
+              className="w-20 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 font-bold text-xs text-[#002e47] focus:outline-none"
+            />
+          ) : (
+            <span>{formatThreshold(Number(item.min_threshold), item.unit)}</span>
+          )}
+        </td>
+
+        {/* Column 4: จัดการสต็อก / บันทึก */}
+        <td className="py-3 px-4 text-right">
+          {isEditing ? (
+            <div className="flex gap-1.5 justify-end">
+              <button
+                type="button"
+                onClick={() => saveEdit(item.id)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold text-[11px] cursor-pointer transition shadow-sm"
+              >
+                บันทึก
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-[#5a6e7a] px-3 py-1.5 rounded-xl font-bold text-[11px] cursor-pointer transition"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-3">
+              {/* Quick Plus Buttons */}
+              <div className="flex gap-1">
+                {item.unit === "g" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => adjustIngredientQty(item.id, 100)}
+                      className="border border-[#ece4d6] hover:bg-slate-50 text-[10px] font-black px-2 py-1 rounded-lg text-[#002e47] transition cursor-pointer"
+                    >
+                      +100g
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => adjustIngredientQty(item.id, 1000)}
+                      className="border border-[#ece4d6] hover:bg-slate-50 text-[10px] font-black px-2 py-1 rounded-lg text-[#002e47] transition cursor-pointer"
+                    >
+                      +1kg
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => adjustIngredientQty(item.id, 10)}
+                    className="border border-[#ece4d6] hover:bg-slate-50 text-[10px] font-black px-2 py-1 rounded-lg text-[#002e47] transition cursor-pointer"
+                  >
+                    +10 pcs
+                  </button>
+                )}
+              </div>
+              {/* Edit & Delete Icons */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => startEdit(item)}
+                  className="p-1 text-slate-400 hover:text-[#002e47] transition hover:bg-slate-100 rounded-lg cursor-pointer"
+                  title="แก้ไขวัตถุดิบ"
+                >
+                  <Edit2 size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteIngredient(item.id, item.name)}
+                  className="p-1 text-slate-400 hover:text-red-600 transition hover:bg-red-50 rounded-lg cursor-pointer"
+                  title="ลบวัตถุดิบ"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          )}
+        </td>
+      </tr>
+    );
+  };
+
+  const handleSeedDefaultData = async () => {
+    setLoadingIngredients(true);
+    try {
+      const defaults = [
+        { name: "หมูสับ", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "หมูกรอบ", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "หมูชิ้น", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "ไก่สับ", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "ไก่ต้ม", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "เนื้อ", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "หมึก", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "กุ้ง", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "หอยลาย", quantity: 1000, unit: "g", min_threshold: 200, is_active: true, status: "active" },
+        { name: "ไข่ไก่", quantity: 100, unit: "pcs", min_threshold: 15, is_active: true, status: "active" },
+        { name: "ไส้กรอก", quantity: 50, unit: "pcs", min_threshold: 10, is_active: true, status: "active" },
+        { name: "กุนเชียง", quantity: 50, unit: "pcs", min_threshold: 10, is_active: true, status: "active" }
+      ];
+      const client = supabase as any;
+      await client.from("ingredients").insert(defaults);
+      fetchIngredients();
+    } catch (err) {
+      alert("ไม่สามารถนำเข้าข้อมูลเริ่มต้นได้");
+    } finally {
+      setLoadingIngredients(false);
+    }
+  };
+
+  const groupedIngredients = useMemo(() => {
+    const meat = ingredients.filter(i => i.name.includes("หมู") || i.name.includes("ไก่") || i.name === "เนื้อ");
+    const seafood = ingredients.filter(i => i.name.includes("หมึก") || i.name.includes("กุ้ง") || i.name.includes("หอย"));
+    const toppings = ingredients.filter(i => i.name.includes("ไข่") || i.name.includes("ไส้กรอก") || i.name.includes("กุนเชียง"));
+    const others = ingredients.filter(i =>
+      !meat.some(m => m.id === i.id) &&
+      !seafood.some(s => s.id === i.id) &&
+      !toppings.some(t => t.id === i.id)
+    );
+    return { meat, seafood, toppings, others };
+  }, [ingredients]);
 
   return (
     <div className="space-y-6">
       {/* Search and Category Filters */}
       <div className="bg-white border border-[#ece4d6] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
-          <h2 className="text-lg font-black tracking-tight text-[#002e47]">
-            จัดการสต็อกเปิด-ปิดเมนูอาหาร
-          </h2>
-          <div className="relative max-w-md w-full">
-            <input
-              type="text"
-              placeholder="ค้นหาชื่อเมนู..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#fcfbf9] border border-[#ece4d6] rounded-2xl px-4 py-2.5 text-sm font-bold text-[#002e47] placeholder-[#5a6e7a]/50 focus:outline-none focus:border-[#002e47]/30 transition shadow-inner"
-            />
-          </div>
-        </div>
-
-        {/* Category Pills */}
-        <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs tracking-wider transition cursor-pointer ${
-                selectedCategory === cat.id
-                  ? "bg-[#002e47] text-white shadow-inner"
-                  : "bg-slate-100 text-[#5a6e7a] hover:bg-slate-200"
-              }`}
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-black tracking-tight text-[#002e47]">
+              จัดการสต็อก:
+            </h2>
+            <select
+              value={activeSubView}
+              onChange={(e) => setActiveSubView(e.target.value as any)}
+              className="bg-white border border-[#ece4d6] rounded-xl px-3 py-1.5 text-sm font-bold text-[#002e47] focus:outline-none shadow-sm cursor-pointer"
             >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Menu Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredMenuItems.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 font-bold col-span-full bg-white rounded-3xl border border-[#ece4d6] p-6 shadow-soft">
-            ไม่พบเมนูอาหารที่ค้นหา
+              <option value="menu">เปิด-ปิด เมนูอาหาร</option>
+              <option value="ingredients">คลังวัตถุดิบอาหาร (Database)</option>
+            </select>
           </div>
-        ) : (
-          filteredMenuItems.map((item) => {
-            const isOutOfStock = outOfStockIds.includes(item.id);
-            return (
-              <div
-                key={item.id}
-                className={`bg-white border rounded-3xl p-4 flex gap-4 transition shadow-sm hover:shadow-md relative overflow-hidden ${
-                  isOutOfStock ? "border-red-200 bg-red-50/20" : "border-[#ece4d6]"
-                }`}
+
+          {activeSubView === "menu" ? (
+            <div className="relative max-w-md w-full">
+              <input
+                type="text"
+                placeholder="ค้นหาชื่อเมนู..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#fcfbf9] border border-[#ece4d6] rounded-2xl px-4 py-2.5 text-sm font-bold text-[#002e47] placeholder-[#5a6e7a]/50 focus:outline-none focus:border-[#002e47]/30 transition shadow-inner"
+              />
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="inline-flex items-center gap-2 bg-[#002e47] text-white px-4 py-2.5 rounded-2xl font-bold text-xs tracking-wider transition hover:bg-[#004165] shadow-md cursor-pointer"
+            >
+              <PlusCircle size={15} />
+              {showAddForm ? "ปิดฟอร์ม" : "เพิ่มวัตถุดิบใหม่"}
+            </button>
+          )}
+        </div>
+
+        {activeSubView === "menu" && (
+          /* Category Pills */
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs tracking-wider transition cursor-pointer ${selectedCategory === cat.id
+                    ? "bg-[#002e47] text-white shadow-inner"
+                    : "bg-slate-100 text-[#5a6e7a] hover:bg-slate-200"
+                  }`}
               >
-                {/* Food Image */}
-                <div className="h-20 w-20 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 relative">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className={`h-full w-full object-cover transition duration-300 ${
-                      isOutOfStock ? "grayscale opacity-50" : ""
-                    }`}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/thai_food_hero.png";
-                    }}
-                  />
-                  {isOutOfStock && (
-                    <div className="absolute inset-0 bg-red-600/10 flex items-center justify-center">
-                      <span className="bg-red-600 text-white text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm">
-                        หมด
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Details */}
-                <div className="flex-1 flex flex-col justify-between min-w-0">
-                  <div>
-                    <div className="flex items-center gap-1.5 justify-between">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        {item.category.toUpperCase()}
-                      </span>
-                      <span className="text-xs font-black text-[#002e47]">
-                        ฿{item.price}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-black text-[#002e47] mt-0.5 truncate" title={item.name}>
-                      {item.name}
-                    </h3>
-                    <p className="text-[10px] font-semibold text-[#5a6e7a] line-clamp-2 mt-1 leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
-
-                  {/* Toggle Button */}
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
-                    <span className={`text-[10px] font-extrabold tracking-wide ${
-                      isOutOfStock ? "text-red-500" : "text-emerald-600"
-                    }`}>
-                      {isOutOfStock ? "● ปิดการขายชั่วคราว" : "● เปิดขายปกติ"}
-                    </span>
-                    <button
-                      onClick={() => toggleStock(item.id)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        isOutOfStock ? "bg-red-500" : "bg-emerald-500"
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          isOutOfStock ? "translate-x-5" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+                {cat.label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
+
+      {activeSubView === "ingredients" && showAddForm && (
+        <form onSubmit={handleAddIngredient} className="bg-white border border-[#ece4d6] rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+          <h3 className="text-sm font-black text-[#002e47]">เพิ่มวัตถุดิบใหม่เข้าระบบ</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">ชื่อวัตถุดิบ</label>
+              <input
+                type="text"
+                placeholder="เช่น หมูสับ, เนื้อ, คะน้า"
+                value={newIngName}
+                onChange={(e) => setNewIngName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">จำนวนเริ่มต้น</label>
+              <input
+                type="number"
+                placeholder="เช่น 1000 (สำหรับ 1kg)"
+                value={newIngQty}
+                onChange={(e) => setNewIngQty(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">หน่วยนับ</label>
+              <select
+                value={newIngUnit}
+                onChange={(e) => setNewIngUnit(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47]"
+              >
+                <option value="g">กรัม (g)</option>
+                <option value="pcs">ชิ้น/ฟอง (pcs)</option>
+                <option value="ml">มิลลิลิตร (ml)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">เตือนเมื่อเหลือน้อยกว่า</label>
+              <input
+                type="number"
+                placeholder="เช่น 200"
+                value={newIngThreshold}
+                onChange={(e) => setNewIngThreshold(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47]"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="bg-slate-100 text-[#5a6e7a] px-4 py-2 rounded-xl font-bold text-xs cursor-pointer hover:bg-slate-200"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              className="bg-[#002e47] text-white px-4 py-2 rounded-xl font-bold text-xs cursor-pointer hover:bg-[#004165]"
+            >
+              เพิ่มเข้าระบบ
+            </button>
+          </div>
+        </form>
+      )}
+
+      {activeSubView === "ingredients" ? (
+        /* Ingredients Grouped Columns Dashboard */
+        <div className="w-full">
+          {loadingIngredients ? (
+            <div className="bg-white border border-[#ece4d6] rounded-3xl p-16 text-center text-slate-400 font-bold shadow-sm">
+              กำลังโหลดข้อมูลสต็อกวัตถุดิบ...
+            </div>
+          ) : ingredients.length === 0 ? (
+            <div className="bg-white border border-[#ece4d6] rounded-3xl p-12 text-center shadow-sm">
+              <div className="py-12 text-center max-w-md mx-auto space-y-4">
+                <div className="h-16 w-16 bg-[#002e47]/5 text-[#002e47] rounded-full flex items-center justify-center mx-auto">
+                  <ChefHat size={32} />
+                </div>
+                <h3 className="font-black text-[#002e47] text-base">ไม่พบข้อมูลวัตถุดิบในฐานข้อมูล</h3>
+                <p className="text-xs text-[#5a6e7a] font-semibold leading-relaxed">
+                  กรุณาเพิ่มวัตถุดิบใหม่ทีละรายการ หรือกดปุ่มด้านล่างเพื่อเริ่มสร้างชุดข้อมูลวัตถุดิบเริ่มต้น 12 รายการเข้าระบบโดยอัตโนมัติ
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSeedDefaultData}
+                  className="bg-[#002e47] text-white px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wider transition hover:bg-[#004165] shadow-md cursor-pointer"
+                >
+                  ⚡ นำเข้าข้อมูลวัตถุดิบเริ่มต้น
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto bg-white border border-[#ece4d6] rounded-3xl p-4 sm:p-5 shadow-sm">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm font-sans min-w-[650px]">
+                <thead>
+                  <tr className="border-b border-[#ece4d6] text-[#5a6e7a] font-bold">
+                    <th className="py-3 px-4 font-black">ชื่อวัตถุดิบ</th>
+                    <th className="py-3 px-4 font-black">เปิด-ปิดการขาย</th>
+                    <th className="py-3 px-4 font-black">ปริมาณคงเหลือ</th>
+                    <th className="py-3 px-4 font-black">ระดับแจ้งเตือนขั้นต่ำ</th>
+                    <th className="py-3 px-4 font-black text-right">ปรับปรุงสต็อก / จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {/* Category Meat */}
+                  <tr className="bg-slate-50/50">
+                    <td colSpan={4} className="py-2.5 px-4 font-black text-xs text-[#002e47] border-y border-[#ece4d6]/60">
+                      🥩 เนื้อสัตว์ (Meats)
+                    </td>
+                  </tr>
+                  {groupedIngredients.meat.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-4 px-4 text-center text-slate-400 text-xs">ไม่มีรายการเนื้อสัตว์</td>
+                    </tr>
+                  ) : (
+                    groupedIngredients.meat.map(item => renderRow(item))
+                  )}
+
+                  {/* Category Seafood */}
+                  <tr className="bg-slate-50/50">
+                    <td colSpan={4} className="py-2.5 px-4 font-black text-xs text-[#002e47] border-y border-[#ece4d6]/60">
+                      🐙 อาหารทะเล (Seafood)
+                    </td>
+                  </tr>
+                  {groupedIngredients.seafood.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-4 px-4 text-center text-slate-400 text-xs">ไม่มีรายการอาหารทะเล</td>
+                    </tr>
+                  ) : (
+                    groupedIngredients.seafood.map(item => renderRow(item))
+                  )}
+
+                  {/* Category Toppings */}
+                  <tr className="bg-slate-50/50">
+                    <td colSpan={4} className="py-2.5 px-4 font-black text-xs text-[#002e47] border-y border-[#ece4d6]/60">
+                      🥚 ไข่ & เครื่องเคียง (Toppings)
+                    </td>
+                  </tr>
+                  {[...groupedIngredients.toppings, ...groupedIngredients.others].length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-4 px-4 text-center text-slate-400 text-xs">ไม่มีรายการเครื่องเคียง</td>
+                    </tr>
+                  ) : (
+                    [...groupedIngredients.toppings, ...groupedIngredients.others].map(item => renderRow(item))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Menu Items Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredMenuItems.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 font-bold col-span-full bg-white rounded-3xl border border-[#ece4d6] p-6 shadow-soft">
+              ไม่พบเมนูอาหารที่ค้นหา
+            </div>
+          ) : (
+            filteredMenuItems.map((item) => {
+              const isOutOfStock = outOfStockIds.includes(item.id);
+              return (
+                <div
+                  key={item.id}
+                  className={`bg-white border rounded-3xl p-4 flex gap-4 transition shadow-sm hover:shadow-md relative overflow-hidden ${isOutOfStock ? "border-red-200 bg-red-50/20" : "border-[#ece4d6]"
+                    }`}
+                >
+                  {/* Food Image */}
+                  <div className="h-20 w-20 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 relative">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className={`h-full w-full object-cover transition duration-300 ${isOutOfStock ? "grayscale opacity-50" : ""
+                        }`}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/thai_food_hero.png";
+                      }}
+                    />
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 bg-red-600/10 flex items-center justify-center">
+                        <span className="bg-red-600 text-white text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm">
+                          หมด
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 flex flex-col justify-between min-w-0">
+                    <div>
+                      <div className="flex items-center gap-1.5 justify-between">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          {item.category.toUpperCase()}
+                        </span>
+                        <span className="text-xs font-black text-[#002e47]">
+                          ฿{item.price}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-black text-[#002e47] mt-0.5 truncate" title={item.name}>
+                        {item.name}
+                      </h3>
+                      <p className="text-[10px] font-semibold text-[#5a6e7a] line-clamp-2 mt-1 leading-relaxed">
+                        {item.desc}
+                      </p>
+                    </div>
+
+                    {/* Toggle Button */}
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+                      <span className={`text-[10px] font-extrabold tracking-wide ${isOutOfStock ? "text-red-500" : "text-emerald-600"
+                        }`}>
+                        {isOutOfStock ? "● ปิดการขายชั่วคราว" : "● เปิดขายปกติ"}
+                      </span>
+                      <button
+                        onClick={() => toggleStock(item.id)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isOutOfStock ? "bg-red-500" : "bg-emerald-500"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isOutOfStock ? "translate-x-5" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TableManagementView({ orders }: { orders: OrderHistory[] }) {
+  const [tables, setTables] = useState<any[]>([
+    { id: "1", label: "โต๊ะ 1", status: "available" },
+    { id: "2", label: "โต๊ะ 2", status: "occupied" },
+    { id: "3", label: "โต๊ะ 3", status: "available" },
+    { id: "4", label: "โต๊ะ 4", status: "available" },
+    { id: "5", label: "โต๊ะ 5", status: "available" },
+    { id: "6", label: "โต๊ะ 6", status: "occupied" },
+    { id: "7", label: "โต๊ะ 7", status: "available" },
+    { id: "8", label: "โต๊ะ 8", status: "available" },
+  ]);
+  const [selectedTable, setSelectedTable] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch tables from Supabase/localStorage
+  const fetchTables = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("restaurant_tables")
+        .select("id, label, status")
+        .order("id");
+      if (!error && data && data.length > 0) {
+        setTables(data as any);
+        localStorage.setItem("ran-lung-get-tables", JSON.stringify(data));
+      } else {
+        const local = localStorage.getItem("ran-lung-get-tables");
+        if (local) {
+          setTables(JSON.parse(local));
+        }
+      }
+    } catch (e) {
+      const local = localStorage.getItem("ran-lung-get-tables");
+      if (local) {
+        setTables(JSON.parse(local));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTables();
+
+    // Subscribe to realtime changes
+    const ch = supabase
+      .channel("staff-tables-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, (payload) => {
+        if (payload.eventType === "UPDATE" || payload.eventType === "INSERT") {
+          const updated = payload.new as any;
+          setTables((prev) => {
+            const next = prev.map((t) => t.id === String(updated.id) ? { ...t, ...updated, id: String(updated.id) } : t);
+            localStorage.setItem("ran-lung-get-tables", JSON.stringify(next));
+            return next;
+          });
+        }
+      })
+      .subscribe();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "ran-lung-get-tables" && e.newValue) {
+        try {
+          setTables(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      supabase.removeChannel(ch);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  const updateTableStatus = async (tableId: string, label: string, newStatus: string) => {
+    const updated = tables.map((t) => t.id === tableId ? { ...t, status: newStatus } : t);
+    setTables(updated);
+    localStorage.setItem("ran-lung-get-tables", JSON.stringify(updated));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-tables",
+      newValue: JSON.stringify(updated),
+    }));
+
+    // Update in Supabase
+    try {
+      await (supabase as any)
+        .from("restaurant_tables")
+        .update({ status: newStatus })
+        .eq("id", tableId);
+    } catch (e) {
+      console.warn("Supabase update table status failed, using local fallback");
+    }
+
+    if (selectedTable && selectedTable.id === tableId) {
+      setSelectedTable((prev: any) => prev ? { ...prev, status: newStatus } : null);
+    }
+  };
+
+  // Get active dine-in orders for a table
+  const getActiveOrdersForTable = (tableLabel: string) => {
+    return orders.filter(
+      (o) =>
+        o.orderType === "dine-in" &&
+        o.tableNumber === tableLabel &&
+        o.status !== "สำเร็จ" &&
+        o.status !== "ยกเลิก"
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white border border-[#ece4d6] rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-black tracking-tight text-[#002e47]">
+            ผังที่นั่ง & จัดการสถานะโต๊ะอาหาร
+          </h2>
+          <p className="text-xs text-slate-500 font-semibold mt-1">
+            มอนิเตอร์และปรับปรุงสถานะโต๊ะอาหารแบบเรียลไทม์ (ว่าง / มีลูกค้า / จองแล้ว)
+          </p>
+        </div>
+        <div className="flex gap-2.5">
+          <button
+            onClick={fetchTables}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-[#002e47] cursor-pointer transition active:scale-95 animate-fade-in"
+          >
+            รีเฟรชผังโต๊ะ
+          </button>
+        </div>
+      </div>
+
+      {/* Grid of Tables */}
+      {loading ? (
+        <div className="bg-white border border-[#ece4d6] rounded-3xl p-16 text-center text-slate-400 font-bold shadow-sm">
+          กำลังโหลดข้อมูลผังโต๊ะ...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {tables.map((table) => {
+            const activeOrders = getActiveOrdersForTable(table.label);
+            const isOccupied = table.status === "occupied";
+            const isReserved = table.status === "reserved";
+            const isAvailable = table.status === "available" || (!isOccupied && !isReserved);
+
+            let statusLabel = "ว่าง";
+            let statusColor = "bg-emerald-500 text-white border-emerald-600";
+            let boxBg = "bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50/50";
+            if (isOccupied) {
+              statusLabel = "มีลูกค้า";
+              statusColor = "bg-red-500 text-white border-red-600";
+              boxBg = "bg-red-50/30 border-red-200 hover:bg-red-50/50";
+            } else if (isReserved) {
+              statusLabel = "จองแล้ว";
+              statusColor = "bg-amber-500 text-white border-amber-600";
+              boxBg = "bg-amber-50/30 border-amber-200 hover:bg-amber-50/50";
+            }
+
+            return (
+              <div
+                key={table.id}
+                onClick={() => setSelectedTable(table)}
+                className={`border-2 rounded-3xl p-5 text-left relative overflow-hidden transition cursor-pointer flex flex-col justify-between min-h-[160px] shadow-sm hover:shadow ${boxBg}`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-base text-[#002e47]">
+                      {table.label}
+                    </span>
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${statusColor}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">
+                    ความจุ: 2-4 คน
+                  </p>
+                </div>
+
+                {isOccupied && (
+                  <div className="mt-4 pt-3 border-t border-red-100 text-xs">
+                    {activeOrders.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between font-bold text-red-700">
+                          <span>คิวปัจจุบัน:</span>
+                          <span className="bg-red-100 text-red-800 px-1.5 py-0.2 rounded-md font-black text-[9px]">
+                            {activeOrders.length} ออเดอร์
+                          </span>
+                        </div>
+                        {activeOrders.slice(0, 2).map((o) => (
+                          <div key={o.id} className="text-[11px] text-slate-600 font-semibold truncate">
+                            {o.orderNumber} ({o.customerName || "คุณลูกค้า"})
+                          </div>
+                        ))}
+                        {activeOrders.length > 2 && (
+                          <div className="text-[9px] text-slate-400 font-bold italic">
+                            และอีก {activeOrders.length - 2} รายการ...
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 font-bold italic text-[11px]">
+                        ไม่มีออเดอร์ในระบบ (เลือกนั่งเอง)
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isReserved && (
+                  <div className="mt-4 pt-3 border-t border-amber-100 text-xs text-amber-800 font-bold italic">
+                    โต๊ะถูกจองไว้สำหรับต้อนรับคิวถัดไป
+                  </div>
+                )}
+
+                {isAvailable && (
+                  <div className="mt-4 pt-3 border-t border-emerald-100 text-xs text-emerald-800 font-semibold italic">
+                    โต๊ะว่าง พร้อมต้อนรับลูกค้า
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Detail & Action Modal */}
+      {selectedTable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setSelectedTable(null)}
+          />
+          <div className="bg-white rounded-[28px] p-6 w-full max-w-md z-10 border border-[#ece4d6] shadow-2xl relative text-[#002e47] flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-lg font-black tracking-tight">
+                  รายละเอียด {selectedTable.label}
+                </h3>
+                <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                  ความจุมาตรฐาน: 2-4 ที่นั่ง
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedTable(null)}
+                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 cursor-pointer text-slate-500"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto py-4 space-y-5 flex-1">
+              {/* Status Section */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-extrabold text-[#5a6e7a] tracking-wider uppercase">
+                  สถานะโต๊ะปัจจุบัน
+                </p>
+                <div className="flex items-center gap-3">
+                  {selectedTable.status === "available" && (
+                    <span className="px-3.5 py-1.5 rounded-full font-black text-xs bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      🟢 โต๊ะว่าง (Available)
+                    </span>
+                  )}
+                  {selectedTable.status === "occupied" && (
+                    <span className="px-3.5 py-1.5 rounded-full font-black text-xs bg-red-100 text-red-800 border border-red-200">
+                      🔴 มีลูกค้าอยู่ (Occupied)
+                    </span>
+                  )}
+                  {selectedTable.status === "reserved" && (
+                    <span className="px-3.5 py-1.5 rounded-full font-black text-xs bg-amber-100 text-amber-800 border border-amber-200">
+                      🟡 จองแล้ว (Reserved)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Details (if occupied) */}
+              {selectedTable.status === "occupied" && (
+                <div className="space-y-2.5">
+                  <p className="text-[10px] font-extrabold text-[#5a6e7a] tracking-wider uppercase">
+                    ออเดอร์ที่กำลังทาน
+                  </p>
+                  {(() => {
+                    const activeOrders = getActiveOrdersForTable(selectedTable.label);
+                    if (activeOrders.length === 0) {
+                      return (
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400 italic">
+                          ไม่มีออเดอร์ในระบบคิว (ลูกค้าเข้ามานั่งโดยตรงหรือพนักงานเปิดโต๊ะแมนนวล)
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-3">
+                        {activeOrders.map((o) => (
+                          <div key={o.id} className="p-4 bg-[#fcfbf9] rounded-2xl border border-[#ece4d6] space-y-3">
+                            <div className="flex items-center justify-between text-xs pb-2 border-b border-[#ece4d6]/60">
+                              <span className="font-black text-[#002e47] text-sm">
+                                {o.orderNumber}
+                              </span>
+                              <span className="text-slate-400 font-semibold">{o.date.split(" · ")[1] || ""}</span>
+                            </div>
+                            <div className="space-y-1.5 text-xs">
+                              <div className="flex justify-between font-bold text-slate-600">
+                                <span>ลูกค้า:</span>
+                                <span className="text-[#002e47]">{o.customerName || "ไม่ระบุ"}</span>
+                              </div>
+                              <div className="space-y-1 mt-1 pl-2 border-l-2 border-slate-200">
+                                {o.items.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between text-[11px] font-semibold text-slate-500">
+                                    <span>{item.name} ×{item.qty}</span>
+                                    <span>฿{item.price * item.qty}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex justify-between font-black text-[#002e47] pt-2 border-t border-dashed border-slate-200 text-sm">
+                                <span>ยอดรวม:</span>
+                                <span>฿{o.total.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Status Actions */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-extrabold text-[#5a6e7a] tracking-wider uppercase">
+                  เปลี่ยนสถานะโต๊ะด้วยตนเอง
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => updateTableStatus(selectedTable.id, selectedTable.label, "available")}
+                    className={`py-3 px-1 rounded-2xl text-xs font-black transition active:scale-95 cursor-pointer text-center ${
+                      selectedTable.status === "available"
+                        ? "bg-emerald-500 text-white border border-emerald-600 shadow-inner"
+                        : "bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-emerald-800"
+                    }`}
+                  >
+                    ว่าง
+                  </button>
+                  <button
+                    onClick={() => updateTableStatus(selectedTable.id, selectedTable.label, "occupied")}
+                    className={`py-3 px-1 rounded-2xl text-xs font-black transition active:scale-95 cursor-pointer text-center ${
+                      selectedTable.status === "occupied"
+                        ? "bg-red-500 text-white border border-red-600 shadow-inner"
+                        : "bg-slate-50 hover:bg-red-50 border border-slate-200 text-red-800"
+                    }`}
+                  >
+                    มีลูกค้า
+                  </button>
+                  <button
+                    onClick={() => updateTableStatus(selectedTable.id, selectedTable.label, "reserved")}
+                    className={`py-3 px-1 rounded-2xl text-xs font-black transition active:scale-95 cursor-pointer text-center ${
+                      selectedTable.status === "reserved"
+                        ? "bg-amber-500 text-white border border-amber-600 shadow-inner"
+                        : "bg-slate-50 hover:bg-amber-50 border border-slate-200 text-amber-800"
+                    }`}
+                  >
+                    จองแล้ว
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 border-t border-slate-100 flex gap-2">
+              <button
+                onClick={() => setSelectedTable(null)}
+                className="w-full py-3 bg-[#002e47] hover:opacity-95 text-white rounded-2xl text-xs font-black cursor-pointer transition text-center"
+              >
+                เสร็จสิ้น
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1163,17 +2318,138 @@ function KitchenMonitor() {
   const [statusFilter, setStatusFilter] = useState<string>("active"); // "active", "รอดำเนินการ", "กำลังทำ", "พร้อมเสิร์ฟ", "สำเร็จ"
   const [typeFilter, setTypeFilter] = useState<string>("all"); // "all", "dine-in", "takeaway", "delivery"
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [view, setView] = useState<"kitchen" | "dashboard" | "menu">("kitchen");
+  const [view, setView] = useState<"kitchen" | "dashboard" | "menu" | "tables">("kitchen");
 
-  // Auth Check for Staff (supports both Supabase role and mock token)
+  // Auth Check for Staff (supports Supabase role, LINE LIFF role, and mock token)
   useEffect(() => {
-    const token = localStorage.getItem("ran-lung-get-staff-token");
-    if (!token) {
-      window.location.href = "/login";
+    let cancelled = false;
+    async function checkAuth() {
+      // 1. Check mock token
+      const token = localStorage.getItem("ran-lung-get-staff-token");
+      if (token) {
+        return; // Valid mock token
+      }
+
+      // 2. Check Supabase session
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const emailStr = session.user.email || "";
+          if (emailStr.includes("staff") || emailStr.includes("admin")) {
+            localStorage.setItem("ran-lung-get-staff-token", "true");
+            return;
+          }
+          const userId = session.user.id;
+          const { data, error } = await supabase
+            .from("users")
+            .select("role")
+            .eq("auth_user_id", userId)
+            .single();
+
+          if (!error && data && (data.role === "staff" || data.role === "admin")) {
+            localStorage.setItem("ran-lung-get-staff-token", "true");
+            return; // Valid Supabase staff/admin session
+          }
+        }
+      } catch (err) {
+        console.error("Staff auth check error (Supabase)", err);
+      }
+
+      // 3. Check LINE LIFF session
+      try {
+        const { initLiff, isLiffLoggedIn, getLiffProfile } = await import("../../lib/liff");
+        const liffPromise = initLiff();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF timeout")), 3000));
+        await Promise.race([liffPromise, timeoutPromise]);
+
+        if (!cancelled && isLiffLoggedIn()) {
+          const profile = await getLiffProfile();
+          if (profile) {
+            const { data, error } = await supabase
+              .from("users")
+              .select("role")
+              .eq("line_user_id", profile.userId)
+              .single();
+
+            if (!error && data && (data.role === "staff" || data.role === "admin")) {
+              localStorage.setItem("ran-lung-get-staff-token", "true");
+              return; // Valid LINE LIFF staff/admin session
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Staff auth check error (LIFF)", err);
+      }
+
+      if (!cancelled) {
+        window.location.href = "/login";
+      }
     }
+
+    checkAuth();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Load orders from localStorage
+  const fetchSupabaseOrders = async () => {
+    try {
+      const { data: dbOrders, error: dbOrdersError } = await supabase
+        .from("orders")
+        .select(`
+          *,
+          customers (
+            display_name
+          ),
+          order_items (*)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!dbOrdersError && dbOrders) {
+        const mappedOrders: OrderHistory[] = dbOrders.map((o: any) => {
+          let localStatus = "รอดำเนินการ";
+          if (o.status === "pending") localStatus = "รอดำเนินการ";
+          else if (o.status === "preparing") localStatus = "กำลังทำ";
+          else if (o.status === "delivering") localStatus = "พร้อมเสิร์ฟ";
+          else if (o.status === "completed") localStatus = "สำเร็จ";
+          else if (o.status === "cancelled") localStatus = "ยกเลิก";
+
+          return {
+            id: o.id,
+            orderNumber: o.order_number,
+            date: new Date(o.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " · " + new Date(o.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+            items: (o.order_items || []).map((item: any) => ({
+              name: item.name,
+              qty: item.quantity,
+              price: Number(item.unit_price),
+              image: item.image || ""
+            })),
+            subtotal: Number(o.subtotal),
+            delivery: Number(o.delivery_fee),
+            total: Number(o.total),
+            status: localStatus,
+            orderType: o.order_type,
+            customerName: o.customers?.display_name || "คุณลูกค้า",
+            tableNumber: o.table_number || "",
+            queueNumber: o.queue_number || "",
+            note: o.special_instructions || ""
+          };
+        });
+
+        setOrders((prev) => {
+          // Filter out local mock orders that match DB orders IDs to avoid duplicates
+          const localOnly = prev.filter(p => !p.id.startsWith("hist_") && !p.id.includes("-") && !mappedOrders.some(m => m.id === p.id));
+          const combined = [...mappedOrders, ...localOnly];
+          localStorage.setItem("ran-lung-get-orders", JSON.stringify(combined));
+          return combined;
+        });
+      }
+    } catch (e) {
+      console.error("Failed to fetch Supabase orders:", e);
+    }
+  };
+
+  // Load orders from localStorage and Supabase
   useEffect(() => {
     const saved = localStorage.getItem("ran-lung-get-orders");
     if (saved) {
@@ -1183,6 +2459,22 @@ function KitchenMonitor() {
         console.error("Failed to parse orders:", e);
       }
     }
+    fetchSupabaseOrders();
+
+    // Subscribe to realtime orders changes
+    const ordersCh = supabase
+      .channel("staff-orders-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+        fetchSupabaseOrders();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {
+        fetchSupabaseOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersCh);
+    };
   }, []);
 
   // Listen to storage sync events
@@ -1191,7 +2483,7 @@ function KitchenMonitor() {
       if (e.key === "ran-lung-get-orders" && e.newValue) {
         try {
           const newOrders: OrderHistory[] = JSON.parse(e.newValue);
-          
+
           setOrders((prev) => {
             const prevIds = new Set(prev.map(o => o.id));
             const hasNew = newOrders.some(o => !prevIds.has(o.id));
@@ -1254,13 +2546,17 @@ function KitchenMonitor() {
 
     const updated = orders.map((o) => {
       if (o.id === orderId) {
+        // หักสต็อกเมื่อออเดอร์เปลี่ยนจาก "รอดำเนินการ" -> "กำลังปรุง/กำลังทำ"
+        if (currentStatus === "รอดำเนินการ") {
+          adjustStockFromOrder(o.items, "deduct");
+        }
         // Clear table if complete
         if (nextStatus === "สำเร็จ" && o.orderType === "dine-in" && o.tableNumber) {
           const savedTables = localStorage.getItem("ran-lung-get-tables");
           if (savedTables) {
             try {
               const parsedTables = JSON.parse(savedTables);
-              const updatedTables = parsedTables.map((t: any) => 
+              const updatedTables = parsedTables.map((t: any) =>
                 t.label === o.tableNumber ? { ...t, status: "available" } : t
               );
               localStorage.setItem("ran-lung-get-tables", JSON.stringify(updatedTables));
@@ -1268,10 +2564,24 @@ function KitchenMonitor() {
                 key: "ran-lung-get-tables",
                 newValue: JSON.stringify(updatedTables),
               }));
+
+              // Clear table status in Supabase as well
+              const tableId = o.tableNumber.replace(/[^0-9]/g, ""); // e.g. "โต๊ะ 3" -> "3"
+              if (tableId) {
+                void (supabase as any)
+                  .from("restaurant_tables")
+                  .update({ status: "available" })
+                  .eq("id", tableId);
+              }
             } catch (e) {
               console.error("Failed to clear table status on complete:", e);
             }
           }
+        }
+        // Sync to Supabase
+        if (!orderId.startsWith("hist_")) {
+          const sbStatus = nextStatus === "สำเร็จ" ? "completed" : nextStatus === "พร้อมเสิร์ฟ" ? "delivering" : "preparing";
+          void supabase.from("orders").update({ status: sbStatus }).eq("id", orderId);
         }
         return { ...o, status: nextStatus };
       }
@@ -1283,13 +2593,17 @@ function KitchenMonitor() {
   const cancelOrder = (orderId: string) => {
     const updated = orders.map((o) => {
       if (o.id === orderId) {
+        // คืนสต็อกหากออเดอร์ถูกยกเลิก (และเคยถูกหักสต็อกไปแล้ว คือตอนที่อยู่ในขั้นตอนปรุง/พร้อมเสิร์ฟ/สำเร็จ)
+        if (o.status !== "รอดำเนินการ" && o.status !== "ยกเลิก" && o.status !== "ขอคืนเงิน") {
+          adjustStockFromOrder(o.items, "add");
+        }
         // Clear table if dine-in
         if (o.orderType === "dine-in" && o.tableNumber) {
           const savedTables = localStorage.getItem("ran-lung-get-tables");
           if (savedTables) {
             try {
               const parsedTables = JSON.parse(savedTables);
-              const updatedTables = parsedTables.map((t: any) => 
+              const updatedTables = parsedTables.map((t: any) =>
                 t.label === o.tableNumber ? { ...t, status: "available" } : t
               );
               localStorage.setItem("ran-lung-get-tables", JSON.stringify(updatedTables));
@@ -1297,10 +2611,23 @@ function KitchenMonitor() {
                 key: "ran-lung-get-tables",
                 newValue: JSON.stringify(updatedTables),
               }));
+
+              // Clear table status in Supabase as well
+              const tableId = o.tableNumber.replace(/[^0-9]/g, ""); // e.g. "โต๊ะ 3" -> "3"
+              if (tableId) {
+                void (supabase as any)
+                  .from("restaurant_tables")
+                  .update({ status: "available" })
+                  .eq("id", tableId);
+              }
             } catch (e) {
               console.error("Failed to clear table status on cancel:", e);
             }
           }
+        }
+        // Sync to Supabase
+        if (!orderId.startsWith("hist_")) {
+          void supabase.from("orders").update({ status: "cancelled" }).eq("id", orderId);
         }
         return { ...o, status: "ยกเลิก" };
       }
@@ -1317,6 +2644,15 @@ function KitchenMonitor() {
 
     const updated = orders.map((o) => {
       if (o.id === orderId) {
+        // คืนสต็อกหากปรับสถานะกลับมาเป็น "รอดำเนินการ" จากขั้นที่เคยหักสต็อกไปแล้ว
+        if (prevStatus === "รอดำเนินการ" && (currentStatus === "กำลังทำ" || currentStatus === "กำลังเตรียม" || currentStatus === "พร้อมเสิร์ฟ" || currentStatus === "สำเร็จ")) {
+          adjustStockFromOrder(o.items, "add");
+        }
+        // Sync to Supabase
+        if (!orderId.startsWith("hist_")) {
+          const sbStatus = prevStatus === "รอดำเนินการ" ? "pending" : prevStatus === "กำลังทำ" ? "preparing" : "delivering";
+          void supabase.from("orders").update({ status: sbStatus }).eq("id", orderId);
+        }
         return { ...o, status: prevStatus };
       }
       return o;
@@ -1333,7 +2669,7 @@ function KitchenMonitor() {
   const triggerMockOrder = () => {
     const isDineIn = Math.random() > 0.4;
     const orderType: OrderType = isDineIn ? "dine-in" : (Math.random() > 0.5 ? "delivery" : "takeaway");
-    
+
     // Pick 1-3 random items
     const itemsCount = Math.floor(Math.random() * 3) + 1;
     const items = [];
@@ -1341,7 +2677,7 @@ function KitchenMonitor() {
     for (let i = 0; i < itemsCount; i++) {
       const rawItem = MENU_ITEMS_FOR_SIMULATION[Math.floor(Math.random() * MENU_ITEMS_FOR_SIMULATION.length)];
       const qty = Math.floor(Math.random() * 2) + 1;
-      
+
       let name = rawItem.name;
       const details = [];
       if (rawItem.category === "signature" || rawItem.category === "main" || rawItem.category === "noodles") {
@@ -1351,7 +2687,7 @@ function KitchenMonitor() {
         details.push("ไข่ดาว (+฿10)");
         subtotal += 10 * qty;
       }
-      
+
       const formattedName = name + (details.length > 0 ? ` (${details.join(", ")})` : "");
       items.push({
         name: formattedName,
@@ -1361,7 +2697,7 @@ function KitchenMonitor() {
       });
       subtotal += rawItem.price * qty;
     }
-    
+
     const delivery = orderType === "delivery" ? 40 : 0;
     const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
     const name = CUSTOMER_NAMES[Math.floor(Math.random() * CUSTOMER_NAMES.length)];
@@ -1382,7 +2718,7 @@ function KitchenMonitor() {
       tableNumber: tableNum,
       note: randomNote,
     };
-    
+
     const updated = [newOrder, ...orders];
     updateOrdersAndNotify(updated);
     if (soundEnabled) {
@@ -1490,7 +2826,7 @@ function KitchenMonitor() {
 
       {/* Main Workspace (Takes full remaining space) */}
       <div className="flex-1 flex flex-col h-screen overflow-y-auto min-w-0">
-        
+
         {/* Desktop Header */}
         <header className="hidden md:block bg-white border-b border-[#ece4d6] p-4 sticky top-0 z-30 shadow-sm shrink-0">
           <div className="flex items-center justify-between">
@@ -1498,17 +2834,25 @@ function KitchenMonitor() {
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#002e47] text-white shadow-md">
                 {view === "kitchen" ? (
                   <ChefHat className="h-5 w-5" color={GOLD} />
+                ) : view === "tables" ? (
+                  <Table className="h-5 w-5" color={GOLD} />
                 ) : (
                   <LayoutDashboard className="h-5 w-5" color={GOLD} />
                 )}
               </div>
               <div>
                 <h1 className="text-base sm:text-lg font-black tracking-tight" style={{ color: BRAND }}>
-                  {view === "kitchen" ? "จอจัดการครัวลุงเกตุ" : "แดชบอร์ดภาพรวมร้านค้า"}
+                  {view === "kitchen"
+                    ? "จอจัดการครัวลุงเกตุ"
+                    : view === "tables"
+                    ? "ผังที่นั่ง & จัดการสถานะโต๊ะ"
+                    : "แดชบอร์ดภาพรวมร้านค้า"}
                 </h1>
                 <p className="text-[10px] sm:text-xs font-semibold text-slate-500">
-                  {view === "kitchen" 
-                    ? "ระบบจัดคิวอาหารและมอนิเตอร์หน้าเตา" 
+                  {view === "kitchen"
+                    ? "ระบบจัดคิวอาหารและมอนิเตอร์หน้าเตา"
+                    : view === "tables"
+                    ? "ตรวจสอบและเปลี่ยนสถานะโต๊ะ ว่าง / ไม่ว่าง / จองแล้ว"
                     : "วิเคราะห์ยอดขาย จำนวนลูกค้า และสถิติร้านค้า"
                   }
                 </p>
@@ -1526,11 +2870,10 @@ function KitchenMonitor() {
 
               <button
                 onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`p-2 rounded-xl border transition active:scale-95 cursor-pointer ${
-                  soundEnabled 
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100" 
+                className={`p-2 rounded-xl border transition active:scale-95 cursor-pointer ${soundEnabled
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
                     : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200"
-                }`}
+                  }`}
                 title={soundEnabled ? "ปิดเสียงเตือน" : "เปิดเสียงเตือน"}
               >
                 {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
@@ -1561,24 +2904,26 @@ function KitchenMonitor() {
               </button>
               <div>
                 <h1 className="text-sm font-black tracking-tight" style={{ color: BRAND }}>
-                  {view === "kitchen" ? "ครัวลุงเกตุ" : "แดชบอร์ดหลังบ้าน"}
+                  {view === "kitchen" ? "ครัวลุงเกตุ" : view === "tables" ? "ผังโต๊ะอาหาร" : "แดชบอร์ดหลังบ้าน"}
                 </h1>
                 <p className="text-[9px] font-bold text-slate-500">
                   {view === "kitchen" ? (
                     <>
                       คิวค้าง: <span className="text-[#002e47]">{stats.totalActive}</span> · ช่องทาง: {
                         typeFilter === "all" ? "ทั้งหมด" :
-                        typeFilter === "dine-in" ? "ทานที่ร้าน" :
-                        typeFilter === "takeaway" ? "กลับบ้าน" : "เดลิเวอรี่"
+                          typeFilter === "dine-in" ? "ทานที่ร้าน" :
+                            typeFilter === "takeaway" ? "กลับบ้าน" : "เดลิเวอรี่"
                       }
                     </>
+                  ) : view === "tables" ? (
+                    "จัดการผังโต๊ะเรียลไทม์"
                   ) : (
                     "ภาพรวมร้านค้าลุงเกตุ"
                   )}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               {statusFilter === "สำเร็จ" && stats.completed > 0 && (
                 <button
@@ -1589,7 +2934,7 @@ function KitchenMonitor() {
                   <span>ล้าง</span>
                 </button>
               )}
-              
+
               {!soundEnabled && (
                 <span className="p-1.5 rounded-lg bg-red-50 text-red-500 border border-red-100 flex items-center justify-center">
                   <VolumeX size={13} />
@@ -1605,6 +2950,8 @@ function KitchenMonitor() {
             <DashboardView orders={orders} />
           ) : view === "menu" ? (
             <MenuManagementView />
+          ) : view === "tables" ? (
+            <TableManagementView orders={orders} />
           ) : (
             <>
               {/* Navigation Tabs and Channel Filters - Desktop/Tablet */}
@@ -1621,22 +2968,20 @@ function KitchenMonitor() {
                     <button
                       key={tab.id}
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs tracking-wider transition-all shrink-0 cursor-pointer ${
-                        statusFilter === tab.id
+                      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs tracking-wider transition-all shrink-0 cursor-pointer ${statusFilter === tab.id
                           ? "bg-[#002e47] text-white shadow-inner"
                           : "text-[#5a6e7a] hover:text-[#002e47] hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       {tab.dotColor && (
                         <span className={`h-1.5 w-1.5 rounded-full ${tab.dotColor} animate-pulse`} />
                       )}
                       <span>{tab.label}</span>
                       {tab.count !== undefined && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                          statusFilter === tab.id 
-                            ? "bg-slate-700 text-white" 
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${statusFilter === tab.id
+                            ? "bg-slate-700 text-white"
                             : "bg-slate-100 text-[#5a6e7a]"
-                        }`}>
+                          }`}>
                           {tab.count}
                         </span>
                       )}
@@ -1698,7 +3043,7 @@ function KitchenMonitor() {
                         </div>
                       ) : (
                         filteredOrders.map(o => (
-                          <OrderCard 
+                          <OrderCard
                             key={o.id}
                             order={o}
                             advanceOrderStatus={advanceOrderStatus}
@@ -1729,7 +3074,7 @@ function KitchenMonitor() {
                             <EmptyColumnMessage text="ไม่มีออเดอร์ใหม่" />
                           ) : (
                             ordersByStatus.waiting.map(o => (
-                              <OrderCard 
+                              <OrderCard
                                 key={o.id}
                                 order={o}
                                 advanceOrderStatus={advanceOrderStatus}
@@ -1759,7 +3104,7 @@ function KitchenMonitor() {
                             <EmptyColumnMessage text="ไม่มีรายการกำลังปรุง" />
                           ) : (
                             ordersByStatus.cooking.map(o => (
-                              <OrderCard 
+                              <OrderCard
                                 key={o.id}
                                 order={o}
                                 advanceOrderStatus={advanceOrderStatus}
@@ -1771,136 +3116,134 @@ function KitchenMonitor() {
                         </div>
                       </div>
 
-                {/* Column 3: Ready */}
-                <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-soft">
-                  <div className="p-4 bg-emerald-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <h3 className="font-black text-sm uppercase tracking-wider" style={{ color: BRAND }}>
-                        พร้อมเสิร์ฟ
-                      </h3>
+                      {/* Column 3: Ready */}
+                      <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-soft">
+                        <div className="p-4 bg-emerald-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <h3 className="font-black text-sm uppercase tracking-wider" style={{ color: BRAND }}>
+                              พร้อมเสิร์ฟ
+                            </h3>
+                          </div>
+                          <span className="text-white text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-500">
+                            {ordersByStatus.ready.length}
+                          </span>
+                        </div>
+                        <div className="p-4 space-y-4 bg-[#f8fafc]/50">
+                          {ordersByStatus.ready.length === 0 ? (
+                            <EmptyColumnMessage text="ไม่มีออเดอร์พร้อมเสิร์ฟ" />
+                          ) : (
+                            ordersByStatus.ready.map(o => (
+                              <OrderCard
+                                key={o.id}
+                                order={o}
+                                advanceOrderStatus={advanceOrderStatus}
+                                regressOrderStatus={regressOrderStatus}
+                                cancelOrder={cancelOrder}
+                              />
+                            ))
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-white text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-500">
-                      {ordersByStatus.ready.length}
-                    </span>
+                  </>
+                ) : (
+                  /* Single status full screen grid (e.g. Completed history view) */
+                  <div className="bg-white rounded-3xl border border-[#ece4d6] shadow-soft flex flex-col">
+                    <div className="p-4 bg-slate-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
+                      <h3 className="font-black text-sm uppercase tracking-wider" style={{ color: BRAND }}>
+                        {statusFilter === "สำเร็จ" ? "ประวัติรายการสำเร็จ" : `สถานะออเดอร์: ${statusFilter}`}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        {statusFilter === "สำเร็จ" && stats.completed > 0 && (
+                          <button
+                            onClick={clearCompletedOrders}
+                            className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-sm"
+                          >
+                            <Trash2 size={13} />
+                            <span>ล้างรายการสำเร็จทั้งหมด</span>
+                          </button>
+                        )}
+                        <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-0.5 rounded-full">
+                          {filteredOrders.length} รายการ
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-3 sm:p-4 pb-24 md:pb-6 bg-[#f8fafc]/50">
+                      <div className={`mx-auto w-full ${statusFilter === "สำเร็จ"
+                          ? "flex flex-col gap-3 max-w-3xl"
+                          : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                        }`}>
+                        {filteredOrders.length === 0 ? (
+                          <div className="py-16 text-center text-slate-400 font-bold w-full col-span-full">
+                            ไม่มีออเดอร์ในส่วนนี้
+                          </div>
+                        ) : (
+                          filteredOrders.map(o => (
+                            statusFilter === "สำเร็จ" ? (
+                              <HistoryOrderRow
+                                key={o.id}
+                                order={o}
+                              />
+                            ) : (
+                              <OrderCard
+                                key={o.id}
+                                order={o}
+                                advanceOrderStatus={advanceOrderStatus}
+                                regressOrderStatus={regressOrderStatus}
+                                cancelOrder={cancelOrder}
+                              />
+                            )
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-4 space-y-4 bg-[#f8fafc]/50">
-                    {ordersByStatus.ready.length === 0 ? (
-                      <EmptyColumnMessage text="ไม่มีออเดอร์พร้อมเสิร์ฟ" />
-                    ) : (
-                      ordersByStatus.ready.map(o => (
-                        <OrderCard 
-                          key={o.id}
-                          order={o}
-                          advanceOrderStatus={advanceOrderStatus}
-                          regressOrderStatus={regressOrderStatus}
-                          cancelOrder={cancelOrder}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             </>
-          ) : (
-            /* Single status full screen grid (e.g. Completed history view) */
-            <div className="bg-white rounded-3xl border border-[#ece4d6] shadow-soft flex flex-col">
-              <div className="p-4 bg-slate-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
-                <h3 className="font-black text-sm uppercase tracking-wider" style={{ color: BRAND }}>
-                  {statusFilter === "สำเร็จ" ? "ประวัติรายการสำเร็จ" : `สถานะออเดอร์: ${statusFilter}`}
-                </h3>
-                <div className="flex items-center gap-2">
-                  {statusFilter === "สำเร็จ" && stats.completed > 0 && (
-                    <button
-                      onClick={clearCompletedOrders}
-                      className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shadow-sm"
-                    >
-                      <Trash2 size={13} />
-                      <span>ล้างรายการสำเร็จทั้งหมด</span>
-                    </button>
-                  )}
-                  <span className="bg-slate-200 text-slate-700 text-xs font-black px-2.5 py-0.5 rounded-full">
-                    {filteredOrders.length} รายการ
-                  </span>
-                </div>
-              </div>
-              <div className="p-3 sm:p-4 pb-24 md:pb-6 bg-[#f8fafc]/50">
-                <div className={`mx-auto w-full ${
-                  statusFilter === "สำเร็จ"
-                    ? "flex flex-col gap-3 max-w-3xl"
-                    : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
-                }`}>
-                  {filteredOrders.length === 0 ? (
-                    <div className="py-16 text-center text-slate-400 font-bold w-full col-span-full">
-                      ไม่มีออเดอร์ในส่วนนี้
-                    </div>
-                  ) : (
-                    filteredOrders.map(o => (
-                      statusFilter === "สำเร็จ" ? (
-                        <HistoryOrderRow 
-                          key={o.id}
-                          order={o}
-                        />
-                      ) : (
-                        <OrderCard 
-                          key={o.id}
-                          order={o}
-                          advanceOrderStatus={advanceOrderStatus}
-                          regressOrderStatus={regressOrderStatus}
-                          cancelOrder={cancelOrder}
-                        />
-                      )
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
           )}
-        </div>
-      </>
-      )}
-    </main>
+        </main>
 
-      {/* Mobile Bottom Tab Navigation */}
-      <div className="block md:hidden sticky bottom-0 left-0 right-0 bg-white border-t border-[#ece4d6] shadow-lg px-2 py-1 z-30 shrink-0">
-        <div className="flex items-center justify-around">
-          {[
-            { id: "active", label: "ทั้งหมด", icon: ClipboardList, count: stats.totalActive },
-            { id: "รอดำเนินการ", label: "ใหม่", icon: Inbox, count: stats.waiting },
-            { id: "กำลังทำ", label: "กำลังปรุง", icon: Flame, count: stats.cooking },
-            { id: "พร้อมเสิร์ฟ", label: "พร้อมเสิร์ฟ", icon: CheckCircle, count: stats.ready },
-            { id: "สำเร็จ", label: "สำเร็จแล้ว", icon: Trophy, count: stats.completed },
-          ].map((tab) => {
-            const TabIcon = tab.icon;
-            const isActive = view === "kitchen" && statusFilter === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setView("kitchen");
-                  setStatusFilter(tab.id);
-                }}
-                className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all cursor-pointer min-w-[60px] ${
-                  isActive
-                    ? "text-[#002e47] font-black"
-                    : "text-slate-400 font-medium"
-                }`}
-              >
-                <div className="relative">
-                  <TabIcon size={18} className={isActive ? "stroke-[2.5]" : "stroke-[2]"} />
-                  {tab.count > 0 && (
-                    <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[8px] font-bold px-1 py-0.2 rounded-full min-w-[12px] text-center">
-                      {tab.count}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[9px] mt-1 tracking-tight">{tab.label}</span>
-              </button>
-            );
-          })}
+        {/* Mobile Bottom Tab Navigation */}
+        <div className="block md:hidden sticky bottom-0 left-0 right-0 bg-white border-t border-[#ece4d6] shadow-lg px-2 py-1 z-30 shrink-0">
+          <div className="flex items-center justify-around">
+            {[
+              { id: "active", label: "ทั้งหมด", icon: ClipboardList, count: stats.totalActive },
+              { id: "รอดำเนินการ", label: "ใหม่", icon: Inbox, count: stats.waiting },
+              { id: "กำลังทำ", label: "กำลังปรุง", icon: Flame, count: stats.cooking },
+              { id: "พร้อมเสิร์ฟ", label: "พร้อมเสิร์ฟ", icon: CheckCircle, count: stats.ready },
+              { id: "สำเร็จ", label: "สำเร็จแล้ว", icon: Trophy, count: stats.completed },
+            ].map((tab) => {
+              const TabIcon = tab.icon;
+              const isActive = view === "kitchen" && statusFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setView("kitchen");
+                    setStatusFilter(tab.id);
+                  }}
+                  className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all cursor-pointer min-w-[60px] ${isActive
+                      ? "text-[#002e47] font-black"
+                      : "text-slate-400 font-medium"
+                    }`}
+                >
+                  <div className="relative">
+                    <TabIcon size={18} className={isActive ? "stroke-[2.5]" : "stroke-[2]"} />
+                    {tab.count > 0 && (
+                      <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[8px] font-bold px-1 py-0.2 rounded-full min-w-[12px] text-center">
+                        {tab.count}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[9px] mt-1 tracking-tight">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

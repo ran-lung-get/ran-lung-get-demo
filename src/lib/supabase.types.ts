@@ -31,6 +31,16 @@ export type Database = {
         Insert: OrderItemInsert;
         Update: OrderItemUpdate;
       };
+      ingredients: {
+        Row: IngredientRow;
+        Insert: IngredientInsert;
+        Update: IngredientUpdate;
+      };
+      recipe_items: {
+        Row: RecipeItemRow;
+        Insert: RecipeItemInsert;
+        Update: RecipeItemUpdate;
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -202,3 +212,48 @@ export type OrderItemInsert = {
 };
 
 export type OrderItemUpdate = Partial<OrderItemInsert>;
+
+// ── Ingredients (วัตถุดิบ) ───────────────────────────────────
+export type IngredientRow = {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  min_threshold: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type IngredientInsert = {
+  id?: string;
+  name: string;
+  quantity?: number;
+  unit: string;
+  min_threshold?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type IngredientUpdate = Partial<IngredientInsert>;
+
+// ── Recipe Items (รายการในสูตรอาหาร) ─────────────────────────
+export type RecipeItemRow = {
+  id: string;
+  menu_item_id: string | null;
+  option_id: string | null;
+  ingredient_id: string;
+  quantity_required: number;
+  created_at: string;
+};
+
+export type RecipeItemInsert = {
+  id?: string;
+  menu_item_id?: string | null;
+  option_id?: string | null;
+  ingredient_id: string;
+  quantity_required: number;
+  created_at?: string;
+};
+
+export type RecipeItemUpdate = Partial<RecipeItemInsert>;
+

@@ -7,7 +7,7 @@ import {
   getLiffProfile,
   type LiffProfile,
 } from "../../lib/liff";
-import { syncLineUserToSupabase } from "../../lib/supabase.service";
+import { syncLineUserToSupabase, syncAuthUserToSupabase } from "../../lib/supabase.service";
 import { supabase } from "../../lib/supabase";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -388,6 +388,17 @@ function LiffApp() {
             };
             setProfile(sbProfile);
             setLiffReady(true);
+
+            // Sync/fetch DB user and customer
+            try {
+              const res = await syncAuthUserToSupabase(finalSession.user);
+              if (res) {
+                setDbUser(res.user);
+                setDbCustomer(res.customer);
+              }
+            } catch (e) {
+              console.error("Failed to sync auth user:", e);
+            }
           }
           return;
         }
@@ -397,12 +408,18 @@ function LiffApp() {
           const liffPromise = initLiff();
           const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF timeout")), 3000));
           await Promise.race([liffPromise, timeoutPromise]);
-          
+
           if (cancelled) return;
           if (isLiffLoggedIn()) {
             const p = await getLiffProfile();
             if (cancelled) return;
-            try { await syncLineUserToSupabase(p); } catch { /* silent */ }
+            try {
+              const res = await syncLineUserToSupabase(p);
+              if (res) {
+                setDbUser(res.user);
+                setDbCustomer(res.customer);
+              }
+            } catch { /* silent */ }
             if (!cancelled) {
               setProfile(p);
               setLiffReady(true);
@@ -433,8 +450,8 @@ function LiffApp() {
 
     bootstrap();
 
-    return () => { 
-      cancelled = true; 
+    return () => {
+      cancelled = true;
       if (authListener) authListener.unsubscribe();
     };
   }, [navigate]);
@@ -465,6 +482,8 @@ function LiffApp() {
   }, []);
 
   const [tab, setTab] = useState<"home" | "status">("home");
+  const [dbUser, setDbUser] = useState<any>(null);
+  const [dbCustomer, setDbCustomer] = useState<any>(null);
   const [overlay, setOverlay] = useState<null | "menu" | "orderConfirm" | "payment" | "history" | "contact">(null);
   const [sidebar, setSidebar] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -492,7 +511,7 @@ function LiffApp() {
     async function fetchTables() {
       try {
         const { data, error } = await supabase
-          .from("tables")
+          .from("restaurant_tables")
           .select("id, label, status")
           .order("id");
         if (!error && data && data.length > 0) {
@@ -505,7 +524,7 @@ function LiffApp() {
     // Real-time: อัปเดตสถานะโต๊ะทันที
     const ch = supabase
       .channel("tables-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tables" }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, (payload) => {
         if (payload.eventType === "UPDATE" || payload.eventType === "INSERT") {
           const updated = payload.new as any;
           setTables((prev) =>
@@ -527,6 +546,104 @@ function LiffApp() {
   const [simulateClosed, setSimulateClosed] = useState(false);
   const [bypassRealClosed, setBypassRealClosed] = useState(false);
 
+  // States for stock management (proteins & toppings)
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [recipes, setRecipes] = useState<any[]>([]);
+
+  // Fetch ingredients and recipes from Supabase with real-time sync
+  useEffect(() => {
+    async function loadStock() {
+      try {
+        const { data: ingData } = await supabase.from("ingredients").select("*");
+        if (ingData && ingData.length > 0) {
+          setIngredients(ingData);
+        } else {
+          const localIng = localStorage.getItem("ran-lung-get-mock-ingredients");
+          if (localIng) {
+            setIngredients(JSON.parse(localIng));
+          }
+        }
+
+        const { data: recData } = await supabase.from("recipe_items").select("*");
+        if (recData && recData.length > 0) {
+          setRecipes(recData);
+        } else {
+          const fallbackRecipes = [
+            { option_id: "opt-mu-sap", ingredient_id: "mock-1", quantity_required: 80 },
+            { option_id: "opt-mu-krob", ingredient_id: "mock-2", quantity_required: 80 },
+            { option_id: "opt-mu-chin", ingredient_id: "mock-3", quantity_required: 80 },
+            { option_id: "opt-kai-sap", ingredient_id: "mock-4", quantity_required: 80 },
+            { option_id: "opt-kai-tom", ingredient_id: "mock-5", quantity_required: 80 },
+            { option_id: "opt-nua", ingredient_id: "mock-6", quantity_required: 80 },
+            { option_id: "opt-muek", ingredient_id: "mock-7", quantity_required: 80 },
+            { option_id: "opt-kung", ingredient_id: "mock-8", quantity_required: 80 },
+            { option_id: "opt-hoi-lay", ingredient_id: "mock-9", quantity_required: 80 },
+            { option_id: "opt-khai-kai", ingredient_id: "mock-10", quantity_required: 1 },
+            { option_id: "opt-sai-krog", ingredient_id: "mock-11", quantity_required: 1 },
+            { option_id: "opt-kun-chiang", ingredient_id: "mock-12", quantity_required: 1 }
+          ];
+          setRecipes(fallbackRecipes);
+        }
+      } catch (err) {
+        console.warn("Error loading stock from database, using local fallback:", err);
+        const localIng = localStorage.getItem("ran-lung-get-mock-ingredients");
+        if (localIng) {
+          setIngredients(JSON.parse(localIng));
+        }
+      }
+    }
+    loadStock();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "ran-lung-get-mock-ingredients" && e.newValue) {
+        try {
+          setIngredients(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error("Storage sync parse error:", err);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // Subscribe to real-time changes on ingredients
+    const chIng = supabase
+      .channel("ingredients-realtime-customer")
+      .on("postgres_changes", { event: "*", schema: "public", table: "ingredients" }, () => {
+        loadStock();
+      })
+      .subscribe();
+
+    // Subscribe to real-time changes on recipe items
+    const chRec = supabase
+      .channel("recipe_items-realtime-customer")
+      .on("postgres_changes", { event: "*", schema: "public", table: "recipe_items" }, () => {
+        loadStock();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      supabase.removeChannel(chIng);
+      supabase.removeChannel(chRec);
+    };
+  }, []);
+
+  const checkOptionOutOfStock = (optionId: string) => {
+    const optionRecipes = recipes.filter((r) => r.option_id === optionId);
+    if (optionRecipes.length === 0) return false;
+
+    return optionRecipes.some((recipe) => {
+      const ingredient = ingredients.find((i) => {
+        return i.id === recipe.ingredient_id ||
+               i.name === recipe.ingredient_id ||
+               (recipe.ingredient_id && recipe.ingredient_id.includes(i.name));
+      });
+      if (!ingredient) return true;
+      if (ingredient.is_active === false || ingredient.status === "disabled") return true;
+      return Number(ingredient.quantity) < Number(recipe.quantity_required);
+    });
+  };
+
 
 
   const isCurrentlyClosed = useMemo(() => {
@@ -535,8 +652,7 @@ function LiffApp() {
 
     // Bangkok timezone ICT (UTC+7)
     const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const thTime = new Date(utc + 3600000 * 7);
+    const thTime = new Date(now.getTime() + 3600000 * 7);
     const day = thTime.getUTCDay(); // 0 is Sunday, 6 is Saturday
     const hour = thTime.getUTCHours();
     const minute = thTime.getUTCMinutes();
@@ -558,8 +674,8 @@ function LiffApp() {
     return false;
   }, [simulateClosed, bypassRealClosed]);
 
-  const shouldShowClosedOverlay = isCurrentlyClosed && 
-    tab === "home" && 
+  const shouldShowClosedOverlay = isCurrentlyClosed &&
+    tab === "home" &&
     (overlay === null || overlay === "menu" || overlay === "orderConfirm" || overlay === "payment");
 
   const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([
@@ -644,21 +760,79 @@ function LiffApp() {
       setTables((prev) =>
         prev.map((t) => (t.id === selectedTable ? { ...t, status: "occupied" } : t))
       );
+      // Update table status in Supabase to occupied
+      void (supabase as any)
+        .from("restaurant_tables")
+        .update({ status: "occupied" })
+        .eq("id", selectedTable);
     }
 
     // Push order to Supabase for real-time Staff Dashboard
-    void (supabase as any).from("orders").insert({
-      id: newOrder.id,
-      order_number: orderNum,
-      order_type: orderType || "delivery",
-      total_amount: subtotal + deliveryFee,
-      status: "pending", // Staff sees it as pending
-      items: newOrder.items,
-      table_id: orderType === "dine-in" ? selectedTable : null,
-      address: orderType === "delivery" ? address : null,
-      queue_number: takeawayQueueNum || null,
-      created_at: new Date().toISOString(),
-    });
+    const insertOrder = async () => {
+      let finalUserId = dbUser?.id;
+      let finalCustomerId = dbCustomer?.id;
+      
+      if (!finalUserId || !finalCustomerId) {
+        try {
+          const { data: users } = await supabase.from("users").select("id").limit(1);
+          const { data: customers } = await supabase.from("customers").select("id").limit(1);
+          if (users && users.length > 0) finalUserId = users[0].id;
+          if (customers && customers.length > 0) finalCustomerId = customers[0].id;
+        } catch {}
+      }
+
+      if (!finalUserId || !finalCustomerId) {
+        console.warn("Could not find any user or customer in Supabase. Skipping Supabase insert.");
+        return;
+      }
+
+      const orderId = typeof crypto?.randomUUID === 'function' 
+        ? crypto.randomUUID() 
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { 
+            const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8); 
+            return v.toString(16); 
+          });
+
+      const { error: orderErr } = await supabase.from("orders").insert({
+        id: orderId,
+        order_number: orderNum,
+        user_id: finalUserId,
+        customer_id: finalCustomerId,
+        line_user_id: profile?.userId || null,
+        order_type: orderType || "delivery",
+        status: "pending",
+        subtotal: subtotal,
+        delivery_fee: deliveryFee,
+        total: subtotal + deliveryFee,
+        table_number: tableNumStr || null,
+        delivery_address: orderType === "delivery" ? address : null,
+        special_instructions: null,
+        created_at: new Date().toISOString()
+      });
+
+      if (orderErr) {
+        console.error("Failed to insert order in Supabase:", orderErr);
+        return;
+      }
+
+      const orderItems = newOrder.items.map((item) => ({
+        order_id: orderId,
+        item_id: item.name,
+        name: item.name,
+        image: item.image || null,
+        unit_price: item.price,
+        quantity: item.qty,
+        line_total: item.price * item.qty,
+        created_at: new Date().toISOString()
+      }));
+
+      const { error: itemsErr } = await supabase.from("order_items").insert(orderItems);
+      if (itemsErr) {
+        console.error("Failed to insert order items in Supabase:", itemsErr);
+      }
+    };
+
+    void insertOrder();
   };
 
   const resetAll = () => {
@@ -779,6 +953,7 @@ function LiffApp() {
                 addToCart(line);
                 setSelectedItem(null);
               }}
+              checkOptionOutOfStock={checkOptionOutOfStock}
             />
           )}
         </AnimatePresence>
@@ -877,7 +1052,7 @@ function LiffApp() {
               profile={profile}
               onLogout={async () => {
                 // Sign out จาก Supabase Auth
-                await supabase.auth.signOut().catch(() => {});
+                await supabase.auth.signOut().catch(() => { });
                 // Sign out จาก LIFF (ถ้า login อยู่)
                 try { liffLogout(); } catch { /* ignore */ }
                 navigate({ to: "/login" });
@@ -920,15 +1095,15 @@ function LiffApp() {
                 // Update in Supabase (best-effort)
                 if (prevTable && prevTable !== tableId) {
                   void (supabase as any)
-                    .from("tables")
+                    .from("restaurant_tables")
                     .update({ status: "available" })
                     .eq("id", prevTable);
                 }
                 void (supabase as any)
-                  .from("tables")
+                  .from("restaurant_tables")
                   .update({ status: "occupied" })
                   .eq("id", tableId);
-                  
+
                 setTimeout(() => setShowTablePicker(false), 200);
               }}
               onClose={() => setShowTablePicker(false)}
@@ -1275,11 +1450,10 @@ function HomeScreen({
           <p className="text-sm text-white/80 mt-1">เลือกประสบการณ์การรับประทาน</p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border backdrop-blur-sm ${
-                isCurrentlyClosed
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border backdrop-blur-sm ${isCurrentlyClosed
                   ? "bg-red-500/20 text-red-400 border-red-500/35"
                   : "bg-emerald-500/20 text-emerald-400 border-emerald-500/35"
-              }`}>
+                }`}>
                 <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isCurrentlyClosed ? "bg-red-400" : "bg-emerald-400"}`} />
                 {isCurrentlyClosed ? "ปิดบริการ" : "เปิดบริการ"}
               </span>
@@ -1445,7 +1619,7 @@ function HomeScreen({
                     <ShoppingBag size={16} /> รับกลับบ้าน (Take Away)
                   </h4>
                   <p className="text-xs text-slate-500 leading-normal font-semibold">
-                    ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น 
+                    ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น
                     <strong className="text-[#059669] mx-1">"พร้อมเสิร์ฟ"</strong>
                   </p>
                 </div>
@@ -1730,10 +1904,12 @@ function ItemModal({
   item,
   onClose,
   onAdd,
+  checkOptionOutOfStock,
 }: {
   item: MenuItem;
   onClose: () => void;
   onAdd: (line: CartLine) => void;
+  checkOptionOutOfStock: (optionId: string) => boolean;
 }) {
   const [qty, setQty] = useState(1);
   const [options, setOptions] = useState<Record<string, string>>(() => {
@@ -1756,6 +1932,20 @@ function ItemModal({
   const [protein, setProtein] = useState(defaultProteinId);
   const [size, setSize] = useState("s_regular");
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+
+  // Auto-switch to first available protein if selected protein is out of stock
+  useEffect(() => {
+    if (!isFood || !protein) return;
+    const isCurrentOutOfStock = checkOptionOutOfStock(protein);
+    if (isCurrentOutOfStock) {
+      const firstAvailable = PROTEINS.find((p) => !checkOptionOutOfStock(p.id));
+      if (firstAvailable) {
+        setProtein(firstAvailable.id);
+      } else {
+        setProtein("p_no_meat"); // Fallback to no meat
+      }
+    }
+  }, [protein, isFood, checkOptionOutOfStock]);
 
   // Calculate base price excluding default protein price
   const basePrice = useMemo(() => {
@@ -1951,21 +2141,25 @@ function ItemModal({
                 <div className="grid grid-cols-2 gap-2">
                   {PROTEINS.map((p) => {
                     const active = protein === p.id;
+                    const isOutOfStock = checkOptionOutOfStock(p.id);
                     return (
                       <button
                         key={p.id}
+                        disabled={isOutOfStock}
                         onClick={() => setProtein(p.id)}
-                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150"
+                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150 relative overflow-hidden"
                         style={{
-                          borderColor: active ? BRAND : "#ece4d6",
-                          background: active ? "#fffcf5" : "white",
+                          borderColor: active ? BRAND : isOutOfStock ? "#f1f5f9" : "#ece4d6",
+                          background: active ? "#fffcf5" : isOutOfStock ? "#f8fafc" : "white",
+                          opacity: isOutOfStock ? 0.5 : 1,
+                          cursor: isOutOfStock ? "not-allowed" : "pointer"
                         }}
                       >
-                        <span className="text-xs font-semibold" style={{ color: BRAND }}>
-                          {p.name}
+                        <span className={`text-xs font-semibold ${isOutOfStock ? "line-through text-slate-400" : ""}`} style={{ color: isOutOfStock ? undefined : BRAND }}>
+                          {p.name} {isOutOfStock && "(หมด)"}
                         </span>
                         <span className="text-[11px] font-bold" style={{ color: active ? BRAND : INK_MUTED }}>
-                          {p.price > 0 ? `+${p.price} ฿` : "ฟรี"}
+                          {isOutOfStock ? "" : p.price > 0 ? `+${p.price} ฿` : "ฟรี"}
                         </span>
                       </button>
                     );
@@ -2011,18 +2205,22 @@ function ItemModal({
                 <div className="grid grid-cols-2 gap-2">
                   {TOPPINGS.map((t) => {
                     const active = selectedToppings.includes(t.id);
+                    const isOutOfStock = checkOptionOutOfStock(t.id);
                     return (
                       <button
                         key={t.id}
+                        disabled={isOutOfStock}
                         onClick={() =>
                           setSelectedToppings((prev) =>
                             active ? prev.filter((id) => id !== t.id) : [...prev, t.id]
                           )
                         }
-                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150"
+                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150 relative overflow-hidden"
                         style={{
-                          borderColor: active ? BRAND : "#ece4d6",
-                          background: active ? "#fffcf5" : "white",
+                          borderColor: active ? BRAND : isOutOfStock ? "#f1f5f9" : "#ece4d6",
+                          background: active ? "#fffcf5" : isOutOfStock ? "#f8fafc" : "white",
+                          opacity: isOutOfStock ? 0.5 : 1,
+                          cursor: isOutOfStock ? "not-allowed" : "pointer"
                         }}
                       >
                         <span className="flex items-center gap-2">
@@ -2035,12 +2233,12 @@ function ItemModal({
                           >
                             {active && <Check size={10} color={GOLD} strokeWidth={4} />}
                           </span>
-                          <span className="text-xs font-medium" style={{ color: BRAND }}>
-                            {t.name}
+                          <span className={`text-xs font-medium ${isOutOfStock ? "line-through text-slate-400" : ""}`} style={{ color: isOutOfStock ? undefined : BRAND }}>
+                            {t.name} {isOutOfStock && "(หมด)"}
                           </span>
                         </span>
                         <span className="text-[11px] font-bold" style={{ color: BRAND }}>
-                          +{t.price} ฿
+                          {isOutOfStock ? "" : `+${t.price} ฿`}
                         </span>
                       </button>
                     );
@@ -2180,8 +2378,8 @@ function MenuOverlay({
     let list = activeCat === "all"
       ? MENU.filter((m) => m.category === "signature")
       : activeCat === "signature"
-      ? MENU.filter((m) => m.category !== "drinks" && m.category !== "dessert")
-      : MENU.filter((m) => m.category === activeCat);
+        ? MENU.filter((m) => m.category !== "drinks" && m.category !== "dessert")
+        : MENU.filter((m) => m.category === activeCat);
 
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
@@ -2229,7 +2427,7 @@ function MenuOverlay({
             <Search size={20} />
           </button>
         </div>
-        
+
         {/* Search input and Sort button */}
         <div className="mt-4 flex gap-2">
           <div className="flex-1 rounded-2xl bg-white px-4 py-3 shadow-sm border border-slate-200 flex items-center gap-3">
@@ -2404,7 +2602,7 @@ function MenuOverlay({
                   </button>
                 </div>
               </div>
-              
+
               <div className="px-5 mt-4 space-y-2.5">
                 {[
                   { id: "default", label: "🔥 ยอดนิยม (แนะนำ)", desc: "เมนูขายดีประจำสัปดาห์" },
@@ -2938,17 +3136,17 @@ function StatusScreen({
 
   const steps = orderType === "dine-in"
     ? [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
-      ]
+      { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+      { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+      { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
+    ]
     : orderType === "takeaway"
-    ? [
+      ? [
         { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
         { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
         { id: 3, label: "พร้อมรับอาหาร", icon: ShoppingBag, done: currentStatus === "สำเร็จ", active: false },
       ]
-    : [
+      : [
         { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
         { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "กำลังจัดส่ง" || currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
         { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังจัดส่ง" },
@@ -3065,8 +3263,8 @@ function StatusScreen({
             <span>กำลังดำเนินการคืนเงิน</span>
           </div>
           <p className="text-xs text-amber-700 leading-relaxed font-medium">
-            ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน 
-            <strong className="text-amber-900 mx-1">฿{total.toLocaleString()}</strong> 
+            ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน
+            <strong className="text-amber-900 mx-1">฿{total.toLocaleString()}</strong>
             ไปที่พร้อมเพย์: <strong className="text-amber-900">{activeOrder?.refundPromptPay}</strong>
           </p>
           <p className="text-[10px] text-amber-600">
@@ -3285,11 +3483,10 @@ function StatusScreen({
                 {cancelReasonsList.map((reason) => (
                   <label
                     key={reason}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer text-sm font-semibold ${
-                      selectedReason === reason
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer text-sm font-semibold ${selectedReason === reason
                         ? "border-[#002e47] bg-[#fffcf5]"
                         : "border-[#ece4d6] hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
@@ -3375,16 +3572,16 @@ function MiniOrderTracker({
 }) {
   const steps = orderType === "dine-in"
     ? [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
-        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
-      ]
+      { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+      { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
+      { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+    ]
     : [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
-        { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
-        { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
-      ];
+      { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+      { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
+      { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
+      { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+    ];
 
   const doneCount = steps.filter((s) => s.done).length;
   const progressPercent = ((doneCount + 0.5) / steps.length) * 100; // halfway through active step
@@ -3704,7 +3901,7 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
-        
+
         {/* Google Maps Container */}
         <div className="relative h-64 w-full bg-slate-200 overflow-hidden">
           <iframe
@@ -3716,7 +3913,7 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
             allowFullScreen
             loading="lazy"
           ></iframe>
-          
+
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
 
@@ -3726,7 +3923,7 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
               <h2 className="text-xl font-bold">ร้านลุงเก็ต</h2>
               <p className="text-xs text-white/80 mt-1">อาหารตามสั่ง · Street Food</p>
             </div>
-            
+
             {/* Rating badge */}
             <div className="bg-[#ffcb44] rounded-2xl px-3 py-2 flex flex-col items-center shadow-lg shrink-0" style={{ color: BRAND }}>
               <span className="text-base font-extrabold leading-none">4.8</span>
@@ -3891,8 +4088,7 @@ function StoreClosedOverlay({
 }) {
   const todayDay = useMemo(() => {
     const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const thTime = new Date(utc + 3600000 * 7);
+    const thTime = new Date(now.getTime() + 3600000 * 7);
     return thTime.getUTCDay();
   }, []);
 
@@ -3962,23 +4158,21 @@ function StoreClosedOverlay({
                 return (
                   <div
                     key={day.dayIndex}
-                    className={`flex items-center justify-between px-4 py-3.5 transition-colors ${
-                      isToday ? "bg-amber-500/5" : ""
-                    }`}
+                    className={`flex items-center justify-between px-4 py-3.5 transition-colors ${isToday ? "bg-amber-500/5" : ""
+                      }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center ${
-                        isToday 
+                      <span className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center ${isToday
                           ? "bg-amber-500 text-white shadow-sm"
                           : "bg-slate-100 text-slate-500"
-                      }`}>
+                        }`}>
                         {day.label}
                       </span>
                       <span className={`text-sm font-semibold ${isToday ? "text-slate-800" : "text-slate-600"}`}>
                         {day.name} {isToday && <span className="ml-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-full">วันนี้</span>}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono font-bold text-slate-700">{day.time}</span>
                       <span className={`h-2.5 w-2.5 rounded-full ${day.open ? "bg-emerald-500" : "bg-red-500"}`} />
@@ -4103,14 +4297,12 @@ function Sidebar({
               <button
                 type="button"
                 onClick={() => setSimulateClosed(!simulateClosed)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  simulateClosed ? "bg-amber-500" : "bg-white/15"
-                }`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${simulateClosed ? "bg-amber-500" : "bg-white/15"
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    simulateClosed ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${simulateClosed ? "translate-x-5" : "translate-x-0"
+                    }`}
                 />
               </button>
             </div>
