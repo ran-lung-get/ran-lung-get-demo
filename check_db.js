@@ -4,71 +4,90 @@ const supabaseUrl = 'https://vshamisexmjcymsdyhym.supabase.co/';
 const supabaseKey = 'sb_publishable_viPzmZUj0b2sbHlyWAnz5Q_PntK9O03';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function simulateCustomerOrder() {
-  console.log("Simulating Table 3 order placement...");
+// Mock process.env keys for the simulation if they aren't set
+process.env.GOOGLE_TRANSLATE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY || '';
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'mock-openai-key-for-testing';
 
-  // 1. Mark Table 3 as occupied
-  console.log("1. Setting Table 3 status to occupied...");
-  const { error: tableError } = await supabase
-    .from('restaurant_tables')
-    .update({ status: 'occupied' })
-    .eq('id', '3');
+// Mock translation function to simulate the backend behavior
+async function simulateTranslate({ text, sourceLang, targetLang }) {
+  console.log(`\n--- Starting Translation Simulation ---`);
+  console.log(`Input: "${text}" | Source: ${sourceLang} -> Target: ${targetLang}`);
 
-  if (tableError) {
-    console.error("Table update failed:", tableError.message);
-    return;
+  const cacheSourceLang = sourceLang === "auto" ? "auto" : sourceLang;
+
+  // 1. Check cache in Supabase
+  console.log("Step 1: Checking translation_cache table in Supabase...");
+  const { data: cached, error: cacheErr } = await supabase
+    .from("translation_cache")
+    .select("translated_text")
+    .eq("source_text", text)
+    .eq("source_lang", cacheSourceLang)
+    .eq("target_lang", targetLang)
+    .maybeSingle();
+
+  if (cacheErr) {
+    if (cacheErr.message.includes("does not exist") || cacheErr.code === 'P0001') {
+      console.warn("⚠️ Warning: Table 'translation_cache' does not exist in Supabase yet. Please run the SQL migration (004_create_translation_cache.sql) in your Supabase SQL Editor!");
+    } else {
+      console.error("  Cache query failed:", cacheErr.message);
+    }
+  } else if (cached) {
+    console.log("🎉 SUCCESS: Cache Hit! Found cached translation:", JSON.stringify(cached));
+    return { translatedText: cached.translated_text, cached: true };
+  } else {
+    console.log("  Cache Miss: No matching cached translation found.");
   }
-  console.log("Table update success!");
 
-  // 2. Insert order
-  console.log("2. Inserting order for Table 3...");
-  const orderId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'; // Valid UUID format
-  
-  // Clean up existing if any
-  await supabase.from('orders').delete().eq('id', orderId);
+  // 2. Simulate APIs
+  let translatedText = "";
+  let usedAPI = "";
 
-  const { error: orderError } = await supabase
-    .from('orders')
+  if (process.env.GOOGLE_TRANSLATE_API_KEY) {
+    console.log("Step 2: Simulating Google Translate API Call...");
+    translatedText = `[Google translated to ${targetLang}] ${text}`;
+    usedAPI = "Google Translate API";
+  } else {
+    console.log("Step 2: Google Translate API Key is missing. Falling back to OpenAI...");
+    console.log("Step 3: Simulating OpenAI API Call (gpt-4o-mini)...");
+    translatedText = `[OpenAI translated to ${targetLang}] ${text}`;
+    usedAPI = "OpenAI API (gpt-4o-mini)";
+  }
+
+  console.log(`🎉 Translation Success! Result: "${translatedText}" (via ${usedAPI})`);
+
+  // 4. Try saving to Cache
+  console.log("Step 4: Attempting to save to translation_cache...");
+  const { error: insertErr } = await supabase
+    .from("translation_cache")
     .insert({
-      id: orderId,
-      order_number: '#AK-SIM333',
-      user_id: '4c228cea-510c-4bad-8f1a-32215209ac9d',
-      customer_id: '7662a0ad-c2b8-4c0a-8aa9-872a9d5d12bb',
-      order_type: 'dine-in',
-      status: 'pending',
-      subtotal: 120,
-      total: 120,
-      table_number: 'โต๊ะ 3',
-      created_at: new Date().toISOString()
+      source_text: text,
+      source_lang: cacheSourceLang,
+      target_lang: targetLang,
+      translated_text: translatedText,
     });
 
-  if (orderError) {
-    console.error("Order insert failed:", orderError.message);
-    return;
+  if (insertErr) {
+    console.error("  Insert cache failed:", insertErr.message);
+  } else {
+    console.log("🎉 SUCCESS: Saved new translation to cache!");
   }
-  console.log("Order insert success!");
 
-  // 3. Insert order items
-  console.log("3. Inserting order items...");
-  const { error: itemsError } = await supabase
-    .from('order_items')
-    .insert([
-      {
-        order_id: orderId,
-        item_id: 'pad_thai',
-        name: 'ผัดไทยกุ้งสด (Simulated)',
-        unit_price: 120,
-        quantity: 1,
-        line_total: 120,
-        created_at: new Date().toISOString()
-      }
-    ]);
-
-  if (itemsError) {
-    console.error("Items insert failed:", itemsError.message);
-    return;
-  }
-  console.log("Items insert success! Simulation complete.");
+  return { translatedText, cached: false };
 }
 
-simulateCustomerOrder();
+async function runTest() {
+  // Test 1: First translation (Cache Miss)
+  console.log("=========================================");
+  console.log("TEST 1: Translate a new sentence (Cache Miss & Save)");
+  console.log("=========================================");
+  const testText = "สวัสดีตอนเช้าครับเพื่อนๆ";
+  await simulateTranslate({ text: testText, sourceLang: "th", targetLang: "en" });
+
+  // Test 2: Second translation (Cache Hit)
+  console.log("\n=========================================");
+  console.log("TEST 2: Translate the SAME sentence again (Cache Hit)");
+  console.log("=========================================");
+  await simulateTranslate({ text: testText, sourceLang: "th", targetLang: "en" });
+}
+
+runTest();

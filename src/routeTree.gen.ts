@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TestTranslationRouteImport } from './routes/test-translation'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KitchenRouteImport } from './routes/kitchen'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +17,11 @@ import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as CustomerIndexRouteImport } from './routes/customer/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 
+const TestTranslationRoute = TestTranslationRouteImport.update({
+  id: '/test-translation',
+  path: '/test-translation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
+  '/test-translation': typeof TestTranslationRoute
   '/admin/': typeof AdminIndexRoute
   '/customer/': typeof CustomerIndexRoute
   '/staff/': typeof StaffIndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
+  '/test-translation': typeof TestTranslationRoute
   '/admin': typeof AdminIndexRoute
   '/customer': typeof CustomerIndexRoute
   '/staff': typeof StaffIndexRoute
@@ -68,20 +76,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
+  '/test-translation': typeof TestTranslationRoute
   '/admin/': typeof AdminIndexRoute
   '/customer/': typeof CustomerIndexRoute
   '/staff/': typeof StaffIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/kitchen' | '/login' | '/admin/' | '/customer/' | '/staff/'
+  fullPaths:
+    | '/'
+    | '/kitchen'
+    | '/login'
+    | '/test-translation'
+    | '/admin/'
+    | '/customer/'
+    | '/staff/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kitchen' | '/login' | '/admin' | '/customer' | '/staff'
+  to:
+    | '/'
+    | '/kitchen'
+    | '/login'
+    | '/test-translation'
+    | '/admin'
+    | '/customer'
+    | '/staff'
   id:
     | '__root__'
     | '/'
     | '/kitchen'
     | '/login'
+    | '/test-translation'
     | '/admin/'
     | '/customer/'
     | '/staff/'
@@ -91,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   KitchenRoute: typeof KitchenRoute
   LoginRoute: typeof LoginRoute
+  TestTranslationRoute: typeof TestTranslationRoute
   AdminIndexRoute: typeof AdminIndexRoute
   CustomerIndexRoute: typeof CustomerIndexRoute
   StaffIndexRoute: typeof StaffIndexRoute
@@ -98,6 +123,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/test-translation': {
+      id: '/test-translation'
+      path: '/test-translation'
+      fullPath: '/test-translation'
+      preLoaderRoute: typeof TestTranslationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -147,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   KitchenRoute: KitchenRoute,
   LoginRoute: LoginRoute,
+  TestTranslationRoute: TestTranslationRoute,
   AdminIndexRoute: AdminIndexRoute,
   CustomerIndexRoute: CustomerIndexRoute,
   StaffIndexRoute: StaffIndexRoute,

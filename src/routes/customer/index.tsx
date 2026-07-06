@@ -10,12 +10,15 @@ import {
 import { syncLineUserToSupabase, syncAuthUserToSupabase } from "../../lib/supabase.service";
 import { supabase } from "../../lib/supabase";
 import { AnimatePresence, motion } from "motion/react";
+import { useLanguage, type Language } from "../../lib/i18n";
 import {
+  Globe,
   Menu,
   Plus,
   Minus,
   ShoppingBag,
   ChevronLeft,
+  ChevronDown,
   Trash2,
   X,
   Copy,
@@ -366,6 +369,7 @@ function LiffApp() {
   const navigate = useNavigate();
   const [liffReady, setLiffReady] = useState(false);
   const [profile, setProfile] = useState<LiffProfile | null>(null);
+  const { language, setLanguage, t, tMenu } = useLanguage();
 
   // ── Auth Guard (Supabase Session OR LINE LIFF) ──────────────
   useEffect(() => {
@@ -1370,6 +1374,58 @@ function DineInBlock({ selectedTable, onOpenPicker }: { selectedTable: string; o
   );
 }
 
+function FlagIcon({ lang }: { lang: string }) {
+  if (lang === "th") {
+    return (
+      <svg viewBox="0 0 9 6" className="w-5 h-3.5 rounded-sm shrink-0 shadow-sm border border-white/10">
+        <rect width="9" height="6" fill="#A51931"/>
+        <rect y="1" width="9" height="4" fill="#F4F5F8"/>
+        <rect y="2" width="9" height="2" fill="#2D2A4A"/>
+      </svg>
+    );
+  }
+  if (lang === "en") {
+    return (
+      <svg viewBox="0 0 19 10" className="w-5 h-3.5 rounded-sm shrink-0 shadow-sm border border-white/10">
+        <rect width="19" height="10" fill="#B22234"/>
+        <path d="M0,1 h19 M0,3 h19 M0,5 h19 M0,7 h19 M0,9 h19" stroke="#FFF" strokeWidth="1"/>
+        <rect width="7.6" height="5.38" fill="#3C3B6E"/>
+        <circle cx="1.5" cy="1" r="0.2" fill="#fff" />
+        <circle cx="3.0" cy="1" r="0.2" fill="#fff" />
+        <circle cx="4.5" cy="1" r="0.2" fill="#fff" />
+        <circle cx="6.0" cy="1" r="0.2" fill="#fff" />
+        <circle cx="2.2" cy="1.8" r="0.2" fill="#fff" />
+        <circle cx="3.7" cy="1.8" r="0.2" fill="#fff" />
+        <circle cx="5.2" cy="1.8" r="0.2" fill="#fff" />
+        <circle cx="1.5" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="3.0" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="4.5" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="6.0" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="2.2" cy="3.4" r="0.2" fill="#fff" />
+        <circle cx="3.7" cy="3.4" r="0.2" fill="#fff" />
+        <circle cx="5.2" cy="3.4" r="0.2" fill="#fff" />
+        <circle cx="1.5" cy="4.2" r="0.2" fill="#fff" />
+        <circle cx="3.0" cy="4.2" r="0.2" fill="#fff" />
+        <circle cx="4.5" cy="4.2" r="0.2" fill="#fff" />
+        <circle cx="6.0" cy="4.2" r="0.2" fill="#fff" />
+      </svg>
+    );
+  }
+  if (lang === "zh") {
+    return (
+      <svg viewBox="0 0 30 20" className="w-5 h-3.5 rounded-sm shrink-0 shadow-sm border border-white/10">
+        <rect width="30" height="20" fill="#DE2910"/>
+        <polygon points="5,2 6.17,5.61 9.33,5.61 6.78,7.47 7.76,11.08 5,8.89 2.24,11.08 3.22,7.47 0.67,5.61 3.83,5.61" fill="#FFDE00"/>
+        <circle cx="10" cy="2" r="0.5" fill="#FFDE00" />
+        <circle cx="12" cy="4" r="0.5" fill="#FFDE00" />
+        <circle cx="12" cy="7" r="0.5" fill="#FFDE00" />
+        <circle cx="10" cy="9" r="0.5" fill="#FFDE00" />
+      </svg>
+    );
+  }
+  return null;
+}
+
 function HomeScreen({
   onOpenSidebar,
   orderType,
@@ -1429,6 +1485,8 @@ function HomeScreen({
   isCurrentlyClosed: boolean;
   bypassRealClosed: boolean;
 }) {
+  const { language, setLanguage, t, tMenu } = useLanguage();
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -1460,6 +1518,78 @@ function HomeScreen({
         >
           <Menu size={20} />
         </button>
+
+        {/* Language Selector */}
+        <div className="absolute top-5 right-24 z-30">
+          <button
+            onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+            className="flex items-center bg-black/35 hover:bg-black/45 backdrop-blur-md px-3.5 py-2.5 rounded-full border border-white/20 text-white shadow-md transition-all cursor-pointer min-w-[125px] justify-between h-10 select-none active:scale-95 border-box"
+          >
+            <div className="flex items-center gap-2">
+              <FlagIcon lang={language} />
+              <span className="font-extrabold text-[11px] tracking-wide whitespace-nowrap">
+                {language === "th" ? "ภาษาไทย" : language === "en" ? "English" : "中文"}
+              </span>
+            </div>
+            <ChevronDown 
+              size={13} 
+              className={`opacity-75 transition-transform duration-200 ${langDropdownOpen ? "rotate-180" : ""}`} 
+            />
+          </button>
+
+          {/* Invisible clickaway backdrop */}
+          {langDropdownOpen && (
+            <div 
+              className="fixed inset-0 z-40 cursor-default" 
+              onClick={() => setLangDropdownOpen(false)}
+            />
+          )}
+
+          {/* Premium styled Dropdown Menu */}
+          <AnimatePresence>
+            {langDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-full mt-0 w-44 bg-black/80 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl overflow-hidden z-50 p-1.5 flex flex-col gap-1"
+              >
+                {[
+                  { code: "th", label: "ภาษาไทย", text: "Thai" },
+                  { code: "en", label: "English", text: "English" },
+                  { code: "zh", label: "中文", text: "Chinese" }
+                ].map((item) => {
+                  const isActive = language === item.code;
+                  return (
+                    <button
+                      key={item.code}
+                      onClick={() => {
+                        setLanguage(item.code as Language);
+                        setLangDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
+                      style={{
+                        background: isActive ? "rgba(252,193,74,0.15)" : "transparent",
+                        color: isActive ? "#fcc14a" : "#ffffff",
+                        fontWeight: isActive ? "800" : "600"
+                      }}
+                    >
+                      <span className="flex items-center gap-2 tracking-wide">
+                        <FlagIcon lang={item.code} />
+                        {item.label}
+                      </span>
+                      {isActive && (
+                        <Check size={12} className="text-[#fcc14a]" strokeWidth={3} />
+                      )}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <button
           onClick={onOpenCart}
           className="absolute top-5 right-5 flex items-center gap-1 text-white/90 text-xs bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-white/15"
@@ -1474,8 +1604,8 @@ function HomeScreen({
 
         <div className="absolute bottom-5 left-5 right-5 text-white">
           <p className="text-xs uppercase tracking-[0.2em] text-white/70">EPICUREAN</p>
-          <h1 className="text-2xl font-bold mt-1">สวัสดี, ยินดีต้อนรับ</h1>
-          <p className="text-sm text-white/80 mt-1">เลือกประสบการณ์การรับประทาน</p>
+          <h1 className="text-2xl font-bold mt-1">{t("สวัสดี, ยินดีต้อนรับ")}</h1>
+          <p className="text-sm text-white/80 mt-1">{t("เลือกประสบการณ์การรับประทาน")}</p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border backdrop-blur-sm ${isCurrentlyClosed
@@ -1483,10 +1613,10 @@ function HomeScreen({
                   : "bg-emerald-500/20 text-emerald-400 border-emerald-500/35"
                 }`}>
                 <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isCurrentlyClosed ? "bg-red-400" : "bg-emerald-400"}`} />
-                {isCurrentlyClosed ? "ปิดบริการ" : "เปิดบริการ"}
+                {isCurrentlyClosed ? t("ปิดบริการ") : t("เปิดบริการ")}
               </span>
               <span className="text-xs font-semibold text-white/90">
-                {isCurrentlyClosed ? "อา. - ศ. 08:00 - 21:00" : "08:00 - 21:00"}
+                {isCurrentlyClosed ? (language === "th" ? "อา. - ศ. 08:00 - 21:00" : "Sun - Fri 08:00 - 21:00") : "08:00 - 21:00"}
               </span>
               {bypassRealClosed && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/25 px-2 py-0.5 text-[9px] font-bold text-amber-300 border border-amber-500/30">
@@ -1515,7 +1645,7 @@ function HomeScreen({
               className="inline-flex items-center justify-center rounded-full bg-[#ffcb44] px-4 py-2 text-sm font-semibold shadow-sm cursor-pointer"
               style={{ color: BRAND }}
             >
-              สั่งอาหาร <ChevronRight size={14} />
+              {t("สั่งอาหาร")} <ChevronRight size={14} />
             </button>
           </div>
         </div>
@@ -1543,16 +1673,16 @@ function HomeScreen({
       {/* Order type tiles */}
       <div ref={orderTypeRef} className="px-5 mt-4">
         <h3 className="text-sm font-medium mb-3 flex flex-wrap items-center gap-x-1.5" style={{ color: BRAND }}>
-          <span>ช่องทางการรับอาหาร <span className="text-red-500">*</span></span>
+          <span>{t("ช่องทางการรับอาหาร")} <span className="text-red-500">*</span></span>
           {orderType === null && (
             <span className="text-xs text-slate-400 font-normal">
-              (กรุณาเลือกช่องทางการรับอาหารด้านบนเพื่อระบุรายละเอียด)
+              {t("(กรุณาเลือกช่องทางการรับอาหารด้านบนเพื่อระบุรายละเอียด)")}
             </span>
           )}
         </h3>
         {showTypeError && (
           <p className="text-xs text-red-500 font-semibold mb-3">
-            * กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน, จัดส่งถึงที่ หรือ รับกลับบ้าน) ก่อนเริ่มสั่งซื้อ
+            {t("* กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน, จัดส่งถึงที่ หรือ รับกลับบ้าน) ก่อนเริ่มสั่งซื้อ")}
           </p>
         )}
         <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
@@ -1572,7 +1702,7 @@ function HomeScreen({
             <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
               <Utensils size={15} />
             </div>
-            <div className="font-bold text-[12px]">ทานที่ร้าน</div>
+            <div className="font-bold text-[12px]">{t("ทานที่ร้าน")}</div>
           </button>
 
           <button
@@ -1590,7 +1720,7 @@ function HomeScreen({
             <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "takeaway" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "takeaway" ? GOLD : BRAND }}>
               <ShoppingBag size={15} />
             </div>
-            <div className="font-bold text-[12px]">รับกลับบ้าน</div>
+            <div className="font-bold text-[12px]">{t("รับกลับบ้าน")}</div>
           </button>
 
           <button
@@ -1608,7 +1738,7 @@ function HomeScreen({
             <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "delivery" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "delivery" ? GOLD : BRAND }}>
               <Bike size={15} />
             </div>
-            <div className="font-bold text-[12px]">จัดส่งถึงที่</div>
+            <div className="font-bold text-[12px]">{t("จัดส่งถึงที่")}</div>
           </button>
         </div>
       </div>
@@ -1644,11 +1774,11 @@ function HomeScreen({
               {orderType === "takeaway" && (
                 <div className="space-y-1.5 p-1 text-center sm:text-left">
                   <h4 className="font-bold text-sm text-[#002e47] flex items-center justify-center sm:justify-start gap-1.5">
-                    <ShoppingBag size={16} /> รับกลับบ้าน (Take Away)
+                    <ShoppingBag size={16} /> {t("รับกลับบ้าน")} (Take Away)
                   </h4>
                   <p className="text-xs text-slate-500 leading-normal font-semibold">
-                    ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น
-                    <strong className="text-[#059669] mx-1">"พร้อมเสิร์ฟ"</strong>
+                    {t("ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น")}
+                    <strong className="text-[#059669] mx-1">"{t("พร้อมเสิร์ฟ")}"</strong>
                   </p>
                 </div>
               )}
@@ -1661,7 +1791,7 @@ function HomeScreen({
       <div className="px-5 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold" style={{ color: BRAND }}>
-            เมนูแนะนำ
+            {t("เมนูแนะนำ")}
           </h2>
         </div>
         <div className="relative">
@@ -1670,7 +1800,7 @@ function HomeScreen({
             onClick={() => scroll("left")}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/50 backdrop-blur-[2px] border border-[#ece4d6]/50 hover:bg-white/80 transition shadow-sm"
             style={{ color: BRAND, marginLeft: -4 }}
-            aria-label="เลื่อนซ้าย"
+            aria-label={t("เลื่อนซ้าย")}
           >
             <ChevronLeft size={18} />
           </button>
@@ -1702,18 +1832,18 @@ function HomeScreen({
                   className="bg-white rounded-2xl p-3 shadow-soft cursor-pointer active:scale-[0.99] transition-transform min-w-[220px] w-56 shrink-0"
                 >
                   <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
-                    <img src={encodeURI(String(m.image))} alt={m.name} className="h-full w-full object-cover" />
+                    <img src={encodeURI(String(m.image))} alt={tMenu(m.name, "name")} className="h-full w-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col">
                     <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
                       <Star size={10} fill={GOLD} stroke={GOLD} />
-                      <span style={{ color: INK_MUTED }}>Chef's pick</span>
+                      <span style={{ color: INK_MUTED }}>{language === "th" ? "Chef's pick" : language === "zh" ? "厨师推荐" : "Chef's pick"}</span>
                     </div>
                     <h3 className="font-semibold text-[15px] truncate mt-1" style={{ color: BRAND }}>
-                      {m.name}
+                      {tMenu(m.name, "name")}
                     </h3>
                     <p className="text-xs mt-1 line-clamp-2" style={{ color: INK_MUTED }}>
-                      {m.desc}
+                      {tMenu(m.desc, "desc")}
                     </p>
                     <div className="mt-3 flex items-end justify-between">
                       <span className="font-bold text-base" style={{ color: BRAND }}>
@@ -1754,7 +1884,7 @@ function HomeScreen({
             onClick={() => scroll("right")}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/50 backdrop-blur-[2px] border border-[#ece4d6]/50 hover:bg-white/80 transition shadow-sm"
             style={{ color: BRAND, marginRight: -4 }}
-            aria-label="เลื่อนขวา"
+            aria-label={t("เลื่อนขวา")}
           >
             <ChevronRight size={18} />
           </button>
