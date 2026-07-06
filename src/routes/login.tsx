@@ -30,7 +30,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<"customer" | "staff">("customer");
+  const [role, setRole] = useState<"customer" | "staff" | "admin">("customer");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
@@ -60,11 +60,11 @@ function LoginPage() {
       }
     }
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: any) => {
       if (data.session) navigate({ to: "/" });
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (event === "SIGNED_IN" && session) {
         try {
           await syncAuthUserToSupabase(session.user);

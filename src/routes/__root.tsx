@@ -136,7 +136,7 @@ function RootComponent() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public" },
-        (payload) => {
+        (payload: any) => {
           console.log("🔄 Database Changed:", payload);
           // ทันทีที่มีอะไรเปลี่ยน ให้ดึงข้อมูลใหม่ทั้งหมด (ทำให้ UI อัปเดตทันที)
           queryClient.invalidateQueries();

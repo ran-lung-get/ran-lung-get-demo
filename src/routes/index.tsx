@@ -122,7 +122,7 @@ function RootRedirector() {
       }
     }
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (event === "SIGNED_IN" && session) {
         checkUserAndRedirect(session);
       }

@@ -8,4 +8,4 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error("[Supabase] VITE_SUPABASE_URL หรือ VITE_SUPABASE_ANON_KEY ยังไม่ได้ตั้งค่า");
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey) as any;

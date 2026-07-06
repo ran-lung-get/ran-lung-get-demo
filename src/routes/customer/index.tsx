@@ -454,7 +454,7 @@ function LiffApp() {
     }
 
     // Subscribe to auth changes immediately to catch race conditions
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (event === "SIGNED_IN" && session) {
         bootstrap(session);
       }
@@ -517,6 +517,8 @@ function LiffApp() {
     { id: "6", label: "โต๊ะ 6", status: "available" },
     { id: "7", label: "โต๊ะ 7", status: "available" },
     { id: "8", label: "โต๊ะ 8", status: "available" },
+    { id: "9", label: "โต๊ะ 9 (Walk-in)", status: "available" },
+    { id: "10", label: "โต๊ะ 10 (Walk-in)", status: "available" },
   ]);
 
   // Fetch tables from Supabase (fall back to local if table doesn't exist yet)
@@ -528,7 +530,16 @@ function LiffApp() {
           .select("id, label, status")
           .order("id");
         if (!error && data && data.length > 0) {
-          setTables(data as any);
+          const has9 = data.some((t: any) => t.id === "9" || t.label.includes("โต๊ะ 9"));
+          const has10 = data.some((t: any) => t.id === "10" || t.label.includes("โต๊ะ 10"));
+          const merged = [...data];
+          if (!has9) {
+            merged.push({ id: "9", label: "โต๊ะ 9 (Walk-in)", status: "available" });
+          }
+          if (!has10) {
+            merged.push({ id: "10", label: "โต๊ะ 10 (Walk-in)", status: "available" });
+          }
+          setTables(merged as any);
         }
       } catch { /* use local fallback */ }
     }
@@ -537,7 +548,7 @@ function LiffApp() {
     // Real-time: อัปเดตสถานะโต๊ะทันที
     const ch = supabase
       .channel("tables-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, (payload: any) => {
         if (payload.eventType === "UPDATE" || payload.eventType === "INSERT") {
           const updated = payload.new as any;
           setTables((prev) =>
@@ -1996,39 +2007,40 @@ function TablePickerBottomSheet({
                 displayTables.map((table) => {
                   const available = table.status === "available";
                   const isSelected = selectedTable === table.id;
+                  const isWalkIn = table.label.toLowerCase().includes("walk-in") || table.label.includes("หน้าร้าน");
 
-                  const boxBg = isSelected ? BRAND : available ? "#dcfce7" : "#fee2e2";
-                  const boxBorder = isSelected ? BRAND : available ? "#15803d" : "#dc2626";
-                  const boxText = isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
-                  const boxSub = isSelected ? "rgba(252,193,74,0.7)" : available ? "#166534" : "#991b1b";
-                  const badgeBg = isSelected ? "rgba(252,193,74,0.2)" : available ? "#bbf7d0" : "#fecaca";
-                  const badgeText = isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
+                  const boxBg = isWalkIn ? "#f1f5f9" : isSelected ? BRAND : available ? "#dcfce7" : "#fee2e2";
+                  const boxBorder = isWalkIn ? "#cbd5e1" : isSelected ? BRAND : available ? "#15803d" : "#dc2626";
+                  const boxText = isWalkIn ? "#475569" : isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
+                  const boxSub = isWalkIn ? "#64748b" : isSelected ? "rgba(252,193,74,0.7)" : available ? "#166534" : "#991b1b";
+                  const badgeBg = isWalkIn ? "#e2e8f0" : isSelected ? "rgba(252,193,74,0.2)" : available ? "#bbf7d0" : "#fecaca";
+                  const badgeText = isWalkIn ? "#475569" : isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
 
                   return (
                     <motion.button
                       key={table.id}
-                      disabled={!available && !isSelected}
-                      onClick={() => available && onSelect(table.id)}
+                      disabled={isWalkIn || (!available && !isSelected)}
+                      onClick={() => !isWalkIn && available && onSelect(table.id)}
                       className="rounded-2xl p-4 text-left relative overflow-hidden"
                       style={{
                         background: boxBg,
                         color: boxText,
                         border: `2px solid ${boxBorder}`,
-                        opacity: !available && !isSelected ? 0.8 : 1,
-                        cursor: available ? "pointer" : "not-allowed",
+                        opacity: isWalkIn ? 0.8 : (!available && !isSelected ? 0.8 : 1),
+                        cursor: isWalkIn ? "not-allowed" : (available ? "pointer" : "not-allowed"),
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-sm">{table.label}</span>
+                        <span className="font-semibold text-xs truncate max-w-[85px]">{table.label}</span>
                         <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                           style={{ background: badgeBg, color: badgeText }}
                         >
-                          {isSelected ? "เลือกแล้ว" : available ? "ว่าง" : "ไม่ว่าง"}
+                          {isWalkIn ? "Walk-in" : isSelected ? "เลือกแล้ว" : available ? "ว่าง" : "ไม่ว่าง"}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs" style={{ color: boxSub }}>
-                        2-4 คน
+                      <p className="mt-1 text-[10px]" style={{ color: boxSub }}>
+                        {isWalkIn ? "สำหรับหน้าร้าน" : "ความจุ 2-4 คน"}
                       </p>
                     </motion.button>
                   );
@@ -2039,12 +2051,15 @@ function TablePickerBottomSheet({
             {/* Legend */}
             <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2.5 flex items-center gap-3">
               <p className="text-[11px] font-semibold text-slate-500">สถานะโต๊ะ:</p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <span className="flex items-center gap-1 text-[10px] font-bold text-[#14532d] bg-[#dcfce7] px-2 py-0.5 rounded-full border border-[#15803d]">
                   ว่าง
                 </span>
                 <span className="flex items-center gap-1 text-[10px] font-bold text-[#7f1d1d] bg-[#fee2e2] px-2 py-0.5 rounded-full border border-[#dc2626]">
                   ไม่ว่าง
+                </span>
+                <span className="flex items-center gap-1 text-[10px] font-bold text-[#475569] bg-[#f1f5f9] px-2 py-0.5 rounded-full border border-[#cbd5e1]">
+                  สำหรับ Walk-in
                 </span>
               </div>
             </div>
