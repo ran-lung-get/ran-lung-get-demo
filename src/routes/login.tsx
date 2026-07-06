@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { initLiff, isLiffLoggedIn, liffLogin } from "../lib/liff";
-import { syncLineUserToSupabase, syncAuthUserToSupabase } from "../lib/supabase.service";
-
+import { syncAuthUserToSupabase } from "../lib/supabase.service";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
@@ -21,8 +19,6 @@ const GOLD = "#fcc14a";
 const LINEN = "#fff8f2";
 const INK = "#0f1f2b";
 const INK_MUTED = "#5a6e7a";
-const LINE_GREEN = "#06C755";
-
 type Tab = "login" | "register";
 
 function LoginPage() {
@@ -32,9 +28,11 @@ function LoginPage() {
   const [tab, setTab] = useState<Tab>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState<"customer" | "staff">("customer");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [lineLoading, setLineLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const emailRef = useRef<HTMLInputElement>(null);
@@ -77,22 +75,6 @@ function LoginPage() {
       }
     });
 
-    // Also check LINE login (silent)
-    initLiff()
-      .then(async () => {
-        if (isLiffLoggedIn()) {
-          try {
-            const { getLiffProfile } = await import("../lib/liff");
-            const profile = await getLiffProfile();
-            await syncLineUserToSupabase(profile);
-          } catch (e) {
-            console.error("[Login] silent syncLineUserToSupabase error:", e);
-          }
-          navigate({ to: "/" });
-        }
-      })
-      .catch(() => {}); // LIFF not configured — ignore
-
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -107,6 +89,14 @@ function LoginPage() {
       setFormError("กรุณากรอกอีเมลและรหัสผ่าน");
       return;
     }
+    if (tab === "register" && !nickname.trim()) {
+      setFormError("กรุณากรอกชื่อของคุณ");
+      return;
+    }
+    if (tab === "register" && !phone.trim()) {
+      setFormError("กรุณากรอกเบอร์โทร");
+      return;
+    }
     setLoading(true);
     try {
       if (tab === "login") {
@@ -115,44 +105,56 @@ function LoginPage() {
           setFormError(translateAuthError(error.message));
           setLoading(false);
         }
-        // If success, onAuthStateChange will handle the redirect, keeping the spinner active
+        // If success, onAuthStateChange will handle the redirect
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        // Register: pass nickname & role as user_metadata
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: nickname.trim(),
+              display_name: nickname.trim(),
+              phone: phone.trim(),
+              role,
+            },
+          },
+        });
         if (error) {
           setFormError(translateAuthError(error.message));
-        } else {
+          setLoading(false);
+        } else if (data.user) {
+          // Sync to public.users with the chosen role
+          try {
+            const client = supabase as any;
+            const now = new Date().toISOString();
+            await client.from("users").upsert(
+              {
+                auth_user_id: data.user.id,
+                display_name: nickname.trim(),
+                email: data.user.email,
+                role,
+                is_active: true,
+                updated_at: now,
+                last_login_at: now,
+              },
+              { onConflict: "auth_user_id", ignoreDuplicates: false }
+            );
+          } catch (syncErr) {
+            console.error("[Register] sync to users error:", syncErr);
+          }
+
           if (data.session) {
-            setFormSuccess("สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...");
+            setFormSuccess(`สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ ${nickname} 🎉`);
           } else {
-            setFormSuccess("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ (หรือยืนยันอีเมลหากระบบต้องการ)");
+            setFormSuccess(`สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ ${nickname} 🎉 กรุณาเข้าสู่ระบบ`);
             setTab("login");
           }
+          setLoading(false);
         }
-        setLoading(false);
       }
     } catch {
       setLoading(false);
-    }
-  }
-
-  // ── LINE Login ────────────────────────────────────────────────
-  async function handleLineLogin() {
-    setFormError("");
-    setLineLoading(true);
-    try {
-      await initLiff();
-      if (isLiffLoggedIn()) {
-        // Already logged in via LINE — sync & go
-        const { getLiffProfile } = await import("../lib/liff");
-        const profile = await getLiffProfile();
-        await syncLineUserToSupabase(profile).catch((e) => { console.error("[Login] syncLineUserToSupabase error:", e); });
-        navigate({ to: "/" });
-      } else {
-        liffLogin(); // redirects to LINE
-      }
-    } catch {
-      setFormError("ไม่สามารถเชื่อมต่อ LINE ได้ในขณะนี้ กรุณาใช้ Email แทน");
-      setLineLoading(false);
     }
   }
 
@@ -184,11 +186,18 @@ function LoginPage() {
   }
 
   function translateAuthError(msg: string): string {
-    if (msg.includes("Invalid login credentials")) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-    if (msg.includes("Email not confirmed")) return "โปรดยืนยันอีเมลก่อนเข้าสู่ระบบ";
-    if (msg.includes("User already registered")) return "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ";
-    if (msg.includes("Password should be")) return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
-    if (msg.includes("rate limit")) return "คุณพยายามสมัครบ่อยเกินไป กรุณารอสักครู่ (หรือตั้งค่าปลดล็อค Rate Limit ใน Supabase)";
+    if (msg.includes("Invalid login credentials"))
+      return "อีเมลหรือรหัสผ่านไม่ถูกต้อง (หรือยังไม่ยืนยันอีเมล)";
+    if (msg.includes("Email not confirmed"))
+      return "กรุณายืนยันอีเมลก่อน — ตรวจสอบกล่องจดหมาย แล้วกดลิงก์ยืนยัน";
+    if (msg.includes("User already registered"))
+      return "อีเมลนี้มีบัญชีอยู่แล้ว — กรุณาเข้าสู่ระบบแทน";
+    if (msg.includes("Password should be"))
+      return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+    if (msg.includes("rate limit"))
+      return "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
+    if (msg.includes("over_email_send_rate_limit"))
+      return "ระบบส่งอีเมลบ่อยเกินไป กรุณารอ 1 นาทีแล้วลองใหม่";
     return msg;
   }
 
@@ -262,16 +271,6 @@ function LoginPage() {
             สั่งอาหารง่าย ๆ ผ่านระบบออนไลน์
           </p>
 
-          {/* LINE logo badge */}
-          <div
-            className="mt-5 flex items-center gap-2 rounded-full px-3.5 py-1.5"
-            style={{ background: "rgba(6,199,85,0.15)", border: "1px solid rgba(6,199,85,0.3)" }}
-          >
-            <LineIcon size={16} />
-            <span style={{ color: "#06C755", fontSize: 12, fontWeight: 600 }}>
-              รองรับการเข้าสู่ระบบด้วย LINE
-            </span>
-          </div>
         </div>
 
         {/* Wave */}
@@ -316,6 +315,97 @@ function LoginPage() {
           {/* Email/Password form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
 
+            {/* ── Register-only fields ── */}
+            {tab === "register" && (
+              <>
+                {/* Nickname */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="nickname-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    ชื่อ
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                      <UserIcon />
+                    </span>
+                    <input
+                      id="nickname-input"
+                      type="text"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      placeholder=""
+                      autoComplete="nickname"
+                      className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
+                      style={{
+                        background: "rgba(0,46,71,0.05)",
+                        border: "1.5px solid rgba(0,46,71,0.12)",
+                        color: INK,
+                        fontFamily: "'Prompt', sans-serif",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="phone-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    เบอร์โทร
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                      <PhoneIcon />
+                    </span>
+                    <input
+                      id="phone-input"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder=""
+                      autoComplete="tel"
+                      className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
+                      style={{
+                        background: "rgba(0,46,71,0.05)",
+                        border: "1.5px solid rgba(0,46,71,0.12)",
+                        color: INK,
+                        fontFamily: "'Prompt', sans-serif",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                    />
+                  </div>
+                </div>
+
+                {/* Role selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold" style={{ color: INK_MUTED }}>สมัครในฐานะ</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: "customer", label: "👤 ลูกค้า", desc: "สั่งอาหาร" },
+                      { value: "staff",    label: "👨‍🍳 พนักงาน", desc: "จัดการออเดอร์" },
+                      { value: "admin",    label: "👑 แอดมิน", desc: "จัดการระบบ" },
+                    ] as const).map((r) => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        id={`role-${r.value}-btn`}
+                        onClick={() => setRole(r.value)}
+                        className="flex flex-col items-center gap-0.5 rounded-2xl py-3 px-2 text-sm font-semibold transition-all"
+                        style={{
+                          border: role === r.value ? `2px solid ${BRAND}` : "2px solid rgba(0,46,71,0.12)",
+                          background: role === r.value ? `rgba(0,46,71,0.08)` : "rgba(0,46,71,0.03)",
+                          color: role === r.value ? BRAND : INK_MUTED,
+                        }}
+                      >
+                        <span className="text-base">{r.label}</span>
+                        <span className="text-[10px] font-normal opacity-70">{r.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Email */}
             <div className="flex flex-col gap-1.5">
               <label
@@ -323,7 +413,7 @@ function LoginPage() {
                 className="text-xs font-semibold"
                 style={{ color: INK_MUTED }}
               >
-                อีเมล (Gmail หรืออีเมลอื่น)
+                อีเมล
               </label>
               <div className="relative">
                 <span
@@ -456,73 +546,67 @@ function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
-            <span className="text-xs" style={{ color: INK_MUTED }}>
-              หรือเข้าสู่ระบบด้วย
-            </span>
-            <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
-          </div>
-
-          {/* LINE Login Button */}
+          {/* Guest / Storefront Button */}
           <button
-            id="line-login-btn"
-            onClick={handleLineLogin}
-            disabled={lineLoading}
-            className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
-            style={{
-              background: lineLoading
-                ? "rgba(6,199,85,0.4)"
-                : `linear-gradient(135deg, ${LINE_GREEN} 0%, #05a847 100%)`,
-              boxShadow: lineLoading ? "none" : "0 6px 24px rgba(6,199,85,0.35)",
-            }}
-          >
-            {lineLoading ? (
-              <>
-                <SpinnerIcon />
-                กำลังเชื่อมต่อ LINE…
-              </>
-            ) : (
-              <>
-                <LineIcon size={22} />
-                เข้าสู่ระบบด้วย LINE
-              </>
-            )}
-          </button>
-
-          {/* Google Login Button */}
-          <button
-            id="google-login-btn"
-            onClick={handleGoogleLogin}
-            disabled={loading}
             type="button"
-            className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97]"
+            onClick={() => {
+              localStorage.setItem("ran-lung-get-guest", "true");
+              navigate({ to: "/customer" });
+            }}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#002e47] text-[16px] transition-all active:scale-[0.97]"
             style={{
-              background: loading ? "rgba(255,255,255,0.7)" : "#ffffff",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-              border: "1px solid rgba(0,0,0,0.1)",
+              background: `linear-gradient(135deg, ${GOLD} 0%, #f59e0b 100%)`,
+              boxShadow: "0 6px 20px rgba(245,158,11,0.4)",
+              marginTop: "4px"
             }}
           >
-            {loading ? (
-              <>
-                <SpinnerIcon />
-                กำลังเชื่อมต่อ Google…
-              </>
-            ) : (
-              <>
-                <GoogleIcon size={22} />
-                เข้าสู่ระบบด้วย Google
-              </>
-            )}
+            <span className="text-xl">🛍️</span> สั่งหน้าร้าน
           </button>
+
+          {/* Divider — show social login only on login tab */}
+          {tab === "login" && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
+              <span className="text-xs" style={{ color: INK_MUTED }}>
+                หรือเข้าสู่ระบบด้วย
+              </span>
+              <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
+            </div>
+          )}
+
+          {/* Social Login Buttons — login tab only */}
+          {tab === "login" && (
+            <>
+              {/* Google Login Button */}
+              <button
+                id="google-login-btn"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                type="button"
+                className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97]"
+                style={{
+                  background: loading ? "rgba(255,255,255,0.7)" : "#ffffff",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                }}
+              >
+                {loading ? (
+                  <><SpinnerIcon />กำลังเชื่อมต่อ Google…</>
+                ) : (
+                  <><GoogleIcon size={22} />เข้าสู่ระบบด้วย Google</>
+                )}
+              </button>
+            </>
+          )}
 
           {/* Privacy note */}
           <p
             className="text-center text-[11px] leading-relaxed px-4"
             style={{ color: "rgba(0,46,71,0.35)" }}
           >
-            การเข้าสู่ระบบแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน
+            {tab === "register"
+              ? "การสมัครสมาชิกแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"
+              : "การเข้าสู่ระบบแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"}
             <br />
             ข้อมูลของคุณจะถูกเก็บเป็นความลับ
           </p>
@@ -534,13 +618,17 @@ function LoginPage() {
           style={{ borderColor: "rgba(0,46,71,0.07)" }}
         >
           <p className="text-[10px]" style={{ color: "rgba(0,46,71,0.3)" }}>
-            © 2026 ร้านลุงเก้ต · Powered by Supabase & LINE LIFF
+            © 2026 ร้านลุงเก้ต · Powered by Supabase
           </p>
         </div>
 
         {/* Keyframe */}
         <style>{`
           @keyframes spin-btn { to { transform: rotate(360deg); } }
+          @keyframes glow-border {
+            0% { box-shadow: 0 0 5px rgba(252,193,74,0.5), 0 0 10px rgba(245,158,11,0.5), 0 0 15px rgba(234,88,12,0.5); }
+            100% { box-shadow: 0 0 10px rgba(252,193,74,1), 0 0 20px rgba(245,158,11,1), 0 0 30px rgba(234,88,12,1), 0 0 40px rgba(234,88,12,1); }
+          }
         `}</style>
       </div>
     </div>
@@ -613,6 +701,15 @@ function EyeOffIcon() {
   );
 }
 
+function UserIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+
 function SpinnerIcon() {
   return (
     <svg
@@ -625,6 +722,14 @@ function SpinnerIcon() {
       style={{ animation: "spin-btn 0.8s linear infinite" }}
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }

@@ -165,19 +165,10 @@ function RootComponent() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={routerState.location.pathname}
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -15 }}
-          transition={{ duration: 0.25, ease: "easeInOut" }}
-          className="min-h-screen w-full"
-        >
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </motion.div>
-      </AnimatePresence>
+      <div className="min-h-screen w-full">
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </div>
     </QueryClientProvider>
   );
 }

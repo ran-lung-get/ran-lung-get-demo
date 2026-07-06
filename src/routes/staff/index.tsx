@@ -2320,76 +2320,28 @@ function KitchenMonitor() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [view, setView] = useState<"kitchen" | "dashboard" | "menu" | "tables">("kitchen");
 
-  // Auth Check for Staff (supports Supabase role, LINE LIFF role, and mock token)
+  // Auth Check for Staff — ใช้ Supabase session แทน localStorage token
   useEffect(() => {
-    let cancelled = false;
     async function checkAuth() {
-      // 1. Check mock token
-      const token = localStorage.getItem("ran-lung-get-staff-token");
-      if (token) {
-        return; // Valid mock token
-      }
-
-      // 2. Check Supabase session
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const emailStr = session.user.email || "";
-          if (emailStr.includes("staff") || emailStr.includes("admin")) {
-            localStorage.setItem("ran-lung-get-staff-token", "true");
-            return;
-          }
-          const userId = session.user.id;
-          const { data, error } = await supabase
-            .from("users")
-            .select("role")
-            .eq("auth_user_id", userId)
-            .single();
-
-          if (!error && data && (data.role === "staff" || data.role === "admin")) {
-            localStorage.setItem("ran-lung-get-staff-token", "true");
-            return; // Valid Supabase staff/admin session
-          }
-        }
-      } catch (err) {
-        console.error("Staff auth check error (Supabase)", err);
-      }
-
-      // 3. Check LINE LIFF session
-      try {
-        const { initLiff, isLiffLoggedIn, getLiffProfile } = await import("../../lib/liff");
-        const liffPromise = initLiff();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF timeout")), 3000));
-        await Promise.race([liffPromise, timeoutPromise]);
-
-        if (!cancelled && isLiffLoggedIn()) {
-          const profile = await getLiffProfile();
-          if (profile) {
-            const { data, error } = await supabase
-              .from("users")
-              .select("role")
-              .eq("line_user_id", profile.userId)
-              .single();
-
-            if (!error && data && (data.role === "staff" || data.role === "admin")) {
-              localStorage.setItem("ran-lung-get-staff-token", "true");
-              return; // Valid LINE LIFF staff/admin session
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Staff auth check error (LIFF)", err);
-      }
-
-      if (!cancelled) {
+      const { data: { session } } = await (await import("../../lib/supabase")).supabase.auth.getSession();
+      if (!session) {
         window.location.href = "/login";
+        return;
+      }
+      // ตรวจสอบ role จาก users table
+      const { supabase } = await import("../../lib/supabase");
+      const { data } = await (supabase as any)
+        .from("users")
+        .select("role")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle();
+      const role = data?.role ?? "customer";
+      if (role !== "staff" && role !== "admin") {
+        // ถ้าไม่ใช่ staff หรือ admin ให้ไปหน้า customer แทน
+        window.location.href = "/customer";
       }
     }
-
     checkAuth();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const fetchSupabaseOrders = async () => {
