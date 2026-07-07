@@ -690,7 +690,7 @@ function MenuManagementView() {
                       isOutOfStock ? "grayscale opacity-50" : ""
                     }`}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/thai_food_hero.png";
+                      (e.target as HTMLImageElement).src = "/thai_food_hero.jpg";
                     }}
                   />
                   {isOutOfStock && (

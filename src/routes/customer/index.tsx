@@ -82,7 +82,7 @@ export type MenuItem = {
   addons?: Addon[];
 };
 
-const HERO_IMG = "/thai_food_hero.png";
+const HERO_IMG = "/thai_food_hero.jpg";
 
 export const MENU: MenuItem[] = [
   {
