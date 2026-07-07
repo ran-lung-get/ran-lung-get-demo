@@ -58,7 +58,7 @@ const INK_MUTED = "#5a6e7a";
 function playNotificationSound() {
   try {
     const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
+
     // Play double high-pitched beep
     const playBeep = (time: number, freq: number) => {
       const osc = context.createOscillator();
@@ -133,17 +133,16 @@ function KitchenSidebarContent({
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-1">
           <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block px-2 mb-2">เมนูพนักงาน</span>
-          
+
           <button
             onClick={() => {
               setView("kitchen");
               if (onClose) onClose();
             }}
-            className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
-              view === "kitchen"
+            className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${view === "kitchen"
                 ? "bg-white/10 text-white shadow-inner font-black border-l-4 border-[#fcc14a]"
                 : "text-white/70 hover:text-white hover:bg-white/5 font-medium border-l-4 border-transparent"
-            }`}
+              }`}
           >
             <ChefHat size={18} className={view === "kitchen" ? "text-[#fcc14a]" : "text-white/60"} />
             <span className="text-sm">จอจัดการครัว</span>
@@ -154,11 +153,10 @@ function KitchenSidebarContent({
               setView("tables");
               if (onClose) onClose();
             }}
-            className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
-              view === "tables"
+            className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${view === "tables"
                 ? "bg-white/10 text-white shadow-inner font-black border-l-4 border-[#fcc14a]"
                 : "text-white/70 hover:text-white hover:bg-white/5 font-medium border-l-4 border-transparent"
-            }`}
+              }`}
           >
             <Table size={18} className={view === "tables" ? "text-[#fcc14a]" : "text-white/60"} />
             <span className="text-sm">ผังโต๊ะอาหาร</span>
@@ -337,7 +335,7 @@ function KitchenMonitor() {
     const num = Math.floor(Math.random() * 9000) + 1000;
     const names = ["คุณ มานะ", "คุณ สมรัก", "คุณ ณเดช", "คุณ ญาญ่า", "คุณ กิ๊ฟ", "คุณ นิว"];
     const tbs = ["โต๊ะ 1", "โต๊ะ 2", "โต๊ะ 3", "โต๊ะ 4", "โต๊ะ 5", "โต๊ะ 6", "โต๊ะ 7", "โต๊ะ 8"];
-    
+
     const itemsMock = [
       { name: "กระเพราหมูกรอบ (ข้าวราด)", qty: 1, price: 70, image: "" },
       { name: "ผัดคะน้าหมูกรอบ (ข้าวราด)", qty: 1, price: 70, image: "" },
@@ -435,7 +433,7 @@ function KitchenMonitor() {
 
     try {
       await supabase.from("orders").update({ status: dbStatus }).eq("id", id);
-    } catch {}
+    } catch { }
   };
 
   const cancelOrder = async (id: string) => {
@@ -447,7 +445,7 @@ function KitchenMonitor() {
 
     try {
       await supabase.from("orders").update({ status: "cancelled" }).eq("id", id);
-    } catch {}
+    } catch { }
   };
 
   const clearCompletedOrders = () => {
@@ -576,11 +574,10 @@ function KitchenMonitor() {
 
               <button
                 onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`p-2 rounded-xl border transition active:scale-95 cursor-pointer ${
-                  soundEnabled
+                className={`p-2 rounded-xl border transition active:scale-95 cursor-pointer ${soundEnabled
                     ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
                     : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
               </button>
@@ -646,18 +643,16 @@ function KitchenMonitor() {
                     <button
                       key={tab.id}
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs tracking-wider transition-all shrink-0 cursor-pointer ${
-                        statusFilter === tab.id
+                      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs tracking-wider transition-all shrink-0 cursor-pointer ${statusFilter === tab.id
                           ? "bg-[#002e47] text-white shadow-inner"
                           : "text-[#5a6e7a] hover:text-[#002e47] hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       {tab.dotColor && <span className={`h-1.5 w-1.5 rounded-full ${tab.dotColor} animate-pulse`} />}
                       <span>{tab.label}</span>
                       {tab.count !== undefined && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                          statusFilter === tab.id ? "bg-slate-700 text-white" : "bg-slate-100 text-[#5a6e7a]"
-                        }`}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${statusFilter === tab.id ? "bg-slate-700 text-white" : "bg-slate-100 text-[#5a6e7a]"
+                          }`}>
                           {tab.count}
                         </span>
                       )}
@@ -885,11 +880,11 @@ function HistoryOrderRow({ order }: { order: OrderHistory }) {
 }
 
 // ── Table Management Panel (Walk-in tables styled gray and disabled in customers but monitored here) ──
-function TableManagementView({ 
-  orders, 
-  onRefreshOrders 
-}: { 
-  orders: OrderHistory[]; 
+function TableManagementView({
+  orders,
+  onRefreshOrders
+}: {
+  orders: OrderHistory[];
   onRefreshOrders: () => Promise<void>;
 }) {
   const [tables, setTables] = useState<any[]>([
@@ -907,6 +902,12 @@ function TableManagementView({
   const [selectedTable, setSelectedTable] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [isMoveSelectorOpen, setIsMoveSelectorOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
 
   const fetchTables = async () => {
     setLoading(true);
@@ -975,7 +976,7 @@ function TableManagementView({
     const nextList = tables.map((t) => (t.id === tableId ? { ...t, status: nextStatus } : t));
     setTables(nextList);
     localStorage.setItem("ran-lung-get-tables", JSON.stringify(nextList));
-    
+
     // Update currently selected table reference
     const currentSelected = nextList.find(t => t.id === tableId);
     if (currentSelected) {
@@ -1002,7 +1003,7 @@ function TableManagementView({
     try {
       const client = supabase as any;
       const orderIds = activeFromOrders.map((o) => o.id);
-      
+
       // Update their table number in Supabase
       const { error: orderErr } = await client
         .from("orders")
@@ -1014,7 +1015,7 @@ function TableManagementView({
       // Find the source and destination table objects
       const fromTable = tables.find((t) => t.label === fromTableLabel);
       const toTable = tables.find((t) => t.label === toTableLabel);
-      
+
       if (fromTable) {
         await client.from("restaurant_tables").update({ status: "available" }).eq("id", fromTable.id);
       }
@@ -1025,18 +1026,18 @@ function TableManagementView({
       // Refresh data
       await fetchTables();
       await onRefreshOrders();
-      
+
       // Set the destination table as selected
-      const updatedTablesList = tables.map((t) => 
-        t.label === fromTableLabel 
-          ? { ...t, status: "available" } 
-          : t.label === toTableLabel 
-          ? { ...t, status: "occupied" } 
-          : t
+      const updatedTablesList = tables.map((t) =>
+        t.label === fromTableLabel
+          ? { ...t, status: "available" }
+          : t.label === toTableLabel
+            ? { ...t, status: "occupied" }
+            : t
       );
       const newSel = updatedTablesList.find(t => t.label === toTableLabel);
       setSelectedTable(newSel || null);
-      
+
       alert(`ย้าย/รวมออเดอร์ทั้งหมดจาก ${fromTableLabel} ไปยัง ${toTableLabel} สำเร็จ!`);
     } catch (err) {
       console.error("[Move Table] Error moving orders:", err);
@@ -1048,7 +1049,7 @@ function TableManagementView({
     try {
       const client = supabase as any;
       const activeOrders = getActiveOrdersForTable(tableLabel);
-      
+
       if (activeOrders.length > 0) {
         const orderIds = activeOrders.map((o) => o.id);
         // Update status of all active orders to Completed ('สำเร็จ')
@@ -1070,7 +1071,7 @@ function TableManagementView({
       // Refresh
       await fetchTables();
       await onRefreshOrders();
-      
+
       setSelectedTable(null);
       alert(`เคลียร์โต๊ะและอัปเดตสถานะออเดอร์ค้างของ ${tableLabel} เสร็จสิ้น!`);
     } catch (err) {
@@ -1078,6 +1079,23 @@ function TableManagementView({
       alert("เกิดข้อผิดพลาดในการเคลียร์โต๊ะ");
     }
   };
+
+  // Auto-occupy tables if active orders exist
+  useEffect(() => {
+    if (tables.length === 0) return;
+
+    const tablesToUpdate = tables.filter((t) => {
+      const activeCount = getActiveOrdersForTable(t.label).length;
+      return activeCount > 0 && t.status === "available";
+    });
+
+    if (tablesToUpdate.length > 0) {
+      tablesToUpdate.forEach((t) => {
+        console.log(`[Auto-Status] Table ${t.label} has active orders, updating status to occupied.`);
+        void updateTableStatus(t.id, "occupied");
+      });
+    }
+  }, [orders, tables]);
 
   return (
     <div className="space-y-6">
@@ -1108,8 +1126,6 @@ function TableManagementView({
                 .map((table) => {
                   const activeOrders = getActiveOrdersForTable(table.label);
                   const isOccupied = table.status === "occupied";
-                  const isReserved = table.status === "reserved";
-                  const isAvailable = table.status === "available" || (!isOccupied && !isReserved);
                   const isWalkIn = table.label.toLowerCase().includes("walk-in") || table.label.includes("หน้าร้าน");
                   const isSelected = selectedTable?.id === table.id;
 
@@ -1117,39 +1133,22 @@ function TableManagementView({
                   let statusColor = "bg-emerald-500 text-white border-emerald-600";
                   let boxBg = "bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50/50";
 
-                  if (isWalkIn) {
-                    if (isOccupied) {
-                      statusLabel = "มีลูกค้า (Walk-in)";
-                      statusColor = "bg-red-500 text-white border-red-600";
-                      boxBg = "bg-red-50/30 border-red-200 hover:bg-red-50/50";
-                    } else if (isReserved) {
-                      statusLabel = "จองแล้ว (Walk-in)";
-                      statusColor = "bg-amber-500 text-white border-amber-600";
-                      boxBg = "bg-amber-50/30 border-amber-200 hover:bg-amber-50/50";
-                    } else {
-                      statusLabel = "Walk-in";
-                      statusColor = "bg-slate-500 text-white border-slate-600";
-                      boxBg = "bg-slate-50/40 border-slate-300 hover:bg-slate-50/60";
-                    }
-                  } else {
-                    if (isOccupied) {
-                      statusLabel = "มีลูกค้า";
-                      statusColor = "bg-red-500 text-white border-red-600";
-                      boxBg = "bg-red-50/30 border-red-200 hover:bg-red-50/50";
-                    } else if (isReserved) {
-                      statusLabel = "จองแล้ว";
-                      statusColor = "bg-amber-500 text-white border-amber-600";
-                      boxBg = "bg-amber-50/30 border-amber-200 hover:bg-amber-50/50";
-                    }
+                  if (isOccupied) {
+                    statusLabel = "มีลูกค้า";
+                    statusColor = "bg-red-500 text-white border-red-600";
+                    boxBg = "bg-red-50/30 border-red-200 hover:bg-red-50/50";
+                  } else if (isWalkIn) {
+                    statusLabel = "Walk-in";
+                    statusColor = "bg-slate-500 text-white border-slate-600";
+                    boxBg = "bg-slate-50/40 border-slate-300 hover:bg-slate-50/60";
                   }
 
                   return (
                     <div
                       key={table.id}
                       onClick={() => setSelectedTable(table)}
-                      className={`border-2 rounded-3xl p-5 text-left relative overflow-hidden transition cursor-pointer flex flex-col justify-between min-h-[160px] shadow-sm hover:shadow ${boxBg} ${
-                        isSelected ? "ring-4 ring-[#002e47]/30 border-[#002e47] scale-[1.01]" : ""
-                      }`}
+                      className={`border-2 rounded-3xl p-5 text-left relative overflow-hidden transition cursor-pointer flex flex-col justify-between min-h-[160px] shadow-sm hover:shadow ${boxBg} ${isSelected ? "ring-4 ring-[#002e47]/30 border-[#002e47] scale-[1.01]" : ""
+                        }`}
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2">
@@ -1157,7 +1156,7 @@ function TableManagementView({
                           <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
                         </div>
                         <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">
-                          ความจุ: 2-4 คน {isWalkIn && <span className="ml-1 text-slate-600 font-extrabold">(Walk-in)</span>}
+                          โต๊ะสำหรับ 2-4 คน {isWalkIn && <span className="ml-1 text-slate-600 font-extrabold">(Walk-in)</span>}
                         </p>
                       </div>
 
@@ -1168,7 +1167,7 @@ function TableManagementView({
                               <span className="font-bold text-red-700">มีออเดอร์ค้าง ({activeOrders.length})</span>
                             </div>
                           ) : (
-                            <span className="text-slate-400 font-semibold italic text-[11px]">ไม่มีออเดอร์ออนไลน์ (ลูกค้านั่งเอง)</span>
+                            <span className="text-slate-400 font-semibold italic text-[11px]">ไม่มีออเดอร์ค้าง</span>
                           )}
                         </div>
                       )}
@@ -1187,14 +1186,11 @@ function TableManagementView({
               <div className="flex justify-between items-start pb-4 border-b border-slate-100 mb-5">
                 <div>
                   <h3 className="text-lg font-black">{selectedTable.label}</h3>
-                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border inline-block mt-1 ${
-                    selectedTable.status === "occupied"
+                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border inline-block mt-1 ${selectedTable.status === "occupied"
                       ? "bg-red-500 text-white border-red-600"
-                      : selectedTable.status === "reserved"
-                      ? "bg-amber-500 text-white border-amber-600"
                       : "bg-emerald-500 text-white border-emerald-600"
-                  }`}>
-                    {selectedTable.status === "occupied" ? "มีลูกค้า" : selectedTable.status === "reserved" ? "จองแล้ว" : "ว่าง"}
+                    }`}>
+                    {selectedTable.status === "occupied" ? "มีลูกค้า" : "ว่าง"}
                   </span>
                 </div>
                 <button
@@ -1211,36 +1207,24 @@ function TableManagementView({
               {/* Status Selector */}
               <div className="mb-5">
                 <span className="text-xs font-bold text-slate-500 block mb-2">อัปเดตสถานะโต๊ะ</span>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => updateTableStatus(selectedTable.id, "available")}
-                    className={`py-2 rounded-xl font-bold text-[10px] border transition ${
-                      selectedTable.status === "available"
+                    className={`py-2 rounded-md font-bold text-[10px] border transition ${selectedTable.status === "available"
                         ? "bg-emerald-500 text-white border-emerald-600"
                         : "bg-white border-slate-200 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     🟢 ว่าง
                   </button>
                   <button
                     onClick={() => updateTableStatus(selectedTable.id, "occupied")}
-                    className={`py-2 rounded-xl font-bold text-[10px] border transition ${
-                      selectedTable.status === "occupied"
+                    className={`py-2 rounded-md font-bold text-[10px] border transition ${selectedTable.status === "occupied"
                         ? "bg-red-500 text-white border-red-600"
                         : "bg-white border-slate-200 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     🔴 มีลูกค้า
-                  </button>
-                  <button
-                    onClick={() => updateTableStatus(selectedTable.id, "reserved")}
-                    className={`py-2 rounded-xl font-bold text-[10px] border transition ${
-                      selectedTable.status === "reserved"
-                        ? "bg-amber-500 text-white border-amber-600"
-                        : "bg-white border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    🟡 จอง
                   </button>
                 </div>
               </div>
@@ -1250,48 +1234,13 @@ function TableManagementView({
                 <span className="text-xs font-bold text-slate-500 block mb-1">เมนูการจัดการ</span>
 
                 {/* Move / Merge */}
-                <div>
-                  {!isMoveSelectorOpen ? (
-                    <button
-                      onClick={() => setIsMoveSelectorOpen(true)}
-                      className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition"
-                    >
-                      <span className="flex items-center gap-2">🔄 ย้าย / รวมออเดอร์ไปยังโต๊ะอื่น</span>
-                      <ChevronRight size={14} className="text-slate-400" />
-                    </button>
-                  ) : (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-bold text-slate-600">ย้าย/รวมออเดอร์ไปที่:</span>
-                        <button
-                          onClick={() => setIsMoveSelectorOpen(false)}
-                          className="text-[10px] font-bold text-red-500 hover:underline"
-                        >
-                          ยกเลิก
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {[...tables]
-                          .sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10))
-                          .filter((t) => t.id !== selectedTable.id)
-                          .map((t) => (
-                            <button
-                              key={t.id}
-                              onClick={async () => {
-                                if (confirm(`คุณต้องการย้าย/รวมออเดอร์ทั้งหมดจาก ${selectedTable.label} ไปยัง ${t.label} ใช่หรือไม่?`)) {
-                                  await moveAllOrders(selectedTable.label, t.label);
-                                  setIsMoveSelectorOpen(false);
-                                }
-                              }}
-                              className="py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 font-bold text-[10px]"
-                            >
-                              {t.id}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setIsMoveSelectorOpen(true)}
+                  className="w-full py-3 px-4 rounded-md border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition"
+                >
+                  <span className="flex items-center gap-2">🔄 ย้าย / รวมออเดอร์ไปยังโต๊ะอื่น</span>
+                  <ChevronRight size={14} className="text-slate-400" />
+                </button>
 
                 {/* Walk-in Order */}
                 <a
@@ -1301,7 +1250,7 @@ function TableManagementView({
                   onClick={() => {
                     localStorage.setItem("ran-lung-get-selected-table", selectedTable.id);
                   }}
-                  className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition block text-left text-inherit no-underline"
+                  className="w-full py-3 px-4 rounded-md border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition block text-left text-inherit no-underline"
                 >
                   <span className="flex items-center gap-2">🛍️ สั่งอาหาร Walk-in (ชำระเงินสด/โอนเงิน)</span>
                   <PlusCircle size={14} className="text-slate-400" />
@@ -1309,12 +1258,17 @@ function TableManagementView({
 
                 {/* Clear Table and Orders */}
                 <button
-                  onClick={async () => {
-                    if (confirm(`คุณต้องการเคลียร์โต๊ะและเคลียร์ออเดอร์ค้างทั้งหมดของ ${selectedTable.label} หรือไม่?`)) {
-                      await clearTableAndOrders(selectedTable.label);
-                    }
+                  onClick={() => {
+                    setConfirmDialog({
+                      isOpen: true,
+                      title: "ยืนยันการเคลียร์โต๊ะ",
+                      message: `คุณต้องการเคลียร์โต๊ะและเปลี่ยนสถานะออเดอร์ค้างทั้งหมดของ ${selectedTable.label} ให้เสร็จสิ้นใช่หรือไม่?`,
+                      onConfirm: async () => {
+                        await clearTableAndOrders(selectedTable.label);
+                      }
+                    });
                   }}
-                  className="w-full py-3 px-4 rounded-xl border border-red-200 text-red-700 bg-red-50/30 hover:bg-red-50 font-bold text-xs flex items-center justify-between transition"
+                  className="w-full py-3 px-4 rounded-md border border-red-200 text-red-700 bg-red-50/30 hover:bg-red-50 font-bold text-xs flex items-center justify-between transition"
                 >
                   <span className="flex items-center gap-2">🧹 เคลียร์โต๊ะ & อ้างอิงออเดอร์เสร็จสิ้น</span>
                   <Trash2 size={14} className="text-red-400" />
@@ -1326,11 +1280,11 @@ function TableManagementView({
                 <span className="text-xs font-bold text-slate-500 block mb-3">
                   บิลแยกและรายละเอียดอาหาร ({getActiveOrdersForTable(selectedTable.label).length} ออเดอร์)
                 </span>
-                
+
                 <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[280px] no-scrollbar">
                   {getActiveOrdersForTable(selectedTable.label).length > 0 ? (
                     getActiveOrdersForTable(selectedTable.label).map((order) => (
-                      <div key={order.id} className="bg-slate-50/50 border border-[#ece4d6] rounded-2xl p-3.5 space-y-2">
+                      <div key={order.id} className="bg-slate-50/50 border border-[#ece4d6] rounded-md p-3.5 space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="font-extrabold text-[11px] text-slate-700">{order.orderNumber}</span>
                           <span className="text-[10px] bg-slate-200/60 font-black px-2 py-0.5 rounded text-slate-600">{order.status}</span>
@@ -1356,7 +1310,7 @@ function TableManagementView({
                             onClick={() => {
                               alert(`พิมพ์ใบเสิร์ฟสำหรับออเดอร์ ${order.orderNumber} สำเร็จ!`);
                             }}
-                            className="flex-1 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 font-bold text-[9px] rounded-lg transition"
+                            className="flex-1 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 font-bold text-[9px] rounded-md transition"
                           >
                             🖨️ พิมพ์ใบเสิร์ฟ
                           </button>
@@ -1382,6 +1336,134 @@ function TableManagementView({
           )}
         </div>
       </div>
+
+      {/* Move Table Modal overlay */}
+      {isMoveSelectorOpen && selectedTable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setIsMoveSelectorOpen(false)} />
+
+          {/* Modal Container */}
+          <div className="bg-white rounded-[28px] p-6 w-full max-w-lg z-10 border border-[#ece4d6] shadow-2xl relative text-[#002e47] flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-5 shrink-0">
+              <div>
+                <h3 className="text-lg font-black flex items-center gap-2">🔄 ย้าย / รวมออเดอร์</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">เลือกโต๊ะปลายทางที่คุณต้องการย้ายออเดอร์ของ <span className="font-extrabold text-[#002e47] underline">{selectedTable.label}</span> ไป</p>
+              </div>
+              <button
+                onClick={() => setIsMoveSelectorOpen(false)}
+                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 cursor-pointer text-slate-500"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Grid of Other Tables */}
+            <div className="flex-1 overflow-y-auto no-scrollbar py-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {[...tables]
+                  .sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10))
+                  .filter((t) => t.id !== selectedTable.id)
+                  .map((t) => {
+                    const activeOrders = getActiveOrdersForTable(t.label);
+                    const isOccupied = t.status === "occupied";
+
+                    let badgeColor = "bg-emerald-500 text-white border-emerald-600";
+                    let badgeLabel = "ว่าง";
+                    let btnBg = "bg-emerald-50/10 border-emerald-100 hover:bg-emerald-50/50";
+
+                    if (isOccupied) {
+                      badgeColor = "bg-red-500 text-white border-red-600";
+                      badgeLabel = "มีลูกค้า";
+                      btnBg = "bg-red-50/10 border-red-100 hover:bg-red-50/50";
+                    }
+
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          const actionText = isOccupied ? `รวมออเดอร์กับ ${t.label}` : `ย้ายออเดอร์ทั้งหมดไปที่ ${t.label}`;
+                          setConfirmDialog({
+                            isOpen: true,
+                            title: isOccupied ? "ยืนยันการรวมออเดอร์" : "ยืนยันการย้ายโต๊ะ",
+                            message: `คุณต้องการ${actionText} ใช่หรือไม่? การดำเนินการนี้จะอัปเดตข้อมูลโต๊ะและออเดอร์ในระบบทันที`,
+                            onConfirm: async () => {
+                              await moveAllOrders(selectedTable.label, t.label);
+                              setIsMoveSelectorOpen(false);
+                            }
+                          });
+                        }}
+                        className={`border-2 rounded-md p-4 text-left transition flex flex-col justify-between min-h-[110px] cursor-pointer ${btnBg}`}
+                      >
+                        <div className="w-full flex items-center justify-between">
+                          <span className="font-extrabold text-sm">{t.label}</span>
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${badgeColor}`}>
+                            {badgeLabel}
+                          </span>
+                        </div>
+
+                        {isOccupied && (
+                          <div className="text-[10px] text-red-700 font-extrabold mt-2">
+                            {activeOrders.length > 0 ? `ค้างอยู่ ${activeOrders.length} ออเดอร์` : "นั่งโต๊ะเปล่า"}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-5 pt-4 border-t border-slate-100 shrink-0 flex justify-end">
+              <button
+                onClick={() => setIsMoveSelectorOpen(false)}
+                className="px-5 py-2.5 rounded-md border border-slate-200 hover:bg-slate-50 font-bold text-xs"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Dialog Modal Overlay */}
+      {confirmDialog && confirmDialog.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setConfirmDialog(null)}
+          />
+
+          {/* Container */}
+          <div className="bg-white rounded-[28px] p-6 w-full max-w-sm z-10 border border-[#ece4d6] shadow-2xl relative text-[#002e47] flex flex-col">
+            <h3 className="text-base font-black mb-2">{confirmDialog.title}</h3>
+            <p className="text-xs text-slate-500 font-semibold leading-relaxed mb-6">
+              {confirmDialog.message}
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmDialog(null)}
+                className="px-4 py-2 rounded-md border border-red-500 text-red-500 hover:bg-red-50 bg-white font-bold text-xs cursor-pointer transition"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={async () => {
+                  const onConf = confirmDialog.onConfirm;
+                  setConfirmDialog(null);
+                  await onConf();
+                }}
+                className="px-4 py-2 rounded-md bg-[#002e47] hover:bg-[#002e47]/90 text-white font-bold text-xs cursor-pointer border border-transparent transition"
+              >
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
