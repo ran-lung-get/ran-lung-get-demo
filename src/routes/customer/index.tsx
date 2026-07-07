@@ -3,12 +3,15 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { type LiffProfile } from "../../lib/liff";
 import { supabase } from "../../lib/supabase";
 import { AnimatePresence, motion } from "motion/react";
+import { useLanguage, type Language } from "../../lib/i18n";
 import {
+  Globe,
   Menu,
   Plus,
   Minus,
   ShoppingBag,
   ChevronLeft,
+  ChevronDown,
   Trash2,
   X,
   Copy,
@@ -72,7 +75,7 @@ export type MenuItem = {
   addons?: Addon[];
 };
 
-const HERO_IMG = "/thai_food_hero.png";
+const HERO_IMG = "/thai_food_hero.jpg";
 
 export const MENU: MenuItem[] = [
   {
@@ -359,6 +362,7 @@ function LiffApp() {
   const navigate = useNavigate();
   const [liffReady, setLiffReady] = useState(false);
   const [profile, setProfile] = useState<LiffProfile | null>(null);
+  const { language, setLanguage, t, tMenu } = useLanguage();
 
   // ── Auth Guard (Supabase Session OR LINE LIFF) ──────────────
   useEffect(() => {
@@ -390,6 +394,17 @@ function LiffApp() {
             };
             setProfile(sbProfile);
             setLiffReady(true);
+
+            // Sync/fetch DB user and customer
+            try {
+              const res = await syncAuthUserToSupabase(finalSession.user);
+              if (res) {
+                setDbUser(res.user);
+                setDbCustomer(res.customer);
+              }
+            } catch (e) {
+              console.error("Failed to sync auth user:", e);
+            }
           }
           return;
         }
@@ -405,7 +420,7 @@ function LiffApp() {
     }
 
     // Subscribe to auth changes immediately to catch race conditions
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (event === "SIGNED_IN" && session) {
         bootstrap(session);
       }
@@ -414,8 +429,8 @@ function LiffApp() {
 
     bootstrap();
 
-    return () => { 
-      cancelled = true; 
+    return () => {
+      cancelled = true;
       if (authListener) authListener.unsubscribe();
     };
   }, [navigate]);
@@ -446,6 +461,8 @@ function LiffApp() {
   }, []);
 
   const [tab, setTab] = useState<"home" | "status">("home");
+  const [dbUser, setDbUser] = useState<any>(null);
+  const [dbCustomer, setDbCustomer] = useState<any>(null);
   const [overlay, setOverlay] = useState<null | "menu" | "orderConfirm" | "payment" | "history" | "contact">(null);
   const [sidebar, setSidebar] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -466,6 +483,8 @@ function LiffApp() {
     { id: "6", label: "โต๊ะ 6", status: "available" },
     { id: "7", label: "โต๊ะ 7", status: "available" },
     { id: "8", label: "โต๊ะ 8", status: "available" },
+    { id: "9", label: "โต๊ะ 9 (Walk-in)", status: "available" },
+    { id: "10", label: "โต๊ะ 10 (Walk-in)", status: "available" },
   ]);
 
   // Fetch tables from Supabase (fall back to local if table doesn't exist yet)
@@ -473,11 +492,20 @@ function LiffApp() {
     async function fetchTables() {
       try {
         const { data, error } = await supabase
-          .from("tables")
+          .from("restaurant_tables")
           .select("id, label, status")
           .order("id");
         if (!error && data && data.length > 0) {
-          setTables(data as any);
+          const has9 = data.some((t: any) => t.id === "9" || t.label.includes("โต๊ะ 9"));
+          const has10 = data.some((t: any) => t.id === "10" || t.label.includes("โต๊ะ 10"));
+          const merged = [...data];
+          if (!has9) {
+            merged.push({ id: "9", label: "โต๊ะ 9 (Walk-in)", status: "available" });
+          }
+          if (!has10) {
+            merged.push({ id: "10", label: "โต๊ะ 10 (Walk-in)", status: "available" });
+          }
+          setTables(merged as any);
         }
       } catch { /* use local fallback */ }
     }
@@ -486,7 +514,7 @@ function LiffApp() {
     // Real-time: อัปเดตสถานะโต๊ะทันที
     const ch = supabase
       .channel("tables-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tables" }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "restaurant_tables" }, (payload: any) => {
         if (payload.eventType === "UPDATE" || payload.eventType === "INSERT") {
           const updated = payload.new as any;
           setTables((prev) =>
@@ -507,6 +535,104 @@ function LiffApp() {
   // Simulating store closed state (for prototype testing)
   const [simulateClosed, setSimulateClosed] = useState(false);
   const [bypassRealClosed, setBypassRealClosed] = useState(false);
+
+  // States for stock management (proteins & toppings)
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [recipes, setRecipes] = useState<any[]>([]);
+
+  // Fetch ingredients and recipes from Supabase with real-time sync
+  useEffect(() => {
+    async function loadStock() {
+      try {
+        const { data: ingData } = await supabase.from("ingredients").select("*");
+        if (ingData && ingData.length > 0) {
+          setIngredients(ingData);
+        } else {
+          const localIng = localStorage.getItem("ran-lung-get-mock-ingredients");
+          if (localIng) {
+            setIngredients(JSON.parse(localIng));
+          }
+        }
+
+        const { data: recData } = await supabase.from("recipe_items").select("*");
+        if (recData && recData.length > 0) {
+          setRecipes(recData);
+        } else {
+          const fallbackRecipes = [
+            { option_id: "opt-mu-sap", ingredient_id: "mock-1", quantity_required: 80 },
+            { option_id: "opt-mu-krob", ingredient_id: "mock-2", quantity_required: 80 },
+            { option_id: "opt-mu-chin", ingredient_id: "mock-3", quantity_required: 80 },
+            { option_id: "opt-kai-sap", ingredient_id: "mock-4", quantity_required: 80 },
+            { option_id: "opt-kai-tom", ingredient_id: "mock-5", quantity_required: 80 },
+            { option_id: "opt-nua", ingredient_id: "mock-6", quantity_required: 80 },
+            { option_id: "opt-muek", ingredient_id: "mock-7", quantity_required: 80 },
+            { option_id: "opt-kung", ingredient_id: "mock-8", quantity_required: 80 },
+            { option_id: "opt-hoi-lay", ingredient_id: "mock-9", quantity_required: 80 },
+            { option_id: "opt-khai-kai", ingredient_id: "mock-10", quantity_required: 1 },
+            { option_id: "opt-sai-krog", ingredient_id: "mock-11", quantity_required: 1 },
+            { option_id: "opt-kun-chiang", ingredient_id: "mock-12", quantity_required: 1 }
+          ];
+          setRecipes(fallbackRecipes);
+        }
+      } catch (err) {
+        console.warn("Error loading stock from database, using local fallback:", err);
+        const localIng = localStorage.getItem("ran-lung-get-mock-ingredients");
+        if (localIng) {
+          setIngredients(JSON.parse(localIng));
+        }
+      }
+    }
+    loadStock();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "ran-lung-get-mock-ingredients" && e.newValue) {
+        try {
+          setIngredients(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error("Storage sync parse error:", err);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // Subscribe to real-time changes on ingredients
+    const chIng = supabase
+      .channel("ingredients-realtime-customer")
+      .on("postgres_changes", { event: "*", schema: "public", table: "ingredients" }, () => {
+        loadStock();
+      })
+      .subscribe();
+
+    // Subscribe to real-time changes on recipe items
+    const chRec = supabase
+      .channel("recipe_items-realtime-customer")
+      .on("postgres_changes", { event: "*", schema: "public", table: "recipe_items" }, () => {
+        loadStock();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      supabase.removeChannel(chIng);
+      supabase.removeChannel(chRec);
+    };
+  }, []);
+
+  const checkOptionOutOfStock = (optionId: string) => {
+    const optionRecipes = recipes.filter((r) => r.option_id === optionId);
+    if (optionRecipes.length === 0) return false;
+
+    return optionRecipes.some((recipe) => {
+      const ingredient = ingredients.find((i) => {
+        return i.id === recipe.ingredient_id ||
+               i.name === recipe.ingredient_id ||
+               (recipe.ingredient_id && recipe.ingredient_id.includes(i.name));
+      });
+      if (!ingredient) return true;
+      if (ingredient.is_active === false || ingredient.status === "disabled") return true;
+      return Number(ingredient.quantity) < Number(recipe.quantity_required);
+    });
+  };
 
 
 
@@ -539,8 +665,8 @@ function LiffApp() {
     return false;
   }, [simulateClosed, bypassRealClosed]);
 
-  const shouldShowClosedOverlay = isCurrentlyClosed && 
-    tab === "home" && 
+  const shouldShowClosedOverlay = isCurrentlyClosed &&
+    tab === "home" &&
     (overlay === null || overlay === "menu" || overlay === "orderConfirm" || overlay === "payment");
 
   const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([
@@ -625,21 +751,79 @@ function LiffApp() {
       setTables((prev) =>
         prev.map((t) => (t.id === selectedTable ? { ...t, status: "occupied" } : t))
       );
+      // Update table status in Supabase to occupied
+      void (supabase as any)
+        .from("restaurant_tables")
+        .update({ status: "occupied" })
+        .eq("id", selectedTable);
     }
 
     // Push order to Supabase for real-time Staff Dashboard
-    void (supabase as any).from("orders").insert({
-      id: newOrder.id,
-      order_number: orderNum,
-      order_type: orderType || "delivery",
-      total_amount: subtotal + deliveryFee,
-      status: "pending", // Staff sees it as pending
-      items: newOrder.items,
-      table_id: orderType === "dine-in" ? selectedTable : null,
-      address: orderType === "delivery" ? address : null,
-      queue_number: takeawayQueueNum || null,
-      created_at: new Date().toISOString(),
-    });
+    const insertOrder = async () => {
+      let finalUserId = dbUser?.id;
+      let finalCustomerId = dbCustomer?.id;
+      
+      if (!finalUserId || !finalCustomerId) {
+        try {
+          const { data: users } = await supabase.from("users").select("id").limit(1);
+          const { data: customers } = await supabase.from("customers").select("id").limit(1);
+          if (users && users.length > 0) finalUserId = users[0].id;
+          if (customers && customers.length > 0) finalCustomerId = customers[0].id;
+        } catch {}
+      }
+
+      if (!finalUserId || !finalCustomerId) {
+        console.warn("Could not find any user or customer in Supabase. Skipping Supabase insert.");
+        return;
+      }
+
+      const orderId = typeof crypto?.randomUUID === 'function' 
+        ? crypto.randomUUID() 
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { 
+            const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8); 
+            return v.toString(16); 
+          });
+
+      const { error: orderErr } = await supabase.from("orders").insert({
+        id: orderId,
+        order_number: orderNum,
+        user_id: finalUserId,
+        customer_id: finalCustomerId,
+        line_user_id: profile?.userId || null,
+        order_type: orderType || "delivery",
+        status: "pending",
+        subtotal: subtotal,
+        delivery_fee: deliveryFee,
+        total: subtotal + deliveryFee,
+        table_number: tableNumStr || null,
+        delivery_address: orderType === "delivery" ? address : null,
+        special_instructions: null,
+        created_at: new Date().toISOString()
+      });
+
+      if (orderErr) {
+        console.error("Failed to insert order in Supabase:", orderErr);
+        return;
+      }
+
+      const orderItems = newOrder.items.map((item) => ({
+        order_id: orderId,
+        item_id: item.name,
+        name: item.name,
+        image: item.image || null,
+        unit_price: item.price,
+        quantity: item.qty,
+        line_total: item.price * item.qty,
+        created_at: new Date().toISOString()
+      }));
+
+      const { error: itemsErr } = await supabase.from("order_items").insert(orderItems);
+      if (itemsErr) {
+        console.error("Failed to insert order items in Supabase:", itemsErr);
+      }
+    };
+
+    void insertOrder();
   };
 
   const resetAll = () => {
@@ -774,6 +958,7 @@ function LiffApp() {
                 addToCart(line);
                 setSelectedItem(null);
               }}
+              checkOptionOutOfStock={checkOptionOutOfStock}
             />
           )}
         </AnimatePresence>
@@ -876,7 +1061,7 @@ function LiffApp() {
                 // Remove guest token
                 localStorage.removeItem("ran-lung-get-guest");
                 // Sign out จาก Supabase Auth
-                await supabase.auth.signOut().catch(() => {});
+                await supabase.auth.signOut().catch(() => { });
                 // Sign out จาก LIFF (ถ้า login อยู่)
                 try { liffLogout(); } catch { /* ignore */ }
                 navigate({ to: "/login" });
@@ -919,15 +1104,15 @@ function LiffApp() {
                 // Update in Supabase (best-effort)
                 if (prevTable && prevTable !== tableId) {
                   void (supabase as any)
-                    .from("tables")
+                    .from("restaurant_tables")
                     .update({ status: "available" })
                     .eq("id", prevTable);
                 }
                 void (supabase as any)
-                  .from("tables")
+                  .from("restaurant_tables")
                   .update({ status: "occupied" })
                   .eq("id", tableId);
-                  
+
                 setTimeout(() => setShowTablePicker(false), 200);
               }}
               onClose={() => setShowTablePicker(false)}
@@ -1166,6 +1351,58 @@ function DineInBlock({ selectedTable, onOpenPicker }: { selectedTable: string; o
   );
 }
 
+function FlagIcon({ lang }: { lang: string }) {
+  if (lang === "th") {
+    return (
+      <svg viewBox="0 0 9 6" className="w-5 h-3.5 rounded-sm shrink-0 shadow-sm border border-white/10">
+        <rect width="9" height="6" fill="#A51931"/>
+        <rect y="1" width="9" height="4" fill="#F4F5F8"/>
+        <rect y="2" width="9" height="2" fill="#2D2A4A"/>
+      </svg>
+    );
+  }
+  if (lang === "en") {
+    return (
+      <svg viewBox="0 0 19 10" className="w-5 h-3.5 rounded-sm shrink-0 shadow-sm border border-white/10">
+        <rect width="19" height="10" fill="#B22234"/>
+        <path d="M0,1 h19 M0,3 h19 M0,5 h19 M0,7 h19 M0,9 h19" stroke="#FFF" strokeWidth="1"/>
+        <rect width="7.6" height="5.38" fill="#3C3B6E"/>
+        <circle cx="1.5" cy="1" r="0.2" fill="#fff" />
+        <circle cx="3.0" cy="1" r="0.2" fill="#fff" />
+        <circle cx="4.5" cy="1" r="0.2" fill="#fff" />
+        <circle cx="6.0" cy="1" r="0.2" fill="#fff" />
+        <circle cx="2.2" cy="1.8" r="0.2" fill="#fff" />
+        <circle cx="3.7" cy="1.8" r="0.2" fill="#fff" />
+        <circle cx="5.2" cy="1.8" r="0.2" fill="#fff" />
+        <circle cx="1.5" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="3.0" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="4.5" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="6.0" cy="2.6" r="0.2" fill="#fff" />
+        <circle cx="2.2" cy="3.4" r="0.2" fill="#fff" />
+        <circle cx="3.7" cy="3.4" r="0.2" fill="#fff" />
+        <circle cx="5.2" cy="3.4" r="0.2" fill="#fff" />
+        <circle cx="1.5" cy="4.2" r="0.2" fill="#fff" />
+        <circle cx="3.0" cy="4.2" r="0.2" fill="#fff" />
+        <circle cx="4.5" cy="4.2" r="0.2" fill="#fff" />
+        <circle cx="6.0" cy="4.2" r="0.2" fill="#fff" />
+      </svg>
+    );
+  }
+  if (lang === "zh") {
+    return (
+      <svg viewBox="0 0 30 20" className="w-5 h-3.5 rounded-sm shrink-0 shadow-sm border border-white/10">
+        <rect width="30" height="20" fill="#DE2910"/>
+        <polygon points="5,2 6.17,5.61 9.33,5.61 6.78,7.47 7.76,11.08 5,8.89 2.24,11.08 3.22,7.47 0.67,5.61 3.83,5.61" fill="#FFDE00"/>
+        <circle cx="10" cy="2" r="0.5" fill="#FFDE00" />
+        <circle cx="12" cy="4" r="0.5" fill="#FFDE00" />
+        <circle cx="12" cy="7" r="0.5" fill="#FFDE00" />
+        <circle cx="10" cy="9" r="0.5" fill="#FFDE00" />
+      </svg>
+    );
+  }
+  return null;
+}
+
 function HomeScreen({
   onOpenSidebar,
   orderType,
@@ -1225,6 +1462,8 @@ function HomeScreen({
   isCurrentlyClosed: boolean;
   bypassRealClosed: boolean;
 }) {
+  const { language, setLanguage, t, tMenu } = useLanguage();
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -1256,6 +1495,78 @@ function HomeScreen({
         >
           <Menu size={20} />
         </button>
+
+        {/* Language Selector */}
+        <div className="absolute top-5 right-24 z-30">
+          <button
+            onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+            className="flex items-center bg-black/35 hover:bg-black/45 backdrop-blur-md px-3.5 py-2.5 rounded-full border border-white/20 text-white shadow-md transition-all cursor-pointer min-w-[125px] justify-between h-10 select-none active:scale-95 border-box"
+          >
+            <div className="flex items-center gap-2">
+              <FlagIcon lang={language} />
+              <span className="font-extrabold text-[11px] tracking-wide whitespace-nowrap">
+                {language === "th" ? "ภาษาไทย" : language === "en" ? "English" : "中文"}
+              </span>
+            </div>
+            <ChevronDown 
+              size={13} 
+              className={`opacity-75 transition-transform duration-200 ${langDropdownOpen ? "rotate-180" : ""}`} 
+            />
+          </button>
+
+          {/* Invisible clickaway backdrop */}
+          {langDropdownOpen && (
+            <div 
+              className="fixed inset-0 z-40 cursor-default" 
+              onClick={() => setLangDropdownOpen(false)}
+            />
+          )}
+
+          {/* Premium styled Dropdown Menu */}
+          <AnimatePresence>
+            {langDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-full mt-0 w-44 bg-black/80 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl overflow-hidden z-50 p-1.5 flex flex-col gap-1"
+              >
+                {[
+                  { code: "th", label: "ภาษาไทย", text: "Thai" },
+                  { code: "en", label: "English", text: "English" },
+                  { code: "zh", label: "中文", text: "Chinese" }
+                ].map((item) => {
+                  const isActive = language === item.code;
+                  return (
+                    <button
+                      key={item.code}
+                      onClick={() => {
+                        setLanguage(item.code as Language);
+                        setLangDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
+                      style={{
+                        background: isActive ? "rgba(252,193,74,0.15)" : "transparent",
+                        color: isActive ? "#fcc14a" : "#ffffff",
+                        fontWeight: isActive ? "800" : "600"
+                      }}
+                    >
+                      <span className="flex items-center gap-2 tracking-wide">
+                        <FlagIcon lang={item.code} />
+                        {item.label}
+                      </span>
+                      {isActive && (
+                        <Check size={12} className="text-[#fcc14a]" strokeWidth={3} />
+                      )}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <button
           onClick={onOpenCart}
           className="absolute top-5 right-5 flex items-center gap-1 text-white/90 text-xs bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-white/15"
@@ -1270,20 +1581,19 @@ function HomeScreen({
 
         <div className="absolute bottom-5 left-5 right-5 text-white">
           <p className="text-xs uppercase tracking-[0.2em] text-white/70">EPICUREAN</p>
-          <h1 className="text-2xl font-bold mt-1">สวัสดี, ยินดีต้อนรับ</h1>
-          <p className="text-sm text-white/80 mt-1">เลือกประสบการณ์การรับประทาน</p>
+          <h1 className="text-2xl font-bold mt-1">{t("สวัสดี, ยินดีต้อนรับ")}</h1>
+          <p className="text-sm text-white/80 mt-1">{t("เลือกประสบการณ์การรับประทาน")}</p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border backdrop-blur-sm ${
-                isCurrentlyClosed
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border backdrop-blur-sm ${isCurrentlyClosed
                   ? "bg-red-500/20 text-red-400 border-red-500/35"
                   : "bg-emerald-500/20 text-emerald-400 border-emerald-500/35"
-              }`}>
+                }`}>
                 <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isCurrentlyClosed ? "bg-red-400" : "bg-emerald-400"}`} />
-                {isCurrentlyClosed ? "ปิดบริการ" : "เปิดบริการ"}
+                {isCurrentlyClosed ? t("ปิดบริการ") : t("เปิดบริการ")}
               </span>
               <span className="text-xs font-semibold text-white/90">
-                {isCurrentlyClosed ? "อา. - ศ. 08:00 - 21:00" : "08:00 - 21:00"}
+                {isCurrentlyClosed ? (language === "th" ? "อา. - ศ. 08:00 - 21:00" : "Sun - Fri 08:00 - 21:00") : "08:00 - 21:00"}
               </span>
               {bypassRealClosed && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/25 px-2 py-0.5 text-[9px] font-bold text-amber-300 border border-amber-500/30">
@@ -1312,7 +1622,7 @@ function HomeScreen({
               className="inline-flex items-center justify-center rounded-full bg-[#ffcb44] px-4 py-2 text-sm font-semibold shadow-sm cursor-pointer"
               style={{ color: BRAND }}
             >
-              สั่งอาหาร <ChevronRight size={14} />
+              {t("สั่งอาหาร")} <ChevronRight size={14} />
             </button>
           </div>
         </div>
@@ -1340,16 +1650,16 @@ function HomeScreen({
       {/* Order type tiles */}
       <div ref={orderTypeRef} className="px-5 mt-4">
         <h3 className="text-sm font-medium mb-3 flex flex-wrap items-center gap-x-1.5" style={{ color: BRAND }}>
-          <span>ช่องทางการรับอาหาร <span className="text-red-500">*</span></span>
+          <span>{t("ช่องทางการรับอาหาร")} <span className="text-red-500">*</span></span>
           {orderType === null && (
             <span className="text-xs text-slate-400 font-normal">
-              (กรุณาเลือกช่องทางการรับอาหารด้านบนเพื่อระบุรายละเอียด)
+              {t("(กรุณาเลือกช่องทางการรับอาหารด้านบนเพื่อระบุรายละเอียด)")}
             </span>
           )}
         </h3>
         {showTypeError && (
           <p className="text-xs text-red-500 font-semibold mb-3">
-            * กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน, จัดส่งถึงที่ หรือ รับกลับบ้าน) ก่อนเริ่มสั่งซื้อ
+            {t("* กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน, จัดส่งถึงที่ หรือ รับกลับบ้าน) ก่อนเริ่มสั่งซื้อ")}
           </p>
         )}
         <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
@@ -1369,7 +1679,7 @@ function HomeScreen({
             <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
               <Utensils size={15} />
             </div>
-            <div className="font-bold text-[12px]">ทานที่ร้าน</div>
+            <div className="font-bold text-[12px]">{t("ทานที่ร้าน")}</div>
           </button>
 
           <button
@@ -1387,7 +1697,7 @@ function HomeScreen({
             <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "takeaway" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "takeaway" ? GOLD : BRAND }}>
               <ShoppingBag size={15} />
             </div>
-            <div className="font-bold text-[12px]">รับกลับบ้าน</div>
+            <div className="font-bold text-[12px]">{t("รับกลับบ้าน")}</div>
           </button>
 
           <button
@@ -1405,7 +1715,7 @@ function HomeScreen({
             <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "delivery" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "delivery" ? GOLD : BRAND }}>
               <Bike size={15} />
             </div>
-            <div className="font-bold text-[12px]">จัดส่งถึงที่</div>
+            <div className="font-bold text-[12px]">{t("จัดส่งถึงที่")}</div>
           </button>
         </div>
       </div>
@@ -1441,11 +1751,11 @@ function HomeScreen({
               {orderType === "takeaway" && (
                 <div className="space-y-1.5 p-1 text-center sm:text-left">
                   <h4 className="font-bold text-sm text-[#002e47] flex items-center justify-center sm:justify-start gap-1.5">
-                    <ShoppingBag size={16} /> รับกลับบ้าน (Take Away)
+                    <ShoppingBag size={16} /> {t("รับกลับบ้าน")} (Take Away)
                   </h4>
                   <p className="text-xs text-slate-500 leading-normal font-semibold">
-                    ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น 
-                    <strong className="text-[#059669] mx-1">"พร้อมเสิร์ฟ"</strong>
+                    {t("ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น")}
+                    <strong className="text-[#059669] mx-1">"{t("พร้อมเสิร์ฟ")}"</strong>
                   </p>
                 </div>
               )}
@@ -1458,7 +1768,7 @@ function HomeScreen({
       <div className="px-5 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold" style={{ color: BRAND }}>
-            เมนูแนะนำ
+            {t("เมนูแนะนำ")}
           </h2>
         </div>
         <div className="relative">
@@ -1467,7 +1777,7 @@ function HomeScreen({
             onClick={() => scroll("left")}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/50 backdrop-blur-[2px] border border-[#ece4d6]/50 hover:bg-white/80 transition shadow-sm"
             style={{ color: BRAND, marginLeft: -4 }}
-            aria-label="เลื่อนซ้าย"
+            aria-label={t("เลื่อนซ้าย")}
           >
             <ChevronLeft size={18} />
           </button>
@@ -1499,18 +1809,18 @@ function HomeScreen({
                   className="bg-white rounded-2xl p-3 shadow-soft cursor-pointer active:scale-[0.99] transition-transform min-w-[220px] w-56 shrink-0"
                 >
                   <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
-                    <img src={encodeURI(String(m.image))} alt={m.name} className="h-full w-full object-cover" />
+                    <img src={encodeURI(String(m.image))} alt={tMenu(m.name, "name")} className="h-full w-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col">
                     <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
                       <Star size={10} fill={GOLD} stroke={GOLD} />
-                      <span style={{ color: INK_MUTED }}>Chef's pick</span>
+                      <span style={{ color: INK_MUTED }}>{language === "th" ? "Chef's pick" : language === "zh" ? "厨师推荐" : "Chef's pick"}</span>
                     </div>
                     <h3 className="font-semibold text-[15px] truncate mt-1" style={{ color: BRAND }}>
-                      {m.name}
+                      {tMenu(m.name, "name")}
                     </h3>
                     <p className="text-xs mt-1 line-clamp-2" style={{ color: INK_MUTED }}>
-                      {m.desc}
+                      {tMenu(m.desc, "desc")}
                     </p>
                     <div className="mt-3 flex items-end justify-between">
                       <span className="font-bold text-base" style={{ color: BRAND }}>
@@ -1551,7 +1861,7 @@ function HomeScreen({
             onClick={() => scroll("right")}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/50 backdrop-blur-[2px] border border-[#ece4d6]/50 hover:bg-white/80 transition shadow-sm"
             style={{ color: BRAND, marginRight: -4 }}
-            aria-label="เลื่อนขวา"
+            aria-label={t("เลื่อนขวา")}
           >
             <ChevronRight size={18} />
           </button>
@@ -1663,39 +1973,40 @@ function TablePickerBottomSheet({
                 displayTables.map((table) => {
                   const available = table.status === "available";
                   const isSelected = selectedTable === table.id;
+                  const isWalkIn = table.label.toLowerCase().includes("walk-in") || table.label.includes("หน้าร้าน");
 
-                  const boxBg = isSelected ? BRAND : available ? "#dcfce7" : "#fee2e2";
-                  const boxBorder = isSelected ? BRAND : available ? "#15803d" : "#dc2626";
-                  const boxText = isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
-                  const boxSub = isSelected ? "rgba(252,193,74,0.7)" : available ? "#166534" : "#991b1b";
-                  const badgeBg = isSelected ? "rgba(252,193,74,0.2)" : available ? "#bbf7d0" : "#fecaca";
-                  const badgeText = isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
+                  const boxBg = isWalkIn ? "#f1f5f9" : isSelected ? BRAND : available ? "#dcfce7" : "#fee2e2";
+                  const boxBorder = isWalkIn ? "#cbd5e1" : isSelected ? BRAND : available ? "#15803d" : "#dc2626";
+                  const boxText = isWalkIn ? "#475569" : isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
+                  const boxSub = isWalkIn ? "#64748b" : isSelected ? "rgba(252,193,74,0.7)" : available ? "#166534" : "#991b1b";
+                  const badgeBg = isWalkIn ? "#e2e8f0" : isSelected ? "rgba(252,193,74,0.2)" : available ? "#bbf7d0" : "#fecaca";
+                  const badgeText = isWalkIn ? "#475569" : isSelected ? GOLD : available ? "#14532d" : "#7f1d1d";
 
                   return (
                     <motion.button
                       key={table.id}
-                      disabled={!available && !isSelected}
-                      onClick={() => available && onSelect(table.id)}
+                      disabled={isWalkIn || (!available && !isSelected)}
+                      onClick={() => !isWalkIn && available && onSelect(table.id)}
                       className="rounded-2xl p-4 text-left relative overflow-hidden"
                       style={{
                         background: boxBg,
                         color: boxText,
                         border: `2px solid ${boxBorder}`,
-                        opacity: !available && !isSelected ? 0.8 : 1,
-                        cursor: available ? "pointer" : "not-allowed",
+                        opacity: isWalkIn ? 0.8 : (!available && !isSelected ? 0.8 : 1),
+                        cursor: isWalkIn ? "not-allowed" : (available ? "pointer" : "not-allowed"),
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-sm">{table.label}</span>
+                        <span className="font-semibold text-xs truncate max-w-[85px]">{table.label}</span>
                         <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                           style={{ background: badgeBg, color: badgeText }}
                         >
-                          {isSelected ? "เลือกแล้ว" : available ? "ว่าง" : "ไม่ว่าง"}
+                          {isWalkIn ? "Walk-in" : isSelected ? "เลือกแล้ว" : available ? "ว่าง" : "ไม่ว่าง"}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs" style={{ color: boxSub }}>
-                        2-4 คน
+                      <p className="mt-1 text-[10px]" style={{ color: boxSub }}>
+                        {isWalkIn ? "สำหรับหน้าร้าน" : "ความจุ 2-4 คน"}
                       </p>
                     </motion.button>
                   );
@@ -1706,12 +2017,15 @@ function TablePickerBottomSheet({
             {/* Legend */}
             <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2.5 flex items-center gap-3">
               <p className="text-[11px] font-semibold text-slate-500">สถานะโต๊ะ:</p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <span className="flex items-center gap-1 text-[10px] font-bold text-[#14532d] bg-[#dcfce7] px-2 py-0.5 rounded-full border border-[#15803d]">
                   ว่าง
                 </span>
                 <span className="flex items-center gap-1 text-[10px] font-bold text-[#7f1d1d] bg-[#fee2e2] px-2 py-0.5 rounded-full border border-[#dc2626]">
                   ไม่ว่าง
+                </span>
+                <span className="flex items-center gap-1 text-[10px] font-bold text-[#475569] bg-[#f1f5f9] px-2 py-0.5 rounded-full border border-[#cbd5e1]">
+                  สำหรับ Walk-in
                 </span>
               </div>
             </div>
@@ -1729,10 +2043,12 @@ function ItemModal({
   item,
   onClose,
   onAdd,
+  checkOptionOutOfStock,
 }: {
   item: MenuItem;
   onClose: () => void;
   onAdd: (line: CartLine) => void;
+  checkOptionOutOfStock: (optionId: string) => boolean;
 }) {
   const [qty, setQty] = useState(1);
   const [options, setOptions] = useState<Record<string, string>>(() => {
@@ -1755,6 +2071,20 @@ function ItemModal({
   const [protein, setProtein] = useState(defaultProteinId);
   const [size, setSize] = useState("s_regular");
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+
+  // Auto-switch to first available protein if selected protein is out of stock
+  useEffect(() => {
+    if (!isFood || !protein) return;
+    const isCurrentOutOfStock = checkOptionOutOfStock(protein);
+    if (isCurrentOutOfStock) {
+      const firstAvailable = PROTEINS.find((p) => !checkOptionOutOfStock(p.id));
+      if (firstAvailable) {
+        setProtein(firstAvailable.id);
+      } else {
+        setProtein("p_no_meat"); // Fallback to no meat
+      }
+    }
+  }, [protein, isFood, checkOptionOutOfStock]);
 
   // Calculate base price excluding default protein price
   const basePrice = useMemo(() => {
@@ -1950,21 +2280,25 @@ function ItemModal({
                 <div className="grid grid-cols-2 gap-2">
                   {PROTEINS.map((p) => {
                     const active = protein === p.id;
+                    const isOutOfStock = checkOptionOutOfStock(p.id);
                     return (
                       <button
                         key={p.id}
+                        disabled={isOutOfStock}
                         onClick={() => setProtein(p.id)}
-                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150"
+                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150 relative overflow-hidden"
                         style={{
-                          borderColor: active ? BRAND : "#ece4d6",
-                          background: active ? "#fffcf5" : "white",
+                          borderColor: active ? BRAND : isOutOfStock ? "#f1f5f9" : "#ece4d6",
+                          background: active ? "#fffcf5" : isOutOfStock ? "#f8fafc" : "white",
+                          opacity: isOutOfStock ? 0.5 : 1,
+                          cursor: isOutOfStock ? "not-allowed" : "pointer"
                         }}
                       >
-                        <span className="text-xs font-semibold" style={{ color: BRAND }}>
-                          {p.name}
+                        <span className={`text-xs font-semibold ${isOutOfStock ? "line-through text-slate-400" : ""}`} style={{ color: isOutOfStock ? undefined : BRAND }}>
+                          {p.name} {isOutOfStock && "(หมด)"}
                         </span>
                         <span className="text-[11px] font-bold" style={{ color: active ? BRAND : INK_MUTED }}>
-                          {p.price > 0 ? `+${p.price} ฿` : "ฟรี"}
+                          {isOutOfStock ? "" : p.price > 0 ? `+${p.price} ฿` : "ฟรี"}
                         </span>
                       </button>
                     );
@@ -2010,18 +2344,22 @@ function ItemModal({
                 <div className="grid grid-cols-2 gap-2">
                   {TOPPINGS.map((t) => {
                     const active = selectedToppings.includes(t.id);
+                    const isOutOfStock = checkOptionOutOfStock(t.id);
                     return (
                       <button
                         key={t.id}
+                        disabled={isOutOfStock}
                         onClick={() =>
                           setSelectedToppings((prev) =>
                             active ? prev.filter((id) => id !== t.id) : [...prev, t.id]
                           )
                         }
-                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150"
+                        className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150 relative overflow-hidden"
                         style={{
-                          borderColor: active ? BRAND : "#ece4d6",
-                          background: active ? "#fffcf5" : "white",
+                          borderColor: active ? BRAND : isOutOfStock ? "#f1f5f9" : "#ece4d6",
+                          background: active ? "#fffcf5" : isOutOfStock ? "#f8fafc" : "white",
+                          opacity: isOutOfStock ? 0.5 : 1,
+                          cursor: isOutOfStock ? "not-allowed" : "pointer"
                         }}
                       >
                         <span className="flex items-center gap-2">
@@ -2034,12 +2372,12 @@ function ItemModal({
                           >
                             {active && <Check size={10} color={GOLD} strokeWidth={4} />}
                           </span>
-                          <span className="text-xs font-medium" style={{ color: BRAND }}>
-                            {t.name}
+                          <span className={`text-xs font-medium ${isOutOfStock ? "line-through text-slate-400" : ""}`} style={{ color: isOutOfStock ? undefined : BRAND }}>
+                            {t.name} {isOutOfStock && "(หมด)"}
                           </span>
                         </span>
                         <span className="text-[11px] font-bold" style={{ color: BRAND }}>
-                          +{t.price} ฿
+                          {isOutOfStock ? "" : `+${t.price} ฿`}
                         </span>
                       </button>
                     );
@@ -2179,8 +2517,8 @@ function MenuOverlay({
     let list = activeCat === "all"
       ? MENU.filter((m) => m.category === "signature")
       : activeCat === "signature"
-      ? MENU.filter((m) => m.category !== "drinks" && m.category !== "dessert")
-      : MENU.filter((m) => m.category === activeCat);
+        ? MENU.filter((m) => m.category !== "drinks" && m.category !== "dessert")
+        : MENU.filter((m) => m.category === activeCat);
 
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
@@ -2228,7 +2566,7 @@ function MenuOverlay({
             <Search size={20} />
           </button>
         </div>
-        
+
         {/* Search input and Sort button */}
         <div className="mt-4 flex gap-2">
           <div className="flex-1 rounded-2xl bg-white px-4 py-3 shadow-sm border border-slate-200 flex items-center gap-3">
@@ -2403,7 +2741,7 @@ function MenuOverlay({
                   </button>
                 </div>
               </div>
-              
+
               <div className="px-5 mt-4 space-y-2.5">
                 {[
                   { id: "default", label: "🔥 ยอดนิยม (แนะนำ)", desc: "เมนูขายดีประจำสัปดาห์" },
@@ -2937,17 +3275,17 @@ function StatusScreen({
 
   const steps = orderType === "dine-in"
     ? [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
-      ]
+      { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+      { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+      { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
+    ]
     : orderType === "takeaway"
-    ? [
+      ? [
         { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
         { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
         { id: 3, label: "พร้อมรับอาหาร", icon: ShoppingBag, done: currentStatus === "สำเร็จ", active: false },
       ]
-    : [
+      : [
         { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
         { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "กำลังจัดส่ง" || currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
         { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังจัดส่ง" },
@@ -3064,8 +3402,8 @@ function StatusScreen({
             <span>กำลังดำเนินการคืนเงิน</span>
           </div>
           <p className="text-xs text-amber-700 leading-relaxed font-medium">
-            ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน 
-            <strong className="text-amber-900 mx-1">฿{total.toLocaleString()}</strong> 
+            ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน
+            <strong className="text-amber-900 mx-1">฿{total.toLocaleString()}</strong>
             ไปที่พร้อมเพย์: <strong className="text-amber-900">{activeOrder?.refundPromptPay}</strong>
           </p>
           <p className="text-[10px] text-amber-600">
@@ -3284,11 +3622,10 @@ function StatusScreen({
                 {cancelReasonsList.map((reason) => (
                   <label
                     key={reason}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer text-sm font-semibold ${
-                      selectedReason === reason
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer text-sm font-semibold ${selectedReason === reason
                         ? "border-[#002e47] bg-[#fffcf5]"
                         : "border-[#ece4d6] hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
@@ -3374,16 +3711,16 @@ function MiniOrderTracker({
 }) {
   const steps = orderType === "dine-in"
     ? [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-        { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
-        { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
-      ]
+      { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+      { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
+      { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+    ]
     : [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
-        { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
-        { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
-      ];
+      { id: 1, label: "รับออเดอร์", icon: Check, done: true },
+      { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
+      { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
+      { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+    ];
 
   const doneCount = steps.filter((s) => s.done).length;
   const progressPercent = ((doneCount + 0.5) / steps.length) * 100; // halfway through active step
@@ -3703,7 +4040,7 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
-        
+
         {/* Google Maps Container */}
         <div className="relative h-64 w-full bg-slate-200 overflow-hidden">
           <iframe
@@ -3715,7 +4052,7 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
             allowFullScreen
             loading="lazy"
           ></iframe>
-          
+
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
 
@@ -3725,7 +4062,7 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
               <h2 className="text-xl font-bold">ร้านลุงเก็ต</h2>
               <p className="text-xs text-white/80 mt-1">อาหารตามสั่ง · Street Food</p>
             </div>
-            
+
             {/* Rating badge */}
             <div className="bg-[#ffcb44] rounded-2xl px-3 py-2 flex flex-col items-center shadow-lg shrink-0" style={{ color: BRAND }}>
               <span className="text-base font-extrabold leading-none">4.8</span>
@@ -3961,23 +4298,21 @@ function StoreClosedOverlay({
                 return (
                   <div
                     key={day.dayIndex}
-                    className={`flex items-center justify-between px-4 py-3.5 transition-colors ${
-                      isToday ? "bg-amber-500/5" : ""
-                    }`}
+                    className={`flex items-center justify-between px-4 py-3.5 transition-colors ${isToday ? "bg-amber-500/5" : ""
+                      }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center ${
-                        isToday 
+                      <span className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center ${isToday
                           ? "bg-amber-500 text-white shadow-sm"
                           : "bg-slate-100 text-slate-500"
-                      }`}>
+                        }`}>
                         {day.label}
                       </span>
                       <span className={`text-sm font-semibold ${isToday ? "text-slate-800" : "text-slate-600"}`}>
                         {day.name} {isToday && <span className="ml-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-full">วันนี้</span>}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono font-bold text-slate-700">{day.time}</span>
                       <span className={`h-2.5 w-2.5 rounded-full ${day.open ? "bg-emerald-500" : "bg-red-500"}`} />
@@ -4102,14 +4437,12 @@ function Sidebar({
               <button
                 type="button"
                 onClick={() => setSimulateClosed(!simulateClosed)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  simulateClosed ? "bg-amber-500" : "bg-white/15"
-                }`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${simulateClosed ? "bg-amber-500" : "bg-white/15"
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    simulateClosed ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${simulateClosed ? "translate-x-5" : "translate-x-0"
+                    }`}
                 />
               </button>
             </div>

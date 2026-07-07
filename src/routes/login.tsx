@@ -30,11 +30,12 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<"customer" | "staff">("customer");
+  const [role, setRole] = useState<"customer" | "staff" | "admin">("customer");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+  const [session, setSession] = useState<any>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
   // ── check if already logged in ────────────────────────────────
@@ -60,11 +61,12 @@ function LoginPage() {
       }
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
+    supabase.auth.getSession().then(({ data }: any) => {
+      setSession(data.session);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+      setSession(session);
       if (event === "SIGNED_IN" && session) {
         try {
           await syncAuthUserToSupabase(session.user);
@@ -282,334 +284,374 @@ function LoginPage() {
 
         {/* ── Form area ──────────────────────────────────── */}
         <div className="flex flex-col flex-1 px-7 pt-2 pb-8 gap-5">
-
-          {/* Tab selector */}
-          <div
-            className="flex rounded-2xl p-1"
-            style={{ background: "rgba(0,46,71,0.06)" }}
-          >
-            {(["login", "register"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  setTab(t);
-                  setFormError("");
-                  setFormSuccess("");
-                }}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                style={
-                  tab === t
-                    ? {
-                        background: BRAND,
-                        color: "white",
-                        boxShadow: "0 2px 12px rgba(0,46,71,0.25)",
-                      }
-                    : { color: INK_MUTED }
-                }
-              >
-                {t === "login" ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
-              </button>
-            ))}
-          </div>
-
-          {/* Email/Password form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-
-            {/* ── Register-only fields ── */}
-            {tab === "register" && (
-              <>
-                {/* Nickname */}
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="nickname-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
-                    ชื่อ
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
-                      <UserIcon />
-                    </span>
-                    <input
-                      id="nickname-input"
-                      type="text"
-                      value={nickname}
-                      onChange={(e) => setNickname(e.target.value)}
-                      placeholder=""
-                      autoComplete="nickname"
-                      className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
-                      style={{
-                        background: "rgba(0,46,71,0.05)",
-                        border: "1.5px solid rgba(0,46,71,0.12)",
-                        color: INK,
-                        fontFamily: "'Prompt', sans-serif",
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
-                    />
-                  </div>
+          {session ? (
+            <div className="flex flex-col gap-5 py-4">
+              <div className="rounded-2xl p-5 border text-center flex flex-col gap-3.5" style={{ background: "rgba(0,46,71,0.03)", borderColor: "rgba(0,46,71,0.08)" }}>
+                <span className="text-3xl">👤</span>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800" style={{ fontFamily: "'Prompt', sans-serif" }}>คุณเข้าสู่ระบบค้างไว้แล้ว</h3>
+                  <p className="text-xs text-slate-500 mt-1">อีเมลผู้ใช้งานปัจจุบัน:</p>
+                  <p className="text-sm font-bold text-[#002e47] mt-0.5 break-all">{session.user.email}</p>
                 </div>
-
-                {/* Phone */}
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="phone-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
-                    เบอร์โทร
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
-                      <PhoneIcon />
-                    </span>
-                    <input
-                      id="phone-input"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder=""
-                      autoComplete="tel"
-                      className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
-                      style={{
-                        background: "rgba(0,46,71,0.05)",
-                        border: "1.5px solid rgba(0,46,71,0.12)",
-                        color: INK,
-                        fontFamily: "'Prompt', sans-serif",
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
-                    />
-                  </div>
-                </div>
-
-                {/* Role selector */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold" style={{ color: INK_MUTED }}>สมัครในฐานะ</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      { value: "customer", label: "👤 ลูกค้า", desc: "สั่งอาหาร" },
-                      { value: "staff",    label: "👨‍🍳 พนักงาน", desc: "จัดการออเดอร์" },
-                      { value: "admin",    label: "👑 แอดมิน", desc: "จัดการระบบ" },
-                    ] as const).map((r) => (
-                      <button
-                        key={r.value}
-                        type="button"
-                        id={`role-${r.value}-btn`}
-                        onClick={() => setRole(r.value)}
-                        className="flex flex-col items-center gap-0.5 rounded-2xl py-3 px-2 text-sm font-semibold transition-all"
-                        style={{
-                          border: role === r.value ? `2px solid ${BRAND}` : "2px solid rgba(0,46,71,0.12)",
-                          background: role === r.value ? `rgba(0,46,71,0.08)` : "rgba(0,46,71,0.03)",
-                          color: role === r.value ? BRAND : INK_MUTED,
-                        }}
-                      >
-                        <span className="text-base">{r.label}</span>
-                        <span className="text-[10px] font-normal opacity-70">{r.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Email */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="email-input"
-                className="text-xs font-semibold"
-                style={{ color: INK_MUTED }}
-              >
-                อีเมล
-              </label>
-              <div className="relative">
-                <span
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: INK_MUTED }}
-                >
-                  <MailIcon />
-                </span>
-                <input
-                  id="email-input"
-                  ref={emailRef}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@gmail.com"
-                  autoComplete="email"
-                  className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
-                  style={{
-                    background: "rgba(0,46,71,0.05)",
-                    border: "1.5px solid rgba(0,46,71,0.12)",
-                    color: INK,
-                    fontFamily: "'Prompt', sans-serif",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
-                />
               </div>
-            </div>
 
-            {/* Password */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="password-input"
-                  className="text-xs font-semibold"
-                  style={{ color: INK_MUTED }}
-                >
-                  รหัสผ่าน
-                </label>
-                {tab === "login" && (
-                  <button
-                    type="button"
-                    className="text-[11px] font-medium"
-                    style={{ color: BRAND }}
-                    onClick={() => setFormError("กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน")}
-                  >
-                    ลืมรหัสผ่าน?
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <span
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: INK_MUTED }}
-                >
-                  <LockIcon />
-                </span>
-                <input
-                  id="password-input"
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={tab === "login" ? "รหัสผ่านของคุณ" : "อย่างน้อย 6 ตัวอักษร"}
-                  autoComplete={tab === "login" ? "current-password" : "new-password"}
-                  className="w-full rounded-2xl py-3.5 pl-10 pr-12 text-sm outline-none transition-all"
-                  style={{
-                    background: "rgba(0,46,71,0.05)",
-                    border: "1.5px solid rgba(0,46,71,0.12)",
-                    color: INK,
-                    fontFamily: "'Prompt', sans-serif",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
-                />
+              <div className="flex flex-col gap-2.5">
                 <button
-                  type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2"
-                  style={{ color: INK_MUTED }}
-                  aria-label={showPw ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  onClick={() => navigate({ to: "/" })}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
+                  style={{
+                    background: `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_MID} 100%)`,
+                    boxShadow: "0 6px 20px rgba(0,46,71,0.3)"
+                  }}
                 >
-                  {showPw ? <EyeOffIcon /> : <EyeIcon />}
+                  ไปยังหน้าแรก (ตามสิทธิ์การใช้งาน)
+                </button>
+
+                <button
+                  onClick={async () => {
+                    setLoading(true);
+                    await supabase.auth.signOut();
+                    setSession(null);
+                    setLoading(false);
+                  }}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#b91c1c] text-[15px] transition-all active:scale-[0.97] bg-red-50 hover:bg-red-100 border border-red-200"
+                >
+                  {loading ? "กำลังออกจากระบบ..." : "ออกจากระบบเพื่อเปลี่ยนบัญชี"}
                 </button>
               </div>
             </div>
-
-            {/* Error / Success */}
-            {formError && (
-              <div
-                className="flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm"
-                style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#b91c1c" }}
-              >
-                <span className="shrink-0 mt-0.5">⚠️</span>
-                <span>{formError}</span>
-              </div>
-            )}
-            {formSuccess && (
-              <div
-                className="flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm"
-                style={{ background: "rgba(6,199,85,0.08)", border: "1px solid rgba(6,199,85,0.2)", color: "#15803d" }}
-              >
-                <span className="shrink-0 mt-0.5">✅</span>
-                <span>{formSuccess}</span>
-              </div>
-            )}
-
-            {/* Submit button */}
-            <button
-              id="email-submit-btn"
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
-              style={{
-                background: loading
-                  ? "rgba(0,46,71,0.4)"
-                  : `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_MID} 100%)`,
-                boxShadow: loading ? "none" : "0 6px 20px rgba(0,46,71,0.3)",
-              }}
-            >
-              {loading ? (
-                <>
-                  <SpinnerIcon />
-                  กำลังดำเนินการ…
-                </>
-              ) : tab === "login" ? (
-                "เข้าสู่ระบบ"
-              ) : (
-                "สมัครสมาชิก"
-              )}
-            </button>
-          </form>
-
-          {/* Guest / Storefront Button */}
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.setItem("ran-lung-get-guest", "true");
-              navigate({ to: "/customer" });
-            }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#002e47] text-[16px] transition-all active:scale-[0.97]"
-            style={{
-              background: `linear-gradient(135deg, ${GOLD} 0%, #f59e0b 100%)`,
-              boxShadow: "0 6px 20px rgba(245,158,11,0.4)",
-              marginTop: "4px"
-            }}
-          >
-            <span className="text-xl">🛍️</span> สั่งหน้าร้าน
-          </button>
-
-          {/* Divider — show social login only on login tab */}
-          {tab === "login" && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
-              <span className="text-xs" style={{ color: INK_MUTED }}>
-                หรือเข้าสู่ระบบด้วย
-              </span>
-              <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
-            </div>
-          )}
-
-          {/* Social Login Buttons — login tab only */}
-          {tab === "login" && (
+          ) : (
             <>
-              {/* Google Login Button */}
+              {/* Tab selector */}
+              <div
+                className="flex rounded-2xl p-1"
+                style={{ background: "rgba(0,46,71,0.06)" }}
+              >
+                {(["login", "register"] as Tab[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setTab(t);
+                      setFormError("");
+                      setFormSuccess("");
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                    style={
+                      tab === t
+                        ? {
+                            background: BRAND,
+                            color: "white",
+                            boxShadow: "0 2px 12px rgba(0,46,71,0.25)",
+                          }
+                        : { color: INK_MUTED }
+                    }
+                  >
+                    {t === "login" ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Email/Password form */}
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+
+                {/* ── Register-only fields ── */}
+                {tab === "register" && (
+                  <>
+                    {/* Nickname */}
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="nickname-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                        ชื่อ
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                          <UserIcon />
+                        </span>
+                        <input
+                          id="nickname-input"
+                          type="text"
+                          value={nickname}
+                          onChange={(e) => setNickname(e.target.value)}
+                          placeholder=""
+                          autoComplete="nickname"
+                          className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
+                          style={{
+                            background: "rgba(0,46,71,0.05)",
+                            border: "1.5px solid rgba(0,46,71,0.12)",
+                            color: INK,
+                            fontFamily: "'Prompt', sans-serif",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                          onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="phone-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                        เบอร์โทร
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                          <PhoneIcon />
+                        </span>
+                        <input
+                          id="phone-input"
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder=""
+                          autoComplete="tel"
+                          className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
+                          style={{
+                            background: "rgba(0,46,71,0.05)",
+                            border: "1.5px solid rgba(0,46,71,0.12)",
+                            color: INK,
+                            fontFamily: "'Prompt', sans-serif",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                          onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Role selector */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold" style={{ color: INK_MUTED }}>สมัครในฐานะ</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { value: "customer", label: "👤 ลูกค้า", desc: "สั่งอาหาร" },
+                          { value: "staff",    label: "👨‍🍳 พนักงาน", desc: "จัดการออเดอร์" },
+                          { value: "admin",    label: "👑 แอดมิน", desc: "จัดการระบบ" },
+                        ] as const).map((r) => (
+                          <button
+                            key={r.value}
+                            type="button"
+                            id={`role-${r.value}-btn`}
+                            onClick={() => setRole(r.value)}
+                            className="flex flex-col items-center gap-0.5 rounded-2xl py-3 px-2 text-sm font-semibold transition-all"
+                            style={{
+                              border: role === r.value ? `2px solid ${BRAND}` : "2px solid rgba(0,46,71,0.12)",
+                              background: role === r.value ? `rgba(0,46,71,0.08)` : "rgba(0,46,71,0.03)",
+                              color: role === r.value ? BRAND : INK_MUTED,
+                            }}
+                          >
+                            <span className="text-base">{r.label}</span>
+                            <span className="text-[10px] font-normal opacity-70">{r.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Email */}
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="email-input"
+                    className="text-xs font-semibold"
+                    style={{ color: INK_MUTED }}
+                  >
+                    อีเมล
+                  </label>
+                  <div className="relative">
+                    <span
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ color: INK_MUTED }}
+                    >
+                      <MailIcon />
+                    </span>
+                    <input
+                      id="email-input"
+                      ref={emailRef}
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="example@gmail.com"
+                      autoComplete="email"
+                      className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
+                      style={{
+                        background: "rgba(0,46,71,0.05)",
+                        border: "1.5px solid rgba(0,46,71,0.12)",
+                        color: INK,
+                        fontFamily: "'Prompt', sans-serif",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="password-input"
+                      className="text-xs font-semibold"
+                      style={{ color: INK_MUTED }}
+                    >
+                      รหัสผ่าน
+                    </label>
+                    {tab === "login" && (
+                      <button
+                        type="button"
+                        className="text-[11px] font-medium"
+                        style={{ color: BRAND }}
+                        onClick={() => setFormError("กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน")}
+                      >
+                        ลืมรหัสผ่าน?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <span
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ color: INK_MUTED }}
+                    >
+                      <LockIcon />
+                    </span>
+                    <input
+                      id="password-input"
+                      type={showPw ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={tab === "login" ? "รหัสผ่านของคุณ" : "อย่างน้อย 6 ตัวอักษร"}
+                      autoComplete={tab === "login" ? "current-password" : "new-password"}
+                      className="w-full rounded-2xl py-3.5 pl-10 pr-12 text-sm outline-none transition-all"
+                      style={{
+                        background: "rgba(0,46,71,0.05)",
+                        border: "1.5px solid rgba(0,46,71,0.12)",
+                        color: INK,
+                        fontFamily: "'Prompt', sans-serif",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw((v) => !v)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                      style={{ color: INK_MUTED }}
+                      aria-label={showPw ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                    >
+                      {showPw ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Error / Success */}
+                {formError && (
+                  <div
+                    className="flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm"
+                    style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#b91c1c" }}
+                  >
+                    <span className="shrink-0 mt-0.5">⚠️</span>
+                    <span>{formError}</span>
+                  </div>
+                )}
+                {formSuccess && (
+                  <div
+                    className="flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm"
+                    style={{ background: "rgba(6,199,85,0.08)", border: "1px solid rgba(6,199,85,0.2)", color: "#15803d" }}
+                  >
+                    <span className="shrink-0 mt-0.5">✅</span>
+                    <span>{formSuccess}</span>
+                  </div>
+                )}
+
+                {/* Submit button */}
+                <button
+                  id="email-submit-btn"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
+                  style={{
+                    background: loading
+                      ? "rgba(0,46,71,0.4)"
+                      : `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_MID} 100%)`,
+                    boxShadow: loading ? "none" : "0 6px 20px rgba(0,46,71,0.3)",
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <SpinnerIcon />
+                      กำลังดำเนินการ…
+                    </>
+                  ) : tab === "login" ? (
+                    "เข้าสู่ระบบ"
+                  ) : (
+                    "สมัครสมาชิก"
+                  )}
+                </button>
+              </form>
+
+              {/* Guest / Storefront Button */}
               <button
-                id="google-login-btn"
-                onClick={handleGoogleLogin}
-                disabled={loading}
                 type="button"
-                className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97]"
+                onClick={() => {
+                  localStorage.setItem("ran-lung-get-guest", "true");
+                  navigate({ to: "/customer" });
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#002e47] text-[16px] transition-all active:scale-[0.97]"
                 style={{
-                  background: loading ? "rgba(255,255,255,0.7)" : "#ffffff",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                  border: "1px solid rgba(0,0,0,0.1)",
+                  background: `linear-gradient(135deg, ${GOLD} 0%, #f59e0b 100%)`,
+                  boxShadow: "0 6px 20px rgba(245,158,11,0.4)",
+                  marginTop: "4px"
                 }}
               >
-                {loading ? (
-                  <><SpinnerIcon />กำลังเชื่อมต่อ Google…</>
-                ) : (
-                  <><GoogleIcon size={22} />เข้าสู่ระบบด้วย Google</>
-                )}
+                <span className="text-xl">🛍️</span> สั่งหน้าร้าน
               </button>
+
+              {/* Divider — show social login only on login tab */}
+              {tab === "login" && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
+                  <span className="text-xs" style={{ color: INK_MUTED }}>
+                    หรือเข้าสู่ระบบด้วย
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: "rgba(0,46,71,0.1)" }} />
+                </div>
+              )}
+
+              {/* Social Login Buttons — login tab only */}
+              {tab === "login" && (
+                <>
+                  {/* Google Login Button */}
+                  <button
+                    id="google-login-btn"
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    type="button"
+                    className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97]"
+                    style={{
+                      background: loading ? "rgba(255,255,255,0.7)" : "#ffffff",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                      border: "1px solid rgba(0,0,0,0.1)",
+                    }}
+                  >
+                    {loading ? (
+                      <><SpinnerIcon />กำลังเชื่อมต่อ Google…</>
+                    ) : (
+                      <><GoogleIcon size={22} />เข้าสู่ระบบด้วย Google</>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* Privacy note */}
+              <p
+                className="text-center text-[11px] leading-relaxed px-4"
+                style={{ color: "rgba(0,46,71,0.35)" }}
+              >
+                {tab === "register"
+                  ? "การสมัครสมาชิกแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"
+                  : "การเข้าสู่ระบบแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"}
+                <br />
+                ข้อมูลของคุณจะถูกเก็บเป็นความลับ
+              </p>
             </>
           )}
-
-          {/* Privacy note */}
-          <p
-            className="text-center text-[11px] leading-relaxed px-4"
-            style={{ color: "rgba(0,46,71,0.35)" }}
-          >
-            {tab === "register"
-              ? "การสมัครสมาชิกแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"
-              : "การเข้าสู่ระบบแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน"}
-            <br />
-            ข้อมูลของคุณจะถูกเก็บเป็นความลับ
-          </p>
         </div>
 
         {/* Footer */}

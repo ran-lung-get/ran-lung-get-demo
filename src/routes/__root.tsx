@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from "motion/react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "../lib/supabase";
+import { LanguageProvider } from "../lib/i18n";
 
 function NotFoundComponent() {
   return (
@@ -135,7 +136,7 @@ function RootComponent() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public" },
-        (payload) => {
+        (payload: any) => {
           console.log("🔄 Database Changed:", payload);
           // ทันทีที่มีอะไรเปลี่ยน ให้ดึงข้อมูลใหม่ทั้งหมด (ทำให้ UI อัปเดตทันที)
           queryClient.invalidateQueries();
@@ -152,23 +153,25 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Top Progress Bar when navigating */}
-      <AnimatePresence>
-        {isNavigating && (
-          <motion.div
-            initial={{ opacity: 0, scaleX: 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed top-0 left-0 right-0 h-1 z-[9999] bg-[#fcc14a] origin-left"
-          />
-        )}
-      </AnimatePresence>
+      <LanguageProvider>
+        {/* Top Progress Bar when navigating */}
+        <AnimatePresence>
+          {isNavigating && (
+            <motion.div
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed top-0 left-0 right-0 h-1 z-[9999] bg-[#fcc14a] origin-left"
+            />
+          )}
+        </AnimatePresence>
 
-      <div className="min-h-screen w-full">
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </div>
+        <div className="min-h-screen w-full">
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+        </div>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

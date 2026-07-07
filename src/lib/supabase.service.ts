@@ -202,7 +202,16 @@ export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promis
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = supabase as any;
 
-  // 1. Upsert User
+  // 1. Check if user already exists to preserve their role
+  const { data: existingUser } = await client
+    .from("users")
+    .select("role")
+    .eq("auth_user_id", authUser.id)
+    .maybeSingle();
+
+  const userRole = existingUser?.role || authUser.user_metadata?.role || "customer";
+
+  // 2. Upsert User
   const displayName = authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "User";
   const { data: dbUser, error: userError } = await client
     .from("users")
@@ -212,6 +221,7 @@ export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promis
         display_name: displayName,
         email: authUser.email,
         picture_url: authUser.user_metadata?.avatar_url ?? null,
+        role: userRole,
         is_active: true,
         updated_at: now,
         last_login_at: now,
@@ -255,3 +265,174 @@ export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promis
 
   return { user: dbUser as UserRow, customer: dbCustomer as CustomerRow };
 }
+
+/**
+ * ดึงรายการวัตถุดิบทั้งหมดจาก Supabase
+ */
+export async function getIngredients() {
+  const client = supabase as any;
+  const { data, error } = await client
+    .from("ingredients")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("[Supabase] getIngredients error:", error);
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * อัปเดตปริมาณวัตถุดิบในสต็อก
+ */
+export async function updateIngredientStock(id: string, quantity: number, name?: string, unit?: string, minThreshold?: number) {
+  const client = supabase as any;
+  const updates: any = { quantity, updated_at: new Date().toISOString() };
+  if (name !== undefined) updates.name = name;
+  if (unit !== undefined) updates.unit = unit;
+  if (minThreshold !== undefined) updates.min_threshold = minThreshold;
+
+  const { data, error } = await client
+    .from("ingredients")
+    .update(updates)
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    console.error("[Supabase] updateIngredientStock error:", error);
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * เพิ่มวัตถุดิบใหม่เข้าระบบ
+ */
+export async function addIngredient(name: string, quantity: number, unit: string, minThreshold: number) {
+  const client = supabase as any;
+  const { data, error } = await client
+    .from("ingredients")
+    .insert({
+      name,
+      quantity,
+      unit,
+      min_threshold: minThreshold,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .select();
+
+  if (error) {
+    console.error("[Supabase] addIngredient error:", error);
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * ลบวัตถุดิบออกจากระบบ
+ */
+export async function deleteIngredient(id: string) {
+  const client = supabase as any;
+  const { error } = await client
+    .from("ingredients")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("[Supabase] deleteIngredient error:", error);
+    throw error;
+  }
+}
+
+/**
+ * ปรับปรุงสต็อกวัตถุดิบอัตโนมัติตามเมนูและตัวเลือกในออเดอร์
+ */
+export async function adjustStockFromOrder(
+  orderItems: { name: string; qty: number }[],
+  direction: "deduct" | "add"
+) {
+  try {
+    const client = supabase as any;
+    
+    // ดึงวัตถุดิบทั้งหมดที่มีอยู่ในระบบ
+    const { data: ingredients, error: ingError } = await client
+      .from("ingredients")
+      .select("*");
+      
+    if (ingError || !ingredients) {
+      console.error("[adjustStockFromOrder] failed to fetch ingredients:", ingError);
+      return;
+    }
+
+    const coefficient = direction === "deduct" ? -1 : 1;
+
+    for (const item of orderItems) {
+      const name = item.name;
+      const qty = item.qty;
+      const updates: { id: string; newQty: number }[] = [];
+
+      // 1. ตรวจสอบเนื้อสัตว์ / วัตถุดิบหลักในชื่อเมนู
+      const proteins = [
+        { key: "หมูสับ", name: "หมูสับ", req: 120 },
+        { key: "หมูกรอบ", name: "หมูกรอบ", req: 100 },
+        { key: "หมูชิ้น", name: "หมูชิ้น", req: 120 },
+        { key: "ไก่สับ", name: "ไก่สับ", req: 120 },
+        { key: "ไก่ต้ม", name: "ไก่ต้ม", req: 100 },
+        { key: "เนื้อ", name: "เนื้อ", req: 120 },
+        { key: "หมึก", name: "หมึก", req: 120 },
+        { key: "กุ้ง", name: "กุ้ง", req: 120 },
+        { key: "หอยลาย", name: "หอยลาย", req: 120 }
+      ];
+
+      for (const p of proteins) {
+        if (name.includes(p.key)) {
+          const ing = ingredients.find((i: any) => i.name === p.name);
+          if (ing) {
+            const change = p.req * qty * coefficient;
+            updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
+          }
+        }
+      }
+
+      // 2. ตรวจสอบท็อปปิ้งไข่ (ไข่ดาว ไข่เจียว ไข่ต้ม)
+      if (name.includes("ไข่ดาว") || name.includes("ไข่เจียว") || name.includes("ไข่ต้ม")) {
+        const ing = ingredients.find((i: any) => i.name === "ไข่ไก่");
+        if (ing) {
+          const change = 1 * qty * coefficient;
+          updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
+        }
+      }
+
+      // 3. ตรวจสอบไส้กรอก
+      if (name.includes("ไส้กรอก")) {
+        const ing = ingredients.find((i: any) => i.name === "ไส้กรอก");
+        if (ing) {
+          const change = 1 * qty * coefficient;
+          updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
+        }
+      }
+
+      // 4. ตรวจสอบกุนเชียง
+      if (name.includes("กุนเชียง")) {
+        const ing = ingredients.find((i: any) => i.name === "กุนเชียง");
+        if (ing) {
+          const change = 1 * qty * coefficient;
+          updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
+        }
+      }
+
+      // ทำการอัปเดตค่ากลับลงฐานข้อมูล
+      for (const update of updates) {
+        await client
+          .from("ingredients")
+          .update({ quantity: update.newQty, updated_at: new Date().toISOString() })
+          .eq("id", update.id);
+      }
+    }
+  } catch (err) {
+    console.error("[adjustStockFromOrder] Exception:", err);
+  }
+}
+
