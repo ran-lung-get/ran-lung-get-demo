@@ -3,6 +3,8 @@
 -- วิธีใช้: คัดลอกไปรันใน Supabase SQL Editor
 -- ========================================================
 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 1. สร้างตารางวัตถุดิบ (Ingredients)
 CREATE TABLE IF NOT EXISTS public.ingredients (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
