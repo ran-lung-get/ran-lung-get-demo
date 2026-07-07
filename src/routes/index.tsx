@@ -1,8 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { initLiff, isLiffLoggedIn, getLiffProfile } from "../lib/liff";
-import { syncLineUserToSupabase } from "../lib/supabase.service";
 
 export const Route = createFileRoute("/")({
   component: RootRedirector,
@@ -49,30 +47,12 @@ function RootRedirector() {
         }
 
         let userId = null;
-        let isLineLogin = false;
 
         if (session) {
           userId = session.user.id;
         }
 
-        // 2. ถ้าไม่มี Supabase Session ให้ตรวจสอบ LINE LIFF
-        if (!userId && typeof window !== "undefined" && !window.location.hash.includes("access_token") && !window.location.hash.includes("error")) {
-          try {
-            // ป้องกัน initLiff ค้าง
-            const liffPromise = initLiff();
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF timeout")), 3000));
-            await Promise.race([liffPromise, timeoutPromise]);
-            
-            if (isLiffLoggedIn()) {
-              const p = await getLiffProfile();
-              userId = p.userId;
-              isLineLogin = true;
-              try { await syncLineUserToSupabase(p); } catch (e) { console.error("[RootRedirector] syncLineUserToSupabase error:", e); }
-            }
-          } catch (e) {
-            console.log("LIFF Init failed or timeout", e);
-          }
-        }
+
 
         if (cancelled) return;
 
@@ -91,10 +71,8 @@ function RootRedirector() {
         // 4. ดึง Role จากฐานข้อมูล
         let role = "customer"; // ค่าเริ่มต้น
         
-        // เราค้นหา user ด้วย auth_user_id หรือ line_user_id
-        const query = isLineLogin 
-          ? supabase.from("users").select("role").eq("line_user_id", userId).single()
-          : supabase.from("users").select("role").eq("auth_user_id", userId).single();
+        // ค้นหา user ด้วย auth_user_id
+        const query = supabase.from("users").select("role").eq("auth_user_id", userId).single();
 
         const { data, error } = await query;
         

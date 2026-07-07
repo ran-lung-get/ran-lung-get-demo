@@ -1,13 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState, useEffect } from "react";
-import {
-  initLiff,
-  isLiffLoggedIn,
-  liffLogout,
-  getLiffProfile,
-  type LiffProfile,
-} from "../../lib/liff";
-import { syncLineUserToSupabase } from "../../lib/supabase.service";
+import { type LiffProfile } from "../../lib/liff";
 import { supabase } from "../../lib/supabase";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -401,28 +394,7 @@ function LiffApp() {
           return;
         }
 
-        // 2. ถ้าไม่มี Supabase session → ลอง LIFF
-        try {
-          const liffPromise = initLiff();
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF timeout")), 3000));
-          await Promise.race([liffPromise, timeoutPromise]);
-          
-          if (cancelled) return;
-          if (isLiffLoggedIn()) {
-            const p = await getLiffProfile();
-            if (cancelled) return;
-            try { await syncLineUserToSupabase(p); } catch { /* silent */ }
-            if (!cancelled) {
-              setProfile(p);
-              setLiffReady(true);
-            }
-            return;
-          }
-        } catch {
-          // LIFF not configured — ok
-        }
-
-        // 3. ไม่มี session ใดเลย → redirect ไป login
+        // 2. ไม่มี session ใดเลย → redirect ไป login
         if (!cancelled) navigate({ to: "/login" });
       } catch (err) {
         if (!cancelled) {

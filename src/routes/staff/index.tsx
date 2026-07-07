@@ -1167,6 +1167,8 @@ function KitchenMonitor() {
 
   // Auth Check for Staff — ใช้ Supabase session แทน localStorage token
   useEffect(() => {
+    // ปิดระบบเช็คสิทธิ์ชั่วคราว เพื่อให้เข้าดูหน้า Staff ได้โดยไม่เด้งไปหน้าล็อกอิน
+    /*
     async function checkAuth() {
       const { data: { session } } = await (await import("../../lib/supabase")).supabase.auth.getSession();
       if (!session) {
@@ -1187,6 +1189,7 @@ function KitchenMonitor() {
       }
     }
     checkAuth();
+    */
   }, []);
 
   // Load orders from localStorage
