@@ -8,7 +8,6 @@ async function makeAdmin() {
   console.log("Upgrading user roles to 'admin' for testing...");
 
   const emailsToUpgrade = [
-    '07steakgamebro@gmail.com',
     'staff_test@example.com',
     'testadmin@example.com',
     'admin7@gmail.com'

@@ -202,7 +202,16 @@ export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promis
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = supabase as any;
 
-  // 1. Upsert User
+  // 1. Check if user already exists to preserve their role
+  const { data: existingUser } = await client
+    .from("users")
+    .select("role")
+    .eq("auth_user_id", authUser.id)
+    .maybeSingle();
+
+  const userRole = existingUser?.role || authUser.user_metadata?.role || "customer";
+
+  // 2. Upsert User
   const displayName = authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "User";
   const { data: dbUser, error: userError } = await client
     .from("users")
@@ -212,6 +221,7 @@ export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promis
         display_name: displayName,
         email: authUser.email,
         picture_url: authUser.user_metadata?.avatar_url ?? null,
+        role: userRole,
         is_active: true,
         updated_at: now,
         last_login_at: now,
