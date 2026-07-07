@@ -999,9 +999,11 @@ function TableManagementView({ orders }: { orders: OrderHistory[] }) {
           กำลังโหลดผังโต๊ะ...
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {tables.map((table) => {
-            const activeOrders = getActiveOrdersForTable(table.label);
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...tables]
+            .sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10))
+            .map((table) => {
+              const activeOrders = getActiveOrdersForTable(table.label);
             const isOccupied = table.status === "occupied";
             const isReserved = table.status === "reserved";
             const isAvailable = table.status === "available" || (!isOccupied && !isReserved);
