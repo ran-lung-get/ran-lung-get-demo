@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { syncAuthUserToSupabase } from "../lib/supabase.service";
+import { ShoppingBag, User, ChefHat, Headset } from "lucide-react";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
@@ -37,18 +38,20 @@ function LoginPage() {
   const [formSuccess, setFormSuccess] = useState("");
   const [session, setSession] = useState<any>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const [hoveredRole, setHoveredRole] = useState<"customer" | "staff" | "admin" | null>(null);
+  const [hoveredGuest, setHoveredGuest] = useState(false);
 
   // ── check if already logged in ────────────────────────────────
   useEffect(() => {
     if (typeof window !== "undefined") {
       let errorDesc: string | null = null;
-      
+
       // Check hash (Implicit flow)
       if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         errorDesc = hashParams.get("error_description");
       }
-      
+
       // Check search (PKCE flow)
       if (!errorDesc && window.location.search) {
         const searchParams = new URLSearchParams(window.location.search);
@@ -65,17 +68,19 @@ function LoginPage() {
       setSession(data.session);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      setSession(session);
-      if (event === "SIGNED_IN" && session) {
-        try {
-          await syncAuthUserToSupabase(session.user);
-        } catch (e) {
-          console.error("[Login] syncAuthUserToSupabase error:", e);
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event: any, session: any) => {
+        setSession(session);
+        if (event === "SIGNED_IN" && session) {
+          try {
+            await syncAuthUserToSupabase(session.user);
+          } catch (e) {
+            console.error("[Login] syncAuthUserToSupabase error:", e);
+          }
+          navigate({ to: "/" });
         }
-        navigate({ to: "/" });
-      }
-    });
+      },
+    );
 
     return () => {
       authListener.subscription.unsubscribe();
@@ -140,7 +145,7 @@ function LoginPage() {
                 updated_at: now,
                 last_login_at: now,
               },
-              { onConflict: "auth_user_id", ignoreDuplicates: false }
+              { onConflict: "auth_user_id", ignoreDuplicates: false },
             );
           } catch (syncErr) {
             console.error("[Register] sync to users error:", syncErr);
@@ -170,13 +175,13 @@ function LoginPage() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
       });
-      
+
       if (error) {
         console.error("Google Login Error: " + error.message);
         setFormError(translateAuthError(error.message));
         setLoading(false);
       } else if (data?.url) {
-        // If it succeeds, Supabase should navigate automatically. 
+        // If it succeeds, Supabase should navigate automatically.
         // We log it so we know it didn't fail.
         console.log("Redirecting to: ", data.url);
       }
@@ -194,10 +199,8 @@ function LoginPage() {
       return "กรุณายืนยันอีเมลก่อน — ตรวจสอบกล่องจดหมาย แล้วกดลิงก์ยืนยัน";
     if (msg.includes("User already registered"))
       return "อีเมลนี้มีบัญชีอยู่แล้ว — กรุณาเข้าสู่ระบบแทน";
-    if (msg.includes("Password should be"))
-      return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
-    if (msg.includes("rate limit"))
-      return "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
+    if (msg.includes("Password should be")) return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+    if (msg.includes("rate limit")) return "ลองบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่";
     if (msg.includes("over_email_send_rate_limit"))
       return "ระบบส่งอีเมลบ่อยเกินไป กรุณารอ 1 นาทีแล้วลองใหม่";
     return msg;
@@ -208,16 +211,14 @@ function LoginPage() {
     <div
       className="min-h-screen w-full flex items-center justify-center"
       style={{
-        background:
-          "radial-gradient(circle at 20% 20%, #0d2d42 0%, #050d15 65%, #020609 100%)",
+        background: "radial-gradient(circle at 20% 20%, #0d2d42 0%, #050d15 65%, #020609 100%)",
       }}
     >
       {/* Dot grid bg */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(252,193,74,0.05) 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(circle, rgba(252,193,74,0.05) 1px, transparent 1px)",
           backgroundSize: "32px 32px",
         }}
       />
@@ -230,8 +231,7 @@ function LoginPage() {
           minHeight: "min(932px, 100vh)",
           borderRadius: 28,
           background: LINEN,
-          boxShadow:
-            "0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)",
           zIndex: 1,
         }}
       >
@@ -246,18 +246,18 @@ function LoginPage() {
         >
           {/* App icon */}
           <div
-            className="mb-4 grid place-items-center"
+            className="mb-4 grid place-items-center overflow-hidden"
             style={{
-              width: 84,
-              height: 84,
-              borderRadius: 22,
+              width: 120,
+              height: 120,
+              borderRadius: 30,
               background: "rgba(255,255,255,0.08)",
               border: "1.5px solid rgba(252,193,74,0.3)",
               backdropFilter: "blur(12px)",
               boxShadow: "0 8px 28px rgba(0,0,0,0.3)",
             }}
           >
-            <span style={{ fontSize: 40 }}>🍛</span>
+            <img src="/logo.png" alt="ร้านลุงเก็ต Logo" className="w-full h-full object-cover" />
           </div>
 
           <h1
@@ -266,13 +266,9 @@ function LoginPage() {
           >
             ร้านลุงเก้ต
           </h1>
-          <p
-            className="mt-1 text-[13px]"
-            style={{ color: "rgba(255,255,255,0.5)" }}
-          >
+          <p className="mt-1 text-[13px]" style={{ color: "rgba(255,255,255,0.5)" }}>
             สั่งอาหารง่าย ๆ ผ่านระบบออนไลน์
           </p>
-
         </div>
 
         {/* Wave */}
@@ -286,22 +282,32 @@ function LoginPage() {
         <div className="flex flex-col flex-1 px-7 pt-2 pb-8 gap-5">
           {session ? (
             <div className="flex flex-col gap-5 py-4">
-              <div className="rounded-2xl p-5 border text-center flex flex-col gap-3.5" style={{ background: "rgba(0,46,71,0.03)", borderColor: "rgba(0,46,71,0.08)" }}>
+              <div
+                className="rounded-2xl p-5 border text-center flex flex-col gap-3.5"
+                style={{ background: "rgba(0,46,71,0.03)", borderColor: "rgba(0,46,71,0.08)" }}
+              >
                 <span className="text-3xl">👤</span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-800" style={{ fontFamily: "'Prompt', sans-serif" }}>คุณเข้าสู่ระบบค้างไว้แล้ว</h3>
+                  <h3
+                    className="font-bold text-sm text-slate-800"
+                    style={{ fontFamily: "'Prompt', sans-serif" }}
+                  >
+                    คุณเข้าสู่ระบบค้างไว้แล้ว
+                  </h3>
                   <p className="text-xs text-slate-500 mt-1">อีเมลผู้ใช้งานปัจจุบัน:</p>
-                  <p className="text-sm font-bold text-[#002e47] mt-0.5 break-all">{session.user.email}</p>
+                  <p className="text-sm font-bold text-[#002e47] mt-0.5 break-all">
+                    {session.user.email}
+                  </p>
                 </div>
               </div>
 
               <div className="flex flex-col gap-2.5">
                 <button
                   onClick={() => navigate({ to: "/" })}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97] cursor-pointer"
                   style={{
                     background: `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_MID} 100%)`,
-                    boxShadow: "0 6px 20px rgba(0,46,71,0.3)"
+                    boxShadow: "0 6px 20px rgba(0,46,71,0.3)",
                   }}
                 >
                   ไปยังหน้าแรก (ตามสิทธิ์การใช้งาน)
@@ -315,7 +321,7 @@ function LoginPage() {
                     setLoading(false);
                   }}
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#b91c1c] text-[15px] transition-all active:scale-[0.97] bg-red-50 hover:bg-red-100 border border-red-200"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#b91c1c] text-[15px] transition-all active:scale-[0.97] bg-red-50 hover:bg-red-100 border border-red-200 cursor-pointer"
                 >
                   {loading ? "กำลังออกจากระบบ..." : "ออกจากระบบเพื่อเปลี่ยนบัญชี"}
                 </button>
@@ -324,10 +330,7 @@ function LoginPage() {
           ) : (
             <>
               {/* Tab selector */}
-              <div
-                className="flex rounded-2xl p-1"
-                style={{ background: "rgba(0,46,71,0.06)" }}
-              >
+              <div className="flex rounded-2xl p-1" style={{ background: "rgba(0,46,71,0.06)" }}>
                 {(["login", "register"] as Tab[]).map((t) => (
                   <button
                     key={t}
@@ -336,14 +339,14 @@ function LoginPage() {
                       setFormError("");
                       setFormSuccess("");
                     }}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
                     style={
                       tab === t
                         ? {
-                            background: BRAND,
-                            color: "white",
-                            boxShadow: "0 2px 12px rgba(0,46,71,0.25)",
-                          }
+                          background: BRAND,
+                          color: "white",
+                          boxShadow: "0 2px 12px rgba(0,46,71,0.25)",
+                        }
                         : { color: INK_MUTED }
                     }
                   >
@@ -354,17 +357,23 @@ function LoginPage() {
 
               {/* Email/Password form */}
               <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-
                 {/* ── Register-only fields ── */}
                 {tab === "register" && (
                   <>
                     {/* Nickname */}
                     <div className="flex flex-col gap-1.5">
-                      <label htmlFor="nickname-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                      <label
+                        htmlFor="nickname-input"
+                        className="text-xs font-semibold"
+                        style={{ color: INK_MUTED }}
+                      >
                         ชื่อ
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                        <span
+                          className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                          style={{ color: INK_MUTED }}
+                        >
                           <UserIcon />
                         </span>
                         <input
@@ -372,7 +381,7 @@ function LoginPage() {
                           type="text"
                           value={nickname}
                           onChange={(e) => setNickname(e.target.value)}
-                          placeholder=""
+                          placeholder="Your Name"
                           autoComplete="nickname"
                           className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
                           style={{
@@ -381,19 +390,32 @@ function LoginPage() {
                             color: INK,
                             fontFamily: "'Prompt', sans-serif",
                           }}
-                          onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                          onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                          onFocus={(e) => {
+                            e.target.style.borderColor = BRAND;
+                            e.target.style.background = "#ffffff";
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.borderColor = "rgba(0,46,71,0.12)";
+                            e.target.style.background = "rgba(0,46,71,0.05)";
+                          }}
                         />
                       </div>
                     </div>
 
                     {/* Phone */}
                     <div className="flex flex-col gap-1.5">
-                      <label htmlFor="phone-input" className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                      <label
+                        htmlFor="phone-input"
+                        className="text-xs font-semibold"
+                        style={{ color: INK_MUTED }}
+                      >
                         เบอร์โทร
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: INK_MUTED }}>
+                        <span
+                          className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                          style={{ color: INK_MUTED }}
+                        >
                           <PhoneIcon />
                         </span>
                         <input
@@ -401,7 +423,7 @@ function LoginPage() {
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          placeholder=""
+                          placeholder="0xx-xxx-xxx"
                           autoComplete="tel"
                           className="w-full rounded-2xl py-3.5 pl-10 pr-4 text-sm outline-none transition-all"
                           style={{
@@ -410,35 +432,94 @@ function LoginPage() {
                             color: INK,
                             fontFamily: "'Prompt', sans-serif",
                           }}
-                          onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                          onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                          onFocus={(e) => {
+                            e.target.style.borderColor = BRAND;
+                            e.target.style.background = "#ffffff";
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.borderColor = "rgba(0,46,71,0.12)";
+                            e.target.style.background = "rgba(0,46,71,0.05)";
+                          }}
                         />
                       </div>
                     </div>
 
                     {/* Role selector */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold" style={{ color: INK_MUTED }}>สมัครในฐานะ</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {([
-                          { value: "customer", label: "👤 ลูกค้า", desc: "สั่งอาหาร" },
-                          { value: "staff",    label: "👨‍🍳 พนักงาน", desc: "จัดการออเดอร์" },
-                          { value: "admin",    label: "👑 แอดมิน", desc: "จัดการระบบ" },
-                        ] as const).map((r) => (
+                      <label className="text-xs font-semibold" style={{ color: INK_MUTED }}>
+                        สมัครในฐานะ
+                      </label>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {(
+                          [
+                            { value: "customer", label: "ลูกค้า", desc: "สั่งอาหาร", Icon: User },
+                            {
+                              value: "staff",
+                              label: "พนักงาน",
+                              desc: "จัดการออเดอร์",
+                              Icon: ChefHat,
+                            },
+                            { value: "admin", label: "แอดมิน", desc: "จัดการระบบ", Icon: Headset },
+                          ] as const
+                        ).map((r) => (
                           <button
                             key={r.value}
                             type="button"
                             id={`role-${r.value}-btn`}
                             onClick={() => setRole(r.value)}
-                            className="flex flex-col items-center gap-0.5 rounded-2xl py-3 px-2 text-sm font-semibold transition-all"
+                            onMouseEnter={() => setHoveredRole(r.value)}
+                            onMouseLeave={() => setHoveredRole(null)}
+                            className="flex flex-col items-center gap-1.5 rounded-2xl py-4 px-3 text-sm font-semibold transition-all hover:scale-[1.03] active:scale-[0.98]"
                             style={{
-                              border: role === r.value ? `2px solid ${BRAND}` : "2px solid rgba(0,46,71,0.12)",
-                              background: role === r.value ? `rgba(0,46,71,0.08)` : "rgba(0,46,71,0.03)",
-                              color: role === r.value ? BRAND : INK_MUTED,
+                              border:
+                                role === r.value
+                                  ? `2px solid ${BRAND}`
+                                  : hoveredRole === r.value
+                                    ? `2px solid rgba(0,46,71,0.25)`
+                                    : "2px solid rgba(0,46,71,0.08)",
+                              background:
+                                role === r.value
+                                  ? `linear-gradient(135deg, ${BRAND} 0%, ${BRAND_MID} 100%)`
+                                  : hoveredRole === r.value
+                                    ? `rgba(0,46,71,0.03)`
+                                    : "#ffffff",
+                              color:
+                                role === r.value
+                                  ? "#ffffff"
+                                  : hoveredRole === r.value
+                                    ? BRAND
+                                    : INK_MUTED,
+                              cursor: "pointer",
+                              boxShadow:
+                                role === r.value
+                                  ? "0 8px 20px rgba(0,46,71,0.22)"
+                                  : "0 2px 8px rgba(0,0,0,0.02)",
                             }}
                           >
-                            <span className="text-base">{r.label}</span>
-                            <span className="text-[10px] font-normal opacity-70">{r.desc}</span>
+                            <div className="flex items-center gap-1.5 text-base">
+                              <r.Icon
+                                size={18}
+                                className="shrink-0"
+                                style={{
+                                  color:
+                                    role === r.value
+                                      ? GOLD
+                                      : role === r.value || hoveredRole === r.value
+                                        ? BRAND
+                                        : INK_MUTED,
+                                }}
+                              />
+                              <span>{r.label}</span>
+                            </div>
+                            <span
+                              className="text-[10px] font-normal"
+                              style={{
+                                color: role === r.value ? "rgba(255,255,255,0.75)" : "inherit",
+                                opacity: role === r.value ? 1 : 0.7,
+                              }}
+                            >
+                              {r.desc}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -477,8 +558,14 @@ function LoginPage() {
                         color: INK,
                         fontFamily: "'Prompt', sans-serif",
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = BRAND;
+                        e.target.style.background = "#ffffff";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "rgba(0,46,71,0.12)";
+                        e.target.style.background = "rgba(0,46,71,0.05)";
+                      }}
                     />
                   </div>
                 </div>
@@ -496,7 +583,7 @@ function LoginPage() {
                     {tab === "login" && (
                       <button
                         type="button"
-                        className="text-[11px] font-medium"
+                        className="text-[11px] font-medium cursor-pointer"
                         style={{ color: BRAND }}
                         onClick={() => setFormError("กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน")}
                       >
@@ -525,13 +612,19 @@ function LoginPage() {
                         color: INK,
                         fontFamily: "'Prompt', sans-serif",
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = BRAND)}
-                      onBlur={(e) => (e.target.style.borderColor = "rgba(0,46,71,0.12)")}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = BRAND;
+                        e.target.style.background = "#ffffff";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "rgba(0,46,71,0.12)";
+                        e.target.style.background = "rgba(0,46,71,0.05)";
+                      }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPw((v) => !v)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer"
                       style={{ color: INK_MUTED }}
                       aria-label={showPw ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
                     >
@@ -544,7 +637,11 @@ function LoginPage() {
                 {formError && (
                   <div
                     className="flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm"
-                    style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#b91c1c" }}
+                    style={{
+                      background: "rgba(239,68,68,0.08)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      color: "#b91c1c",
+                    }}
                   >
                     <span className="shrink-0 mt-0.5">⚠️</span>
                     <span>{formError}</span>
@@ -553,7 +650,11 @@ function LoginPage() {
                 {formSuccess && (
                   <div
                     className="flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm"
-                    style={{ background: "rgba(6,199,85,0.08)", border: "1px solid rgba(6,199,85,0.2)", color: "#15803d" }}
+                    style={{
+                      background: "rgba(6,199,85,0.08)",
+                      border: "1px solid rgba(6,199,85,0.2)",
+                      color: "#15803d",
+                    }}
                   >
                     <span className="shrink-0 mt-0.5">✅</span>
                     <span>{formSuccess}</span>
@@ -565,7 +666,7 @@ function LoginPage() {
                   id="email-submit-btn"
                   type="submit"
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97]"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white text-[15px] transition-all active:scale-[0.97] cursor-pointer"
                   style={{
                     background: loading
                       ? "rgba(0,46,71,0.4)"
@@ -593,14 +694,21 @@ function LoginPage() {
                   localStorage.setItem("ran-lung-get-guest", "true");
                   navigate({ to: "/customer" });
                 }}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#002e47] text-[16px] transition-all active:scale-[0.97]"
+                onMouseEnter={() => setHoveredGuest(true)}
+                onMouseLeave={() => setHoveredGuest(false)}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-[#002e47] text-[16px] transition-all duration-200 active:scale-[0.97]"
                 style={{
-                  background: `linear-gradient(135deg, ${GOLD} 0%, #f59e0b 100%)`,
-                  boxShadow: "0 6px 20px rgba(245,158,11,0.4)",
-                  marginTop: "4px"
+                  background: hoveredGuest ? "rgba(252, 193, 74, 0.06)" : "#ffffff",
+                  border: `1.5px solid ${GOLD}`,
+                  boxShadow: hoveredGuest
+                    ? "0 6px 16px rgba(252,193,74,0.15)"
+                    : "0 4px 12px rgba(252,193,74,0.08)",
+                  transform: hoveredGuest ? "scale(1.01)" : "scale(1)",
+                  marginTop: "4px",
+                  cursor: "pointer",
                 }}
               >
-                <span className="text-xl">🛍️</span> สั่งหน้าร้าน
+                <ShoppingBag size={20} className="text-[#002e47] stroke-[2.5]" /> สั่งหน้าร้าน
               </button>
 
               {/* Divider — show social login only on login tab */}
@@ -623,7 +731,7 @@ function LoginPage() {
                     onClick={handleGoogleLogin}
                     disabled={loading}
                     type="button"
-                    className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97]"
+                    className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold text-slate-700 text-[15px] transition-all active:scale-[0.97] cursor-pointer"
                     style={{
                       background: loading ? "rgba(255,255,255,0.7)" : "#ffffff",
                       boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
@@ -631,9 +739,15 @@ function LoginPage() {
                     }}
                   >
                     {loading ? (
-                      <><SpinnerIcon />กำลังเชื่อมต่อ Google…</>
+                      <>
+                        <SpinnerIcon />
+                        กำลังเชื่อมต่อ Google…
+                      </>
                     ) : (
-                      <><GoogleIcon size={22} />เข้าสู่ระบบด้วย Google</>
+                      <>
+                        <GoogleIcon size={22} />
+                        เข้าสู่ระบบด้วย Google
+                      </>
                     )}
                   </button>
                 </>
@@ -655,10 +769,7 @@ function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div
-          className="py-4 text-center border-t"
-          style={{ borderColor: "rgba(0,46,71,0.07)" }}
-        >
+        <div className="py-4 text-center border-t" style={{ borderColor: "rgba(0,46,71,0.07)" }}>
           <p className="text-[10px]" style={{ color: "rgba(0,46,71,0.3)" }}>
             © 2026 ร้านลุงเก้ต · Powered by Supabase
           </p>
@@ -697,17 +808,38 @@ function LineIcon({ size = 24 }: { size?: number }) {
 function GoogleIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
     </svg>
   );
 }
 
 function MailIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="2" y="4" width="20" height="16" rx="2" />
       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
     </svg>
@@ -716,7 +848,16 @@ function MailIcon() {
 
 function LockIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
@@ -725,7 +866,16 @@ function LockIcon() {
 
 function EyeIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -734,7 +884,16 @@ function EyeIcon() {
 
 function EyeOffIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
       <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
       <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
@@ -745,7 +904,16 @@ function EyeOffIcon() {
 
 function UserIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
@@ -770,7 +938,16 @@ function SpinnerIcon() {
 
 function PhoneIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );

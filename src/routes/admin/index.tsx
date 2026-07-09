@@ -307,6 +307,23 @@ function AdminDashboard() {
     }
   };
 
+  const deleteUser = async (userId: string, displayName: string) => {
+    if (!confirm(`คุณต้องการลบผู้ใช้งาน "${displayName}" ใช่หรือไม่?`)) return;
+    const previousUsers = [...users];
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    try {
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", userId);
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Supabase user deletion failed, rolling back:", err);
+      alert(`ไม่สามารถลบผู้ใช้ได้: ${err?.message || "กรุณาตรวจสอบว่าผู้ใช้นี้มีประวัติคำสั่งซื้ออยู่หรือไม่"}`);
+      setUsers(previousUsers);
+    }
+  };
+
   // Inventory logic copy from staff
   const toggleStock = (itemId: string) => {
     let updated: string[];
@@ -573,6 +590,7 @@ function AdminDashboard() {
               loading={loadingUsers} 
               updateUserRole={updateUserRole}
               toggleUserActiveStatus={toggleUserActiveStatus}
+              deleteUser={deleteUser}
             />
           )}
         </div>
@@ -604,11 +622,11 @@ function AdminSidebarContent({
       <div className="p-5 border-b border-white/10 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-[#fcc14a] border border-white/15">
-            <ChefHat size={22} className="stroke-[2.5]" />
+            <Shield size={22} className="stroke-[2.5]" />
           </div>
           <div>
             <h2 className="font-black text-sm tracking-tight text-white uppercase">แผงผู้ดูแลระบบ</h2>
-            <p className="text-[9px] font-bold text-[#fcc14a] tracking-wider uppercase">ADMIN LUNG GET</p>
+            <p className="text-[9px] font-bold text-[#fcc14a] tracking-wider uppercase">ADMIN PANEL</p>
           </div>
         </div>
       </div>
@@ -1462,11 +1480,15 @@ function AdminInventoryView({
                     </span>
                     <button
                       onClick={() => toggleStock(item.id)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition ${
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
                         isOutOfStock ? "bg-red-500" : "bg-emerald-500"
                       }`}
                     >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${isOutOfStock ? "translate-x-4" : "translate-x-0"}`} />
+                      <span
+                        className={`absolute left-[2px] top-[2px] h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ease-in-out ${
+                          isOutOfStock ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
                     </button>
                   </div>
                 </div>
@@ -1484,12 +1506,14 @@ function AdminStaffView({
   users, 
   loading, 
   updateUserRole, 
-  toggleUserActiveStatus 
+  toggleUserActiveStatus,
+  deleteUser
 }: { 
   users: any[]; 
   loading: boolean; 
   updateUserRole: (id: string, role: any) => void;
   toggleUserActiveStatus: (id: string, current: boolean) => void;
+  deleteUser: (id: string, name: string) => void;
 }) {
 
   if (loading) {
@@ -1557,10 +1581,10 @@ function AdminStaffView({
                     </td>
                     <td className="py-3 px-4 text-right space-x-1.5">
                       {user.role !== "admin" ? (
-                        <div className="inline-flex gap-1.5 justify-end">
+                        <div className="inline-flex gap-1.5 justify-end items-center">
                           <button
                             onClick={() => updateUserRole(user.id, "staff")}
-                            className={`px-2 py-1 rounded text-[10px] font-bold border transition ${
+                            className={`px-2 py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
                               user.role === "staff" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                           >
@@ -1568,11 +1592,19 @@ function AdminStaffView({
                           </button>
                           <button
                             onClick={() => updateUserRole(user.id, "customer")}
-                            className={`px-2 py-1 rounded text-[10px] font-bold border transition ${
+                            className={`px-2 py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
                               user.role === "customer" ? "bg-slate-700 text-white border-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                           >
                             Customer
+                          </button>
+                          <button
+                            onClick={() => deleteUser(user.id, user.display_name)}
+                            className="px-2.5 py-1 rounded text-[10px] font-bold border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition cursor-pointer active:scale-95 flex items-center gap-1 shrink-0 ml-1"
+                            title="ลบผู้ใช้งาน"
+                          >
+                            <Trash2 size={11} />
+                            <span>ลบ</span>
                           </button>
                         </div>
                       ) : (

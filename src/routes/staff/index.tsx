@@ -118,8 +118,8 @@ function KitchenSidebarContent({
             <ChefHat size={22} className="stroke-[2.5]" />
           </div>
           <div>
-            <h2 className="font-black text-sm tracking-tight text-white uppercase">ระบบหลังร้าน</h2>
-            <p className="text-[9px] font-bold text-[#fcc14a] tracking-wider uppercase">ครัวลุงเกตุ</p>
+            <h2 className="font-black text-sm tracking-tight text-white uppercase">ระบบจัดการครัว</h2>
+            <p className="text-[9px] font-bold text-[#fcc14a] tracking-wider uppercase">KITCHEN MONITOR (STAFF)</p>
           </div>
         </div>
         {onClose && (
@@ -782,12 +782,15 @@ function OrderCard({
 
   let typeBadge = "ทานที่ร้าน";
   let typeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
+  let borderLeftColor = "border-l-[#fcc14a]"; // Dine-in: Gold
   if (isTakeaway) {
     typeBadge = "กลับบ้าน";
     typeColor = "bg-blue-50 text-blue-800 border-blue-200";
+    borderLeftColor = "border-l-[#5a6e7a]"; // Takeaway: Ink/neutral gray
   } else if (isDelivery) {
     typeBadge = "เดลิเวอรี่";
     typeColor = "bg-amber-50 text-amber-800 border-amber-200";
+    borderLeftColor = "border-l-[#002e47]"; // Delivery: Navy Blue
   }
 
   let nextBtnText = "เริ่มทำครัว";
@@ -801,7 +804,7 @@ function OrderCard({
   }
 
   return (
-    <div className="bg-white border-2 border-[#ece4d6] rounded-2xl p-4 shadow-sm hover:shadow transition relative space-y-3">
+    <div className={`bg-white border-2 border-l-[6px] border-[#ece4d6] ${borderLeftColor} rounded-2xl p-4 shadow-sm hover:shadow transition relative space-y-3`}>
       <div className="flex items-center justify-between">
         <div>
           <span className="font-black text-[#002e47] text-sm">{order.orderNumber}</span>
