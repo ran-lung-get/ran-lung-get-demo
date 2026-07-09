@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState, useEffect } from "react";
-import { type LiffProfile } from "../../lib/liff";
+import { type LiffProfile, liffLogout } from "../../lib/liff";
 import { supabase } from "../../lib/supabase";
+import { syncAuthUserToSupabase } from "../../lib/supabase.service";
 import { AnimatePresence, motion } from "motion/react";
 import { useLanguage, type Language } from "../../lib/i18n";
 import {
@@ -363,6 +364,63 @@ function LiffApp() {
   const [liffReady, setLiffReady] = useState(false);
   const [profile, setProfile] = useState<LiffProfile | null>(null);
   const { language, setLanguage, t, tMenu } = useLanguage();
+
+  // Load WebAvatar widget for customer route only
+  useEffect(() => {
+    // Set up ChatWidgetConfig
+    (window as any).ChatWidgetConfig = {
+      mode: "realtime-widget",
+      widgetId: "ran-lung-get",
+      avatarUrl: "Botnoi",
+      container: "#webavatar-container",
+      greetingInstruction: "",
+      enableBubble: "true",
+      cameraOffset: "0,0,0"
+    };
+
+    // Load JSSDK script
+    let scriptElement: HTMLScriptElement | null = null;
+    if (!document.getElementById('webavatar-jssdk')) {
+      const s = document.createElement('script');
+      s.id = 'webavatar-jssdk';
+      s.src = 'https://webavatar.didthat.cc/chat-widget.js';
+      s.async = true;
+      (document.head || document.body).appendChild(s);
+      scriptElement = s;
+    }
+
+    // Handle JSSDK navigation event for SPA
+    const handleNavigate = (e: any) => {
+      e.preventDefault();
+      const target = e.detail.target;
+      navigate({ to: target });
+    };
+
+    window.addEventListener('webavatar-navigate', handleNavigate);
+
+    return () => {
+      window.removeEventListener('webavatar-navigate', handleNavigate);
+      // Clean up script if we created it
+      if (scriptElement && scriptElement.parentNode) {
+        scriptElement.parentNode.removeChild(scriptElement);
+      }
+      const existingScript = document.getElementById('webavatar-jssdk');
+      if (existingScript && existingScript.parentNode) {
+        existingScript.parentNode.removeChild(existingScript);
+      }
+      // Disconnect WebAvatar on unmount to release resources
+      if ((window as any).WebAvatar) {
+        try {
+          (window as any).WebAvatar.disconnect();
+        } catch (err) {
+          console.error("Error disconnecting WebAvatar on unmount:", err);
+        }
+      }
+      // Remove config
+      delete (window as any).ChatWidgetConfig;
+    };
+  }, [navigate]);
+
 
   // ── Auth Guard (Supabase Session OR LINE LIFF) ──────────────
   useEffect(() => {
@@ -886,7 +944,8 @@ function LiffApp() {
           backgroundSize: "32px 32px",
         }}
       />
-      <div
+      <main
+        aria-label="แอปพลิเคชันสั่งอาหาร ร้านลุงเก็ต"
         className="relative overflow-hidden bg-[var(--linen)] no-scrollbar z-10"
         style={{
           width: "min(430px, 100vw)",
@@ -1169,7 +1228,17 @@ function LiffApp() {
             </button>
           </div>
         )}
-      </div>
+
+        {/* WebAvatar container positioned in the bottom-right corner of the main app frame */}
+        <div
+          id="webavatar-container"
+          className={`absolute bottom-6 right-4 z-40 transition-opacity duration-300 ${tab === "home" ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+          style={{
+            width: "100px",
+            height: "100px",
+          }}
+        />
+      </main>
     </div>
   );
 }
@@ -1236,10 +1305,13 @@ function DeliveryBlock({
           <MapPin size={18} />
         </div>
         <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-[0.12em] mb-1" style={{ color: INK_MUTED }}>
+          <label htmlFor="delivery-address" className="text-[10px] uppercase tracking-[0.12em] mb-1 block" style={{ color: INK_MUTED }}>
             ที่อยู่จัดส่ง
-          </p>
+          </label>
           <input
+            id="delivery-address"
+            name="delivery-address"
+            aria-label="ที่อยู่จัดส่ง"
             value={address}
             onChange={(e) => handleAddressChange(e.target.value)}
             onBlur={() => setTouched(true)}
@@ -1259,6 +1331,7 @@ function DeliveryBlock({
               return (
                 <button
                   key={id}
+                  aria-label={`ประเภทที่อยู่ ${labels[id]}`}
                   onClick={() => setAddressType(id)}
                   className="px-3 py-1 rounded-full border text-xs font-medium transition"
                   style={{
@@ -1289,6 +1362,7 @@ function DeliveryBlock({
             return (
               <button
                 key={m.id}
+                aria-label={`เลือกรูปแบบการรับอาหาร ${m.label}`}
                 onClick={() => handleDeliveryMethodChange(m.id)}
                 className="flex flex-col items-start gap-1.5 rounded-xl border-2 p-3 text-left transition"
                 style={{
@@ -1337,6 +1411,7 @@ function DineInBlock({ selectedTable, onOpenPicker }: { selectedTable: string; o
             </p>
             <div className="mt-3">
               <button
+                aria-label="เปิดผังที่นั่งเลือกโต๊ะ"
                 onClick={onOpenPicker}
                 className="px-4 py-2 rounded-full border"
                 style={{ borderColor: BRAND, color: BRAND }}
@@ -1490,6 +1565,7 @@ function HomeScreen({
           }}
         />
         <button
+          aria-label="เปิดเมนูด้านข้าง"
           onClick={onOpenSidebar}
           className="absolute top-5 left-5 grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur-md text-white border border-white/20"
         >
@@ -1499,6 +1575,7 @@ function HomeScreen({
         {/* Language Selector */}
         <div className="absolute top-5 right-24 z-30">
           <button
+            aria-label="เปลี่ยนภาษา"
             onClick={() => setLangDropdownOpen(!langDropdownOpen)}
             className="flex items-center bg-black/35 hover:bg-black/45 backdrop-blur-md px-3.5 py-2.5 rounded-full border border-white/20 text-white shadow-md transition-all cursor-pointer min-w-[125px] justify-between h-10 select-none active:scale-95 border-box"
           >
@@ -1541,6 +1618,7 @@ function HomeScreen({
                   return (
                     <button
                       key={item.code}
+                      aria-label={`เลือกภาษา ${item.label}`}
                       onClick={() => {
                         setLanguage(item.code as Language);
                         setLangDropdownOpen(false);
@@ -1568,6 +1646,7 @@ function HomeScreen({
         </div>
 
         <button
+          aria-label={`เปิดตะกร้าสินค้า มีสินค้าทั้งหมด ${totalQty} ชิ้น`}
           onClick={onOpenCart}
           className="absolute top-5 right-5 flex items-center gap-1 text-white/90 text-xs bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-white/15"
         >
@@ -1602,6 +1681,7 @@ function HomeScreen({
               )}
             </div>
             <button
+              aria-label="ดำเนินการสั่งอาหารตามที่เลือก"
               onClick={() => {
                 if (!orderType) {
                   setShowTypeError(true);
@@ -1664,6 +1744,7 @@ function HomeScreen({
         )}
         <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
           <button
+            aria-label="เลือกทานที่ร้าน"
             onClick={() => {
               setOrderType("dine-in");
               setShowTypeError(false);
@@ -1683,6 +1764,7 @@ function HomeScreen({
           </button>
 
           <button
+            aria-label="เลือกรับกลับบ้าน"
             onClick={() => {
               setOrderType("takeaway");
               setShowTypeError(false);
@@ -1701,6 +1783,7 @@ function HomeScreen({
           </button>
 
           <button
+            aria-label="เลือกจัดส่งถึงที่"
             onClick={() => {
               setOrderType("delivery");
               setShowTypeError(false);
@@ -1827,6 +1910,7 @@ function HomeScreen({
                         ฿{m.price}
                       </span>
                       <button
+                        aria-label={`หยิบ ${tMenu(m.name, "name")} ใส่ตะกร้า`}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!orderType) {
@@ -2242,6 +2326,7 @@ function ItemModal({
                   return (
                     <button
                       key={c.id}
+                      aria-label={`เลือก ${c.label}`}
                       onClick={() => setOptions({ ...options, [g.id]: c.id })}
                       className="w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left"
                       style={{
@@ -2285,6 +2370,7 @@ function ItemModal({
                       <button
                         key={p.id}
                         disabled={isOutOfStock}
+                        aria-label={`เลือกวัตถุดิบ ${p.name}`}
                         onClick={() => setProtein(p.id)}
                         className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150 relative overflow-hidden"
                         style={{
@@ -2317,6 +2403,7 @@ function ItemModal({
                     return (
                       <button
                         key={s.id}
+                        aria-label={`เลือกขนาด ${s.name}`}
                         onClick={() => setSize(s.id)}
                         className="flex items-center justify-between rounded-xl border px-4 py-3 text-left transition duration-150"
                         style={{
@@ -2349,6 +2436,7 @@ function ItemModal({
                       <button
                         key={t.id}
                         disabled={isOutOfStock}
+                        aria-label={`เลือกท็อปปิ้ง ${t.name}`}
                         onClick={() =>
                           setSelectedToppings((prev) =>
                             active ? prev.filter((id) => id !== t.id) : [...prev, t.id]
@@ -2397,6 +2485,7 @@ function ItemModal({
                     return (
                       <button
                         key={a.id}
+                        aria-label={`เลือกเพิ่มเติม ${a.name}`}
                         onClick={() =>
                           setSelectedAddons((s) =>
                             active ? s.filter((x) => x !== a.id) : [...s, a.id]
@@ -2434,10 +2523,13 @@ function ItemModal({
           )}
 
           <div className="mt-6">
-            <h3 className="font-semibold mb-2" style={{ color: BRAND }}>
+            <label htmlFor="special-instructions" className="font-semibold mb-2 block" style={{ color: BRAND }}>
               ระบุความต้องการพิเศษ
-            </h3>
+            </label>
             <textarea
+              id="special-instructions"
+              name="special-instructions"
+              aria-label="ระบุความต้องการพิเศษ"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="เช่น ไม่ใส่ผัก, รสจัดพิเศษ"
@@ -2452,6 +2544,7 @@ function ItemModal({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 bg-[var(--surface)] rounded-full p-1">
               <button
+                aria-label="ลดจำนวนชิ้น"
                 onClick={() => setQty(Math.max(1, qty - 1))}
                 className="grid h-9 w-9 place-items-center rounded-full"
                 style={{ background: "white", color: BRAND }}
@@ -2462,6 +2555,7 @@ function ItemModal({
                 {qty}
               </span>
               <button
+                aria-label="เพิ่มจำนวนชิ้น"
                 onClick={() => setQty(qty + 1)}
                 className="grid h-9 w-9 place-items-center rounded-full"
                 style={{ background: BRAND, color: GOLD }}
@@ -2470,6 +2564,7 @@ function ItemModal({
               </button>
             </div>
             <button
+              aria-label={`เพิ่ม ${formattedName} ลงตะกร้า จำนวน ${qty} ชิ้น รวมราคา ${total} บาท`}
               onClick={handleAdd}
               className="flex-1 h-12 rounded-full font-semibold flex items-center justify-between px-5"
               style={{ background: BRAND, color: "white" }}
@@ -2815,7 +2910,8 @@ function CartDrawer({
         onClick={onClose}
         className="absolute inset-0 bg-black/50 z-40"
       />
-      <motion.div
+      <motion.aside
+        aria-label="ตะกร้าสินค้าของคุณ"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
@@ -2828,7 +2924,7 @@ function CartDrawer({
             <h2 className="text-lg font-bold" style={{ color: BRAND }}>
               ตะกร้าของคุณ
             </h2>
-            <button onClick={onClose} className="text-sm" style={{ color: INK_MUTED }}>
+            <button aria-label="ปิดตะกร้า" onClick={onClose} className="text-sm" style={{ color: INK_MUTED }}>
               ปิด
             </button>
           </div>
@@ -2856,6 +2952,7 @@ function CartDrawer({
                 </p>
               </div>
               <button
+                aria-label={`ลบ ${l.name} ออกจากตะกร้า`}
                 onClick={() => onRemove(l.id)}
                 className="grid h-9 w-9 place-items-center rounded-full self-start"
                 style={{ background: "#fee2e2", color: "#dc2626" }}
@@ -2874,6 +2971,7 @@ function CartDrawer({
               </span>
             </div>
             <button
+              aria-label="ดำเนินการสั่งซื้อสินค้าในตะกร้า"
               onClick={onCheckout}
               className="w-full h-12 rounded-full font-semibold"
               style={{ background: BRAND, color: "white" }}
@@ -2882,7 +2980,7 @@ function CartDrawer({
             </button>
           </div>
         )}
-      </motion.div>
+      </motion.aside>
     </>
   );
 }
