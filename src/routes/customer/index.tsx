@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState, useEffect } from "react";
-import { type LiffProfile } from "../../lib/liff";
+import { liffLogout, type LiffProfile } from "../../lib/liff";
 import { supabase } from "../../lib/supabase";
+import { syncAuthUserToSupabase } from "../../lib/supabase.service";
 import { AnimatePresence, motion } from "motion/react";
 import { useLanguage, type Language } from "../../lib/i18n";
 import {
