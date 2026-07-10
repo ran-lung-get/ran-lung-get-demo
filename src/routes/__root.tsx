@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 import appCss from "../styles.css?url";
@@ -81,18 +81,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "A mobile-first React web app for LINE LIFF food delivery, featuring a minimalist design and intuitive navigation." },
+      { title: "LINE LIFF Food Delivery" },
+      { name: "description", content: "A mobile-first food delivery app for LINE LIFF with customer, staff, and admin order workflows." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "A mobile-first React web app for LINE LIFF food delivery, featuring a minimalist design and intuitive navigation." },
+      { property: "og:title", content: "LINE LIFF Food Delivery" },
+      { property: "og:description", content: "A mobile-first food delivery app for LINE LIFF with customer, staff, and admin order workflows." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "A mobile-first React web app for LINE LIFF food delivery, featuring a minimalist design and intuitive navigation." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7f1ddf64-af89-4dbe-8331-802eb463acb3/id-preview-39d7dc68--7b87f1b8-481d-40c1-a507-b9601d300c39.lovable.app-1781499966608.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7f1ddf64-af89-4dbe-8331-802eb463acb3/id-preview-39d7dc68--7b87f1b8-481d-40c1-a507-b9601d300c39.lovable.app-1781499966608.png" },
+      { name: "twitter:title", content: "LINE LIFF Food Delivery" },
+      { name: "twitter:description", content: "A mobile-first food delivery app for LINE LIFF with customer, staff, and admin order workflows." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -126,8 +124,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [hasMounted, setHasMounted] = useState(false);
 
   const routerState = useRouterState();
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     // 🚀 ทำให้ทั้งเว็บเป็น Real-Time: คอยดักจับการเปลี่ยนแปลงของทุกตารางในฐานข้อมูล
@@ -149,7 +152,7 @@ function RootComponent() {
     };
   }, [queryClient]);
 
-  const isNavigating = routerState.status === "pending";
+  const isNavigating = hasMounted && routerState.status === "pending";
 
   return (
     <QueryClientProvider client={queryClient}>
