@@ -34,6 +34,7 @@ import {
   Utensils,
   Clock,
   Search,
+  Pencil,
   CreditCard,
   ChevronRight,
   History,
@@ -525,6 +526,13 @@ function LiffApp() {
   const [sidebar, setSidebar] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [editingCartLine, setEditingCartLine] = useState<CartLine | null>(null);
+  const selectedItemToEdit = useMemo(() => {
+    if (editingCartLine) {
+      return MENU.find((m) => m.id === editingCartLine.itemId) || null;
+    }
+    return null;
+  }, [editingCartLine]);
   const [cartDrawer, setCartDrawer] = useState(false);
   const [orderType, setOrderType] = useState<OrderType | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -1008,14 +1016,23 @@ function LiffApp() {
 
         {/* Overlays */}
         <AnimatePresence>
-          {selectedItem && (
+          {(selectedItem || editingCartLine) && (selectedItem || selectedItemToEdit) && (
             <ItemModal
               key="item"
-              item={selectedItem}
-              onClose={() => setSelectedItem(null)}
-              onAdd={(line) => {
-                addToCart(line);
+              item={selectedItem || selectedItemToEdit!}
+              cartLine={editingCartLine || undefined}
+              onClose={() => {
                 setSelectedItem(null);
+                setEditingCartLine(null);
+              }}
+              onAdd={(line) => {
+                if (editingCartLine) {
+                  setCart((c) => c.map((l) => (l.id === line.id ? line : l)));
+                } else {
+                  addToCart(line);
+                }
+                setSelectedItem(null);
+                setEditingCartLine(null);
               }}
               checkOptionOutOfStock={checkOptionOutOfStock}
             />
@@ -1041,6 +1058,7 @@ function LiffApp() {
               deliveryFee={deliveryFee}
               onBack={() => setOverlay("menu")}
               onRemove={removeLine}
+              onEdit={(line) => setEditingCartLine(line)}
               onProceed={() => setOverlay("payment")}
             />
           )}
@@ -1086,6 +1104,10 @@ function LiffApp() {
               subtotal={subtotal}
               onClose={() => setCartDrawer(false)}
               onRemove={removeLine}
+              onEdit={(line) => {
+                setEditingCartLine(line);
+                setCartDrawer(false);
+              }}
               onCheckout={() => {
                 setCartDrawer(false);
                 setOverlay("orderConfirm");
@@ -2128,20 +2150,31 @@ function ItemModal({
   onClose,
   onAdd,
   checkOptionOutOfStock,
+  cartLine,
 }: {
   item: MenuItem;
   onClose: () => void;
   onAdd: (line: CartLine) => void;
   checkOptionOutOfStock: (optionId: string) => boolean;
+  cartLine?: CartLine;
 }) {
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState(cartLine ? cartLine.qty : 1);
   const [options, setOptions] = useState<Record<string, string>>(() => {
+    if (cartLine) {
+      const { protein, size, ...rest } = cartLine.options;
+      return rest;
+    }
     const o: Record<string, string> = {};
     item.options?.forEach((g) => (o[g.id] = g.choices[0].id));
     return o;
   });
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]); // For drinks/desserts
-  const [note, setNote] = useState("");
+  const [selectedAddons, setSelectedAddons] = useState<string[]>(() => {
+    if (cartLine && (item.category === "drinks" || item.category === "dessert")) {
+      return cartLine.addons.map((a) => a.id);
+    }
+    return [];
+  });
+  const [note, setNote] = useState(cartLine ? cartLine.note : "");
 
   const isFood = item.category !== "drinks" && item.category !== "dessert";
 
@@ -2152,9 +2185,28 @@ function ItemModal({
     return found ? found.id : "p_minced_pork";
   }, [item.name, isFood]);
 
-  const [protein, setProtein] = useState(defaultProteinId);
-  const [size, setSize] = useState("s_regular");
-  const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+  const [protein, setProtein] = useState(() => {
+    if (cartLine && isFood && cartLine.options.protein) {
+      const found = PROTEINS.find((p) => p.name === cartLine.options.protein);
+      if (found) return found.id;
+    }
+    if (!isFood) return "";
+    const found = PROTEINS.find((p) => p.name !== "ไม่เอาเนื้อสัตว์" && item.name.includes(p.name));
+    return found ? found.id : "p_minced_pork";
+  });
+  const [size, setSize] = useState(() => {
+    if (cartLine && isFood && cartLine.options.size) {
+      const found = SIZES.find((s) => s.name === cartLine.options.size);
+      if (found) return found.id;
+    }
+    return "s_regular";
+  });
+  const [selectedToppings, setSelectedToppings] = useState<string[]>(() => {
+    if (cartLine && isFood) {
+      return cartLine.addons.map((a) => a.id);
+    }
+    return [];
+  });
 
   // Auto-switch to first available protein if selected protein is out of stock
   useEffect(() => {
@@ -2234,7 +2286,7 @@ function ItemModal({
         .map((a) => ({ id: a.id, name: a.name, price: a.price }));
 
       onAdd({
-        id: `${item.id}-${Date.now()}`,
+        id: cartLine ? cartLine.id : `${item.id}-${Date.now()}`,
         itemId: item.id,
         name: item.name,
         price: unitPrice,
@@ -2255,7 +2307,7 @@ function ItemModal({
     }));
 
     onAdd({
-      id: `${item.id}-${Date.now()}`,
+      id: cartLine ? cartLine.id : `${item.id}-${Date.now()}`,
       itemId: item.id,
       name: formattedName,
       price: unitPrice,
@@ -2278,14 +2330,14 @@ function ItemModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/50 z-30"
+        className="absolute inset-0 bg-black/50 z-50"
       />
       <motion.div
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 280 }}
-        className="absolute inset-x-0 bottom-0 top-12 z-40 bg-white rounded-t-3xl overflow-hidden flex flex-col"
+        className="absolute inset-x-0 bottom-0 top-12 z-50 bg-white rounded-t-3xl overflow-hidden flex flex-col"
       >
         <div className="px-5 pt-5 pb-4 border-b" style={{ borderColor: "#f1ece4" }}>
           <div className="flex items-start justify-between gap-4">
@@ -2564,12 +2616,12 @@ function ItemModal({
               </button>
             </div>
             <button
-              aria-label={`เพิ่ม ${formattedName} ลงตะกร้า จำนวน ${qty} ชิ้น รวมราคา ${total} บาท`}
+              aria-label={cartLine ? `บันทึกการแก้ไข ${formattedName} จำนวน ${qty} ชิ้น รวมราคา ${total} บาท` : `เพิ่ม ${formattedName} ลงตะกร้า จำนวน ${qty} ชิ้น รวมราคา ${total} บาท`}
               onClick={handleAdd}
-              className="flex-1 h-12 rounded-full font-semibold flex items-center justify-between px-5"
+              className="flex-1 h-12 rounded-full font-semibold flex items-center justify-between px-5 transition active:scale-95 cursor-pointer"
               style={{ background: BRAND, color: "white" }}
             >
-              <span>เพิ่มลงตะกร้า</span>
+              <span>{cartLine ? "บันทึกการแก้ไข" : "เพิ่มลงตะกร้า"}</span>
               <span>฿{total}</span>
             </button>
           </div>
@@ -2655,10 +2707,17 @@ function MenuOverlay({
             รายการเมนู
           </h1>
           <button
-            className="grid h-10 w-10 place-items-center rounded-full bg-white"
+            onClick={onOpenCart}
+            className="relative grid h-10 w-10 place-items-center rounded-full bg-white transition active:scale-95 cursor-pointer"
             style={{ color: BRAND, boxShadow: "0 2px 12px rgba(0,46,71,0.08)" }}
+            aria-label="เปิดตะกร้าสินค้า"
           >
-            <Search size={20} />
+            <ShoppingBag size={20} />
+            {totalQty > 0 && (
+              <span className="absolute -top-1 -right-1 grid h-5 min-w-5 px-1 place-items-center rounded-full text-[10px] font-bold border-2 border-white" style={{ background: GOLD, color: BRAND }}>
+                {totalQty}
+              </span>
+            )}
           </button>
         </div>
 
@@ -2893,12 +2952,14 @@ function CartDrawer({
   subtotal,
   onClose,
   onRemove,
+  onEdit,
   onCheckout,
 }: {
   cart: CartLine[];
   subtotal: number;
   onClose: () => void;
   onRemove: (id: string) => void;
+  onEdit: (line: CartLine) => void;
   onCheckout: () => void;
 }) {
   return (
@@ -2951,14 +3012,24 @@ function CartDrawer({
                   ฿{l.price * l.qty}
                 </p>
               </div>
-              <button
-                aria-label={`ลบ ${l.name} ออกจากตะกร้า`}
-                onClick={() => onRemove(l.id)}
-                className="grid h-9 w-9 place-items-center rounded-full self-start"
-                style={{ background: "#fee2e2", color: "#dc2626" }}
-              >
-                <Trash2 size={14} />
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  aria-label={`แก้ไข ${l.name}`}
+                  onClick={() => onEdit(l)}
+                  className="grid h-8 w-8 place-items-center rounded-full transition active:scale-95 cursor-pointer"
+                  style={{ background: "rgba(0,46,71,0.06)", color: BRAND }}
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  aria-label={`ลบ ${l.name} ออกจากตะกร้า`}
+                  onClick={() => onRemove(l.id)}
+                  className="grid h-8 w-8 place-items-center rounded-full transition active:scale-95 cursor-pointer"
+                  style={{ background: "#fee2e2", color: "#dc2626" }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -2994,6 +3065,7 @@ function OrderConfirmOverlay({
   deliveryFee,
   onBack,
   onRemove,
+  onEdit,
   onProceed,
 }: {
   cart: CartLine[];
@@ -3001,6 +3073,7 @@ function OrderConfirmOverlay({
   deliveryFee: number;
   onBack: () => void;
   onRemove: (id: string) => void;
+  onEdit: (line: CartLine) => void;
   onProceed: () => void;
 }) {
   const [phone, setPhone] = useState("");
@@ -3057,13 +3130,22 @@ function OrderConfirmOverlay({
                 )}
               </div>
             </div>
-            <button
-              onClick={() => onRemove(l.id)}
-              className="mt-3 w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1"
-              style={{ background: "#fee2e2", color: "#dc2626" }}
-            >
-              <Trash2 size={14} /> ลบรายการ
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => onEdit(l)}
+                className="flex-1 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                style={{ background: "rgba(0,46,71,0.06)", color: BRAND }}
+              >
+                <Pencil size={14} /> แก้ไขรายการ
+              </button>
+              <button
+                onClick={() => onRemove(l.id)}
+                className="flex-1 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                style={{ background: "#fee2e2", color: "#dc2626" }}
+              >
+                <Trash2 size={14} /> ลบรายการ
+              </button>
+            </div>
           </div>
         ))}
 
