@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
-import { Shield, Users, User, ChevronRight, Check } from "lucide-react";
+import { Shield, Users, User, ChevronRight, Check, HelpCircle } from "lucide-react";
 
 export function DevBypassPanel() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeRole, setActiveRole] = useState<string>("none");
+  const [activeRole, setActiveRole] = useState<string>("customer");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const role = localStorage.getItem("dev-bypass-role") || "none";
+      const role = localStorage.getItem("dev-bypass-role") || "customer";
       setActiveRole(role);
     }
   }, []);
-
 
   const handleRoleChange = (role: string) => {
     if (role === "none") {
@@ -36,33 +35,40 @@ export function DevBypassPanel() {
   };
 
   const roles = [
-    { id: "none", name: "Require Login", icon: User, color: "text-gray-400 bg-gray-400/10 border-gray-400/20" },
-    { id: "admin", name: "Admin Dashboard", icon: Shield, color: "text-red-400 bg-red-400/10 border-red-400/20" },
-    { id: "staff", name: "Staff (Kitchen)", icon: Users, color: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
-    { id: "captain", name: "Captain Mode", icon: Users, color: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20" },
-    { id: "customer", name: "Customer App", icon: User, color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+    { id: "customer", name: "ลูกค้า / สั่งอาหาร (Customer)", icon: User, color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+    { id: "staff", name: "พนักงานครัว (Kitchen Staff)", icon: Users, color: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+    { id: "captain", name: "พนักงานบริการ (Captain)", icon: Users, color: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20" },
+    { id: "admin", name: "ผู้ดูแลระบบ (Store Admin)", icon: Shield, color: "text-red-400 bg-red-400/10 border-red-400/20" },
+    { id: "none", name: "ระบบล็อคอินหลัก (Main Login)", icon: HelpCircle, color: "text-gray-400 bg-gray-400/10 border-gray-400/20" },
   ];
 
-  const currentRoleName = roles.find(r => r.id === activeRole)?.name || "Require Login";
+  const currentRoleName = roles.find(r => r.id === activeRole)?.name.split(" (")[0] || "ลูกค้า / สั่งอาหาร";
 
   return (
     <div className="fixed bottom-6 right-6 z-[99999] font-sans">
       {isOpen ? (
         <div className="w-80 rounded-2xl border border-white/10 bg-[#0f1f2b]/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-200">
+          {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-white/5">
             <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 rounded-full bg-[#fcc14a] animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-wider text-white/50">Global Auth Bypass</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-white/70">เลือกบทบาทระบบเดโม (Demo Mode)</span>
             </div>
             <button 
               onClick={() => setIsOpen(false)}
               className="rounded-lg p-1 text-white/40 hover:bg-white/5 hover:text-white transition-colors cursor-pointer text-xs"
             >
-              Minimize
+              ย่อหน้าต่าง
             </button>
           </div>
 
-          <div className="mt-3 space-y-2">
+          {/* Description */}
+          <div className="py-2 text-[11px] text-white/50 leading-relaxed">
+            เลือกบทบาทผู้ใช้งานเพื่อทดสอบการใช้งานระบบในมุมมองต่างๆ ทุกหน้าสามารถทดลองสั่งและบันทึกออเดอร์จริงได้ทันที
+          </div>
+
+          {/* Role List */}
+          <div className="mt-1 space-y-2">
             {roles.map((role) => {
               const Icon = role.icon;
               const isSelected = activeRole === role.id;
@@ -72,7 +78,7 @@ export function DevBypassPanel() {
                   onClick={() => handleRoleChange(role.id)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 text-left cursor-pointer group ${
                     isSelected 
-                      ? "bg-white/10 border-white/20 text-[#fcc14a]" 
+                      ? "bg-white/10 border-[#fcc14a]/40 text-[#fcc14a] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]" 
                       : "bg-white/5 border-white/5 text-white/70 hover:bg-white/10 hover:border-white/10 hover:text-white"
                   }`}
                 >
@@ -92,20 +98,21 @@ export function DevBypassPanel() {
             })}
           </div>
 
+          {/* Footer Info */}
           <div className="mt-4 pt-3 border-t border-white/5 text-center">
-            <span className="text-[10px] text-white/30 font-medium">
-              All authentication checks are currently bypassed globally.
+            <span className="text-[10px] text-[#fcc14a]/75 font-medium tracking-wide">
+              สลับมุมมองเดโมได้ตลอดการทดลองใช้ระบบ
             </span>
           </div>
         </div>
       ) : (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 rounded-full border border-[#fcc14a]/30 bg-[#0f1f2b]/90 px-4 py-2.5 font-semibold text-white shadow-lg shadow-black/30 transition-all duration-300 hover:scale-105 hover:border-[#fcc14a]/60 active:scale-95 cursor-pointer"
+          className="flex items-center gap-2.5 rounded-full border border-[#fcc14a]/40 bg-[#0f1f2b]/90 px-4 py-3 font-semibold text-white shadow-lg shadow-black/40 transition-all duration-300 hover:scale-105 hover:border-[#fcc14a]/75 active:scale-95 cursor-pointer"
         >
-          <span className="flex h-2 w-2 rounded-full bg-[#fcc14a] animate-pulse" />
+          <span className="flex h-2.5 w-2.5 rounded-full bg-[#fcc14a] animate-pulse" />
           <span className="text-xs tracking-wide">
-            Auth Bypass: <span className="text-[#fcc14a] font-bold">{currentRoleName}</span>
+            สลับบทบาทเดโม: <span className="text-[#fcc14a] font-bold">{currentRoleName}</span>
           </span>
         </button>
       )}
