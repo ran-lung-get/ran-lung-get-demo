@@ -3,6 +3,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { type LiffProfile, liffLogout } from "../../lib/liff";
 import { supabase } from "../../lib/supabase";
 import { syncAuthUserToSupabase } from "../../lib/supabase.service";
+import { createStripeSession, verifyStripeSession } from "../../lib/api/stripe.functions";
 import { AnimatePresence, motion } from "motion/react";
 import { useLanguage, type Language } from "../../lib/i18n";
 import {
@@ -43,6 +44,7 @@ import {
   ArrowUpDown,
   SlidersHorizontal,
   Store,
+  QrCode,
 } from "lucide-react";
 
 // Images are served from /meal (public directory)
@@ -75,6 +77,8 @@ export type MenuItem = {
   spicy?: boolean;
   options?: { id: string; name: string; choices: { id: string; label: string; price?: number }[] }[];
   addons?: Addon[];
+  isAvailable?: boolean;
+  isSpicy?: boolean;
 };
 
 const HERO_IMG = "/thai_food_hero.jpg";
@@ -523,16 +527,82 @@ function LiffApp() {
   const [dbUser, setDbUser] = useState<any>(null);
   const [dbCustomer, setDbCustomer] = useState<any>(null);
   const [overlay, setOverlay] = useState<null | "menu" | "orderConfirm" | "payment" | "history" | "contact">(null);
+  const [stripeVerifying, setStripeVerifying] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
+  // Stripe Redirect Handler Effect
+  useEffect(() => {
+    if (!liffReady || typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const isSuccess = params.get("payment_success") === "true";
+    const sessionId = params.get("session_id");
+
+    if (isSuccess && sessionId) {
+      async function verifyAndSave() {
+        setStripeVerifying(true);
+        try {
+          console.log("[Stripe Client] Verifying checkout session:", sessionId);
+          const result = await verifyStripeSession({ data: { sessionId: sessionId as string } });
+
+          if (result.success) {
+            const pendingStr = localStorage.getItem("ran-lung-get-pending-stripe-order");
+            if (pendingStr) {
+              const pending = JSON.parse(pendingStr);
+              console.log("[Stripe Client] Pending order restored:", pending);
+              
+              // Call saveOrderToHistory with override arguments
+              saveOrderToHistory(
+                pending.cart,
+                pending.orderType,
+                pending.selectedTable,
+                pending.address
+              );
+
+              // Clear cart, remove pending order, show success flash
+              setCart([]);
+              localStorage.removeItem("ran-lung-get-pending-stripe-order");
+              setShowSuccess(true);
+              setOverlay(null);
+              setTab("status");
+
+              setTimeout(() => {
+                setShowSuccess(false);
+              }, 2000);
+            } else {
+              setStripeError("ไม่พบข้อมูลคำสั่งซื้อที่รอดำเนินการ กรุณาตรวจสอบประวัติการสั่งซื้อของคุณ (Pending order details not found)");
+            }
+          } else {
+            setStripeError(result.message || "การชำระเงินไม่ผ่านการตรวจสอบความถูกต้อง (Stripe verification failed)");
+          }
+        } catch (err: any) {
+          console.error("[Stripe Client] Error verifying Stripe session:", err);
+          setStripeError(err?.message || "ระบบไม่สามารถตรวจสอบความถูกต้องของการชำระเงินได้");
+        } finally {
+          setStripeVerifying(false);
+          // Clean parameters from URL
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+      }
+      verifyAndSave();
+    } else if (params.get("payment_cancelled") === "true") {
+      setStripeError("การชำระเงินผ่าน Stripe ถูกยกเลิก");
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, [liffReady]);
   const [sidebar, setSidebar] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [editingCartLine, setEditingCartLine] = useState<CartLine | null>(null);
   const selectedItemToEdit = useMemo(() => {
     if (editingCartLine) {
-      return MENU.find((m) => m.id === editingCartLine.itemId) || null;
+      return menuItems.find((m) => m.id === editingCartLine.itemId) || null;
     }
     return null;
-  }, [editingCartLine]);
+  }, [editingCartLine, menuItems]);
   const [cartDrawer, setCartDrawer] = useState(false);
   const [orderType, setOrderType] = useState<OrderType | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -608,6 +678,42 @@ function LiffApp() {
 
   // Fetch ingredients and recipes from Supabase with real-time sync
   useEffect(() => {
+    async function loadMenu() {
+      try {
+        const { data: dbItems, error } = await supabase
+          .from("menu_items")
+          .select("*")
+          .order("sort_order");
+        if (!error && dbItems && dbItems.length > 0) {
+          const mapped = dbItems.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            desc: item.description || "",
+            price: Number(item.price),
+            image: item.image_url || item.image || "",
+            category: item.category,
+            isAvailable: item.is_available ?? true,
+            isSpicy: item.is_spicy ?? false,
+            options: item.options || undefined,
+            addons: item.addons || undefined
+          }));
+          setMenuItems(mapped);
+          localStorage.setItem("ran-lung-get-menu-items", JSON.stringify(mapped));
+        } else {
+          const localMenu = localStorage.getItem("ran-lung-get-menu-items");
+          if (localMenu) {
+            setMenuItems(JSON.parse(localMenu));
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load menu from Supabase:", err);
+        const localMenu = localStorage.getItem("ran-lung-get-menu-items");
+        if (localMenu) {
+          setMenuItems(JSON.parse(localMenu));
+        }
+      }
+    }
+
     async function loadStock() {
       try {
         const { data: ingData } = await supabase.from("ingredients").select("*");
@@ -648,6 +754,7 @@ function LiffApp() {
         }
       }
     }
+    loadMenu();
     loadStock();
 
     const handleStorageChange = (e: StorageEvent) => {
@@ -658,8 +765,23 @@ function LiffApp() {
           console.error("Storage sync parse error:", err);
         }
       }
+      if (e.key === "ran-lung-get-menu-items" && e.newValue) {
+        try {
+          setMenuItems(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error("Storage sync parse error:", err);
+        }
+      }
     };
     window.addEventListener("storage", handleStorageChange);
+
+    // Subscribe to menu changes
+    const chMenu = supabase
+      .channel("menu-items-realtime-customer")
+      .on("postgres_changes", { event: "*", schema: "public", table: "menu_items" }, () => {
+        loadMenu();
+      })
+      .subscribe();
 
     // Subscribe to real-time changes on ingredients
     const chIng = supabase
@@ -679,6 +801,7 @@ function LiffApp() {
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      supabase.removeChannel(chMenu);
       supabase.removeChannel(chIng);
       supabase.removeChannel(chRec);
     };
@@ -773,15 +896,25 @@ function LiffApp() {
   const addToCart = (line: CartLine) => setCart((c) => [...c, line]);
   const removeLine = (id: string) => setCart((c) => c.filter((l) => l.id !== id));
 
-  const saveOrderToHistory = () => {
-    if (cart.length === 0) return;
+  const saveOrderToHistory = (
+    customCart?: CartLine[],
+    customOrderType?: OrderType,
+    customSelectedTable?: string | null,
+    customAddress?: string
+  ) => {
+    const activeCart = customCart || cart;
+    const activeOrderType = customOrderType || orderType;
+    const activeSelectedTable = customSelectedTable !== undefined ? customSelectedTable : selectedTable;
+    const activeAddress = customAddress !== undefined ? customAddress : address;
+
+    if (activeCart.length === 0) return;
     const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
-    const selectedTableObj = tables.find((t) => t.id === selectedTable);
-    const tableNumStr = orderType === "dine-in" && selectedTableObj ? selectedTableObj.label : undefined;
+    const selectedTableObj = tables.find((t) => t.id === activeSelectedTable);
+    const tableNumStr = activeOrderType === "dine-in" && selectedTableObj ? selectedTableObj.label : undefined;
 
     // Calculate queue number for takeaway
     let takeawayQueueNum: string | undefined = undefined;
-    if (orderType === "takeaway") {
+    if (activeOrderType === "takeaway") {
       const currentQueueCounter = localStorage.getItem("ran-lung-get-takeaway-queue-counter");
       let nextQueue = 1;
       if (currentQueueCounter) {
@@ -794,16 +927,19 @@ function LiffApp() {
       takeawayQueueNum = `Q-${String(nextQueue).padStart(2, "0")}`;
     }
 
+    const activeSubtotal = activeCart.reduce((s, l) => s + l.price * l.qty, 0);
+    const activeDeliveryFee = activeOrderType === "delivery" ? 40 : 0;
+
     const newOrder: OrderHistory = {
       id: `hist_${Date.now()}`,
       orderNumber: orderNum,
       date: new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " · " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-      items: cart.map((l) => ({ name: l.name, qty: l.qty, price: l.price, image: l.image })),
-      subtotal,
-      delivery: deliveryFee,
-      total: subtotal + deliveryFee,
+      items: activeCart.map((l) => ({ name: l.name, qty: l.qty, price: l.price, image: l.image })),
+      subtotal: activeSubtotal,
+      delivery: activeDeliveryFee,
+      total: activeSubtotal + activeDeliveryFee,
       status: "รอรับออเดอร์",
-      orderType: orderType || "delivery",
+      orderType: activeOrderType || "delivery",
       tableNumber: tableNumStr,
       queueNumber: takeawayQueueNum,
     };
@@ -813,15 +949,15 @@ function LiffApp() {
     setActiveOrderNumber(orderNum);
     setHasActiveOrder(true);
 
-    if (orderType === "dine-in" && selectedTable) {
+    if (activeOrderType === "dine-in" && activeSelectedTable) {
       setTables((prev) =>
-        prev.map((t) => (t.id === selectedTable ? { ...t, status: "occupied" } : t))
+        prev.map((t) => (t.id === activeSelectedTable ? { ...t, status: "occupied" } : t))
       );
       // Update table status in Supabase to occupied
       void (supabase as any)
         .from("restaurant_tables")
         .update({ status: "occupied" })
-        .eq("id", selectedTable);
+        .eq("id", activeSelectedTable);
     }
 
     // Push order to Supabase for real-time Staff Dashboard
@@ -856,13 +992,13 @@ function LiffApp() {
         user_id: finalUserId,
         customer_id: finalCustomerId,
         line_user_id: profile?.userId || null,
-        order_type: orderType || "delivery",
+        order_type: activeOrderType || "delivery",
         status: "pending",
-        subtotal: subtotal,
-        delivery_fee: deliveryFee,
-        total: subtotal + deliveryFee,
+        subtotal: activeSubtotal,
+        delivery_fee: activeDeliveryFee,
+        total: activeSubtotal + activeDeliveryFee,
         table_number: tableNumStr || null,
-        delivery_address: orderType === "delivery" ? address : null,
+        delivery_address: activeOrderType === "delivery" ? activeAddress : null,
         special_instructions: null,
         created_at: new Date().toISOString()
       });
@@ -936,30 +1072,15 @@ function LiffApp() {
     );
   }
 
-  return (
+    return (
     <div
-      className="min-h-screen w-full flex items-center justify-center relative"
-      style={{
-        background:
-          "radial-gradient(circle at 20% 20%, #0d2d42 0%, #050d15 65%, #020609 100%)",
-      }}
+      className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-[var(--linen)]"
     >
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(252,193,74,0.05) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
       <main
         aria-label="แอปพลิเคชันสั่งอาหาร ร้านลุงเก็ต"
-        className="relative overflow-hidden bg-[var(--linen)] no-scrollbar z-10"
+        className="relative overflow-hidden bg-[var(--linen)] no-scrollbar z-10 w-full"
         style={{
-          width: "min(430px, 100vw)",
-          height: "min(932px, 100vh)",
-          borderRadius: 28,
-          boxShadow: "0 30px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)",
+          height: "100dvh",
         }}
       >
         <div className="absolute inset-0 overflow-y-auto no-scrollbar">
@@ -974,6 +1095,7 @@ function LiffApp() {
             >
               {tab === "home" && (
                 <HomeScreen
+                  menuItems={menuItems}
                   onOpenSidebar={() => setSidebar(true)}
                   orderType={orderType}
                   isCurrentlyClosed={isCurrentlyClosed}
@@ -992,6 +1114,7 @@ function LiffApp() {
                   tables={tables}
                   onOpenTablePicker={() => setShowTablePicker(true)}
                   activeOrderType={orderHistory.find((o) => o.orderNumber === activeOrderNumber)?.orderType}
+                  activeOrderStatus={orderHistory.find((o) => o.orderNumber === activeOrderNumber)?.status}
                   address={address}
                   setAddress={setAddress}
                   addressType={addressType}
@@ -1043,6 +1166,7 @@ function LiffApp() {
           {overlay === "menu" && (
             <MenuOverlay
               key="menu"
+              menuItems={menuItems}
               onBack={() => setOverlay(null)}
               onPickItem={(it) => setSelectedItem(it)}
               onOpenCart={() => setCartDrawer(true)}
@@ -1066,6 +1190,12 @@ function LiffApp() {
             <PaymentOverlay
               key="pay"
               total={subtotal + deliveryFee}
+              cart={cart}
+              orderType={orderType || "delivery"}
+              deliveryFee={deliveryFee}
+              subtotal={subtotal}
+              selectedTable={selectedTable}
+              address={address}
               onBack={() => setOverlay("orderConfirm")}
               onSuccess={() => {
                 saveOrderToHistory();
@@ -1215,35 +1345,41 @@ function LiffApp() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: "spring", damping: 20, stiffness: 300 }}
               className="absolute z-20"
-              style={{ left: 16, right: 16, bottom: 24, maxWidth: 430, marginLeft: "auto", marginRight: "auto" }}
+              style={{ left: 16, right: 16, bottom: 24, maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}
             >
               <button
                 onClick={() => setCartDrawer(true)}
-                className="w-full rounded-2xl px-5 py-4 flex items-center justify-between shadow-lift"
-                style={{ background: BRAND, color: "white" }}
+                className="w-full rounded-2xl px-5 py-4 flex items-center justify-between shadow-[0_12px_32px_rgba(0,46,71,0.38)] transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] cursor-pointer border border-[#fcc14a]/20"
+                style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #001f30 100%)`, color: "white" }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="relative grid h-9 w-9 place-items-center rounded-xl" style={{ background: "rgba(252,193,74,0.15)" }}>
-                    <ShoppingBag size={18} style={{ color: GOLD }} />
-                    <span className="absolute -top-1 -right-1 grid h-5 min-w-5 px-1 place-items-center rounded-full text-[10px] font-bold" style={{ background: GOLD, color: BRAND }}>
+                  <div className="relative grid h-10 w-10 place-items-center rounded-xl backdrop-blur-md" style={{ background: "rgba(252,193,74,0.18)" }}>
+                    <ShoppingBag size={20} style={{ color: GOLD }} />
+                    <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 px-1 place-items-center rounded-full text-[10px] font-extrabold shadow-sm border border-white" style={{ background: GOLD, color: BRAND }}>
                       {totalQty}
                     </span>
                   </div>
-                  <span className="font-medium">ตะกร้าสินค้า</span>
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold text-sm leading-tight">ตะกร้าสินค้า</span>
+                    <span className="text-[11px] text-white/60 font-light">กดเพื่อดูและสั่งซื้อ</span>
+                  </div>
                 </div>
-                <span className="font-bold" style={{ color: GOLD }}>
-                  ฿{subtotal}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-lg" style={{ color: GOLD }}>
+                    ฿{subtotal}
+                  </span>
+                  <ChevronRight size={18} className="text-[#fcc14a]" />
+                </div>
               </button>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {tab === "status" && (
-          <div className="absolute bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-sm p-4">
+                {tab === "status" && (
+          <div className="absolute bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-sm p-4 flex justify-center">
             <button
               onClick={resetAll}
-              className="w-full h-12 rounded-full font-semibold"
+              className="w-full max-w-md h-12 rounded-full font-semibold"
               style={{ background: BRAND, color: "white" }}
             >
               กลับไปยังหน้าหลัก
@@ -1501,6 +1637,7 @@ function FlagIcon({ lang }: { lang: string }) {
 }
 
 function HomeScreen({
+  menuItems,
   onOpenSidebar,
   orderType,
   setOrderType,
@@ -1517,6 +1654,7 @@ function HomeScreen({
   tables,
   onOpenTablePicker,
   activeOrderType,
+  activeOrderStatus,
   address,
   setAddress,
   addressType,
@@ -1530,6 +1668,7 @@ function HomeScreen({
   isCurrentlyClosed,
   bypassRealClosed,
 }: {
+  menuItems: MenuItem[];
   onOpenSidebar: () => void;
   orderType: OrderType | null;
   setOrderType: (m: OrderType | null) => void;
@@ -1546,6 +1685,7 @@ function HomeScreen({
   tables: { id: string; label: string; status: string }[];
   onOpenTablePicker: () => void;
   activeOrderType?: OrderType;
+  activeOrderStatus?: string;
   address: string;
   setAddress: (val: string) => void;
   addressType: "home" | "work" | "dorm";
@@ -1573,11 +1713,17 @@ function HomeScreen({
   };
 
   const orderTypeRef = useRef<HTMLDivElement>(null);
+  const [homeSelectedCat, setHomeSelectedCat] = useState("all");
+
+  const homeFilteredItems = useMemo(() => {
+    if (homeSelectedCat === "all") return menuItems;
+    return menuItems.filter((m) => m.category === homeSelectedCat);
+  }, [homeSelectedCat, menuItems]);
 
   return (
     <div className="pb-36" style={{ background: LINEN }}>
-      {/* Hero */}
-      <div className="relative h-72 w-full overflow-hidden">
+            {/* Hero */}
+      <div className="relative h-72 md:h-96 w-full overflow-hidden">
         <img src={HERO_IMG} alt="restaurant" className="absolute inset-0 h-full w-full object-cover" />
         <div
           className="absolute inset-0"
@@ -1586,8 +1732,10 @@ function HomeScreen({
               "linear-gradient(180deg, rgba(0,18,30,0.55) 0%, rgba(0,18,30,0.25) 40%, rgba(0,18,30,0.85) 100%)",
           }}
         />
-        <button
-          aria-label="เปิดเมนูด้านข้าง"
+        <div className="absolute inset-0 max-w-7xl mx-auto w-full h-full px-5 md:px-12 pointer-events-none">
+          <div className="relative w-full h-full pointer-events-auto">
+            <button
+              aria-label="เปิดเมนูด้านข้าง"
           onClick={onOpenSidebar}
           className="absolute top-5 left-5 grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur-md text-white border border-white/20"
         >
@@ -1703,7 +1851,7 @@ function HomeScreen({
               )}
             </div>
             <button
-              aria-label="ดำเนินการสั่งอาหารตามที่เลือก"
+              aria-label="สั่งอาหาร"
               onClick={() => {
                 if (!orderType) {
                   setShowTypeError(true);
@@ -1721,12 +1869,14 @@ function HomeScreen({
                 }
                 onOpenMenu();
               }}
-              className="inline-flex items-center justify-center rounded-full bg-[#ffcb44] px-4 py-2 text-sm font-semibold shadow-sm cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#ffcb44] to-[#fcc14a] px-5 py-2.5 text-sm font-bold shadow-[0_6px_20px_rgba(252,193,74,0.35)] transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
               style={{ color: BRAND }}
             >
-              {t("สั่งอาหาร")} <ChevronRight size={14} />
+              {t("สั่งอาหาร")} <ChevronRight size={16} strokeWidth={2.5} />
             </button>
           </div>
+        </div>
+        </div>
         </div>
       </div>
 
@@ -1738,20 +1888,21 @@ function HomeScreen({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ type: "spring", damping: 20, stiffness: 260 }}
-            className="px-5 mt-4"
+            className="px-5 md:px-12 mt-4 max-w-7xl mx-auto w-full"
           >
             <MiniOrderTracker
               orderNumber={activeOrderNumber}
               onGoToStatus={onGoToStatus}
               orderType={activeOrderType || "delivery"}
+              status={activeOrderStatus}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Order type tiles */}
-      <div ref={orderTypeRef} className="px-5 mt-4">
-        <h3 className="text-sm font-medium mb-3 flex flex-wrap items-center gap-x-1.5" style={{ color: BRAND }}>
+      <div ref={orderTypeRef} className="px-5 md:px-12 mt-4 max-w-7xl mx-auto w-full">
+        <h3 className="text-sm font-bold mb-3 flex flex-wrap items-center gap-x-1.5" style={{ color: BRAND }}>
           <span>{t("ช่องทางการรับอาหาร")} <span className="text-red-500">*</span></span>
           {orderType === null && (
             <span className="text-xs text-slate-400 font-normal">
@@ -1764,7 +1915,7 @@ function HomeScreen({
             {t("* กรุณาเลือกช่องทางการรับอาหาร (ทานที่ร้าน, จัดส่งถึงที่ หรือ รับกลับบ้าน) ก่อนเริ่มสั่งซื้อ")}
           </p>
         )}
-        <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
+        <div className={`grid grid-cols-3 gap-2.5 p-1.5 rounded-2xl transition-all duration-300 ${showTypeError ? "border-2 border-red-500 bg-red-50/20" : "border-2 border-transparent"}`}>
           <button
             aria-label="เลือกทานที่ร้าน"
             onClick={() => {
@@ -1772,15 +1923,16 @@ function HomeScreen({
               setShowTypeError(false);
               onOpenTablePicker();
             }}
-            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            className="rounded-2xl p-3 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:scale-95 bg-white border shadow-sm"
             style={{
               background: orderType === "dine-in" ? BRAND : "white",
               color: orderType === "dine-in" ? GOLD : BRAND,
-              borderColor: orderType === "dine-in" ? BRAND : "#ece4d6"
+              borderColor: orderType === "dine-in" ? BRAND : "#ece4d6",
+              boxShadow: orderType === "dine-in" ? "0 6px 20px rgba(0,46,71,0.22)" : "0 2px 8px rgba(0,0,0,0.03)",
             }}
           >
-            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
-              <Utensils size={15} />
+            <div className="grid h-9 w-9 place-items-center rounded-xl transition-colors" style={{ background: orderType === "dine-in" ? "rgba(252,193,74,0.18)" : LINEN, color: orderType === "dine-in" ? GOLD : BRAND }}>
+              <Utensils size={17} />
             </div>
             <div className="font-bold text-[12px]">{t("ทานที่ร้าน")}</div>
           </button>
@@ -1791,15 +1943,16 @@ function HomeScreen({
               setOrderType("takeaway");
               setShowTypeError(false);
             }}
-            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            className="rounded-2xl p-3 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:scale-95 bg-white border shadow-sm"
             style={{
               background: orderType === "takeaway" ? BRAND : "white",
               color: orderType === "takeaway" ? GOLD : BRAND,
-              borderColor: orderType === "takeaway" ? BRAND : "#ece4d6"
+              borderColor: orderType === "takeaway" ? BRAND : "#ece4d6",
+              boxShadow: orderType === "takeaway" ? "0 6px 20px rgba(0,46,71,0.22)" : "0 2px 8px rgba(0,0,0,0.03)",
             }}
           >
-            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "takeaway" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "takeaway" ? GOLD : BRAND }}>
-              <ShoppingBag size={15} />
+            <div className="grid h-9 w-9 place-items-center rounded-xl transition-colors" style={{ background: orderType === "takeaway" ? "rgba(252,193,74,0.18)" : LINEN, color: orderType === "takeaway" ? GOLD : BRAND }}>
+              <ShoppingBag size={17} />
             </div>
             <div className="font-bold text-[12px]">{t("รับกลับบ้าน")}</div>
           </button>
@@ -1810,24 +1963,25 @@ function HomeScreen({
               setOrderType("delivery");
               setShowTypeError(false);
             }}
-            className="rounded-xl p-2.5 text-center flex flex-col items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-white border"
+            className="rounded-2xl p-3 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:scale-95 bg-white border shadow-sm"
             style={{
               background: orderType === "delivery" ? BRAND : "white",
               color: orderType === "delivery" ? GOLD : BRAND,
-              borderColor: orderType === "delivery" ? BRAND : "#ece4d6"
+              borderColor: orderType === "delivery" ? BRAND : "#ece4d6",
+              boxShadow: orderType === "delivery" ? "0 6px 20px rgba(0,46,71,0.22)" : "0 2px 8px rgba(0,0,0,0.03)",
             }}
           >
-            <div className="grid h-8 w-8 place-items-center rounded-md" style={{ background: orderType === "delivery" ? "rgba(252,193,74,0.12)" : LINEN, color: orderType === "delivery" ? GOLD : BRAND }}>
-              <Bike size={15} />
+            <div className="grid h-9 w-9 place-items-center rounded-xl transition-colors" style={{ background: orderType === "delivery" ? "rgba(252,193,74,0.18)" : LINEN, color: orderType === "delivery" ? GOLD : BRAND }}>
+              <Bike size={17} />
             </div>
             <div className="font-bold text-[12px]">{t("จัดส่งถึงที่")}</div>
           </button>
         </div>
       </div>
 
-      {/* Conditional input for order type */}
+            {/* Conditional input for order type */}
       {orderType !== null && (
-        <div className="px-5 mt-6">
+        <div className="px-5 md:px-12 mt-6 max-w-7xl mx-auto w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={orderType}
@@ -1869,8 +2023,8 @@ function HomeScreen({
         </div>
       )}
 
-      {/* Menu list (horizontal slider) */}
-      <div className="px-5 mt-6">
+            {/* Menu list (horizontal slider) */}
+      <div className="px-5 md:px-12 mt-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold" style={{ color: BRAND }}>
             {t("เมนูแนะนำ")}
@@ -1888,7 +2042,7 @@ function HomeScreen({
           </button>
           <div ref={scrollRef} className="-mx-5 px-10 overflow-x-auto no-scrollbar scroll-smooth">
             <div className="flex gap-4">
-              {MENU.filter((m) => m.category !== "drinks" && m.category !== "dessert").map((m, i) => (
+              {menuItems.filter((m) => m.category !== "drinks" && m.category !== "dessert").map((m, i) => (
                 <motion.div
                   key={m.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -1911,52 +2065,59 @@ function HomeScreen({
                     }
                     onPickItem(m);
                   }}
-                  className="bg-white rounded-2xl p-3 shadow-soft cursor-pointer active:scale-[0.99] transition-transform min-w-[220px] w-56 shrink-0"
+                  className="group bg-white rounded-2xl p-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.04)] border border-[#ece4d6]/80 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,46,71,0.12)] min-w-[220px] w-56 shrink-0 flex flex-col justify-between"
                 >
-                  <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
-                    <img src={encodeURI(String(m.image))} alt={tMenu(m.name, "name")} className="h-full w-full object-cover" />
+                  <div>
+                    <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
+                      <img src={encodeURI(String(m.image))} alt={tMenu(m.name, "name")} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      {m.category === "signature" && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#002e47]/85 text-[#fcc14a] backdrop-blur-md border border-[#fcc14a]/30">
+                          Signature
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
+                        <Star size={10} fill={GOLD} stroke={GOLD} />
+                        <span style={{ color: INK_MUTED }}>{language === "th" ? "Chef's pick" : language === "zh" ? "厨师推荐" : "Chef's pick"}</span>
+                      </div>
+                      <h3 className="font-bold text-[15px] truncate mt-1 group-hover:text-[#002e47] transition-colors" style={{ color: BRAND }}>
+                        {tMenu(m.name, "name")}
+                      </h3>
+                      <p className="text-xs mt-1 line-clamp-2 font-light" style={{ color: INK_MUTED }}>
+                        {tMenu(m.desc, "desc")}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider" style={{ color: GOLD }}>
-                      <Star size={10} fill={GOLD} stroke={GOLD} />
-                      <span style={{ color: INK_MUTED }}>{language === "th" ? "Chef's pick" : language === "zh" ? "厨师推荐" : "Chef's pick"}</span>
-                    </div>
-                    <h3 className="font-semibold text-[15px] truncate mt-1" style={{ color: BRAND }}>
-                      {tMenu(m.name, "name")}
-                    </h3>
-                    <p className="text-xs mt-1 line-clamp-2" style={{ color: INK_MUTED }}>
-                      {tMenu(m.desc, "desc")}
-                    </p>
-                    <div className="mt-3 flex items-end justify-between">
-                      <span className="font-bold text-base" style={{ color: BRAND }}>
-                        ฿{m.price}
-                      </span>
-                      <button
-                        aria-label={`หยิบ ${tMenu(m.name, "name")} ใส่ตะกร้า`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!orderType) {
-                            setShowTypeError(true);
-                            orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                            return;
-                          }
-                          if (orderType === "dine-in" && !selectedTable) {
-                            onOpenTablePicker();
-                            return;
-                          }
-                          if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
-                            setShowAddressError(true);
-                            orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                            return;
-                          }
-                          onPickItem(m);
-                        }}
-                        className="grid h-9 w-9 place-items-center rounded-full shadow-soft cursor-pointer"
-                        style={{ background: BRAND, color: GOLD }}
-                      >
-                        <Plus size={18} />
-                      </button>
-                    </div>
+                  <div className="mt-3.5 flex items-end justify-between pt-2 border-t border-slate-100">
+                    <span className="font-extrabold text-base" style={{ color: BRAND }}>
+                      ฿{m.price}
+                    </span>
+                    <button
+                      aria-label={`หยิบ ${tMenu(m.name, "name")} ใส่ตะกร้า`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!orderType) {
+                          setShowTypeError(true);
+                          orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                          return;
+                        }
+                        if (orderType === "dine-in" && !selectedTable) {
+                          onOpenTablePicker();
+                          return;
+                        }
+                        if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                          setShowAddressError(true);
+                          orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                          return;
+                        }
+                        onPickItem(m);
+                      }}
+                      className="grid h-9 w-9 place-items-center rounded-full shadow-md cursor-pointer transition-transform duration-200 active:scale-90 hover:scale-105"
+                      style={{ background: BRAND, color: GOLD }}
+                    >
+                      <Plus size={18} />
+                    </button>
                   </div>
                 </motion.div>
               ))}
@@ -1971,6 +2132,144 @@ function HomeScreen({
           >
             <ChevronRight size={18} />
           </button>
+        </div>
+      </div>
+
+      {/* Full Menu by Food Type Section */}
+      <div className="px-5 md:px-12 mt-10 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-xl font-extrabold" style={{ color: BRAND }}>
+              {t("รายการอาหารทั้งหมด")}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5 font-light">
+              เลือกดูตามประเภทอาหารและเครื่องดื่ม
+            </p>
+          </div>
+          <button
+            onClick={onOpenMenu}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-[#fcc14a]/20 hover:bg-[#fcc14a]/30 px-3.5 py-1.5 rounded-full border border-[#fcc14a]/40 transition active:scale-95 cursor-pointer self-start sm:self-auto"
+          >
+            <Search size={14} /> ค้นหาเมนู <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* Food Type Pill Tabs */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 pt-1">
+          {[
+            { id: "all", label: "ทั้งหมด", icon: "🍽️" },
+            { id: "signature", label: "Signature", icon: "⭐" },
+            { id: "main", label: "ผัด & กับข้าว", icon: "🍳" },
+            { id: "rice", label: "ข้าวผัด", icon: "🍚" },
+            { id: "noodles", label: "เมนูเส้น", icon: "🍜" },
+            { id: "vegetarian", label: "มังสวิรัติ", icon: "🥬" },
+            { id: "drinks", label: "เครื่องดื่ม", icon: "🥤" },
+            { id: "dessert", label: "ของหวาน", icon: "🍧" },
+          ].map((cat) => {
+            const active = homeSelectedCat === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setHomeSelectedCat(cat.id)}
+                className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-sm border"
+                style={{
+                  background: active ? BRAND : "white",
+                  color: active ? GOLD : BRAND,
+                  borderColor: active ? BRAND : "#ece4d6",
+                  boxShadow: active ? "0 4px 14px rgba(0,46,71,0.2)" : "0 2px 6px rgba(0,0,0,0.02)",
+                }}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Full Menu Grid */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {homeFilteredItems.map((m) => (
+            <div
+              key={m.id}
+              onClick={() => {
+                if (!orderType) {
+                  setShowTypeError(true);
+                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                  return;
+                }
+                if (orderType === "dine-in" && !selectedTable) {
+                  onOpenTablePicker();
+                  return;
+                }
+                if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                  setShowAddressError(true);
+                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                  return;
+                }
+                onPickItem(m);
+              }}
+              className="bg-white rounded-2xl p-3.5 shadow-sm border border-[#ece4d6]/80 flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
+            >
+              <div className="relative h-20 w-20 rounded-xl overflow-hidden flex-shrink-0">
+                <img
+                  src={encodeURI(String(m.image))}
+                  alt={tMenu(m.name, "name")}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-[#002e47] border border-slate-200/80">
+                      {m.category === "signature" ? "⭐ Signature" :
+                       m.category === "main" ? "🍳 ผัด/กับข้าว" :
+                       m.category === "rice" ? "🍚 ข้าวผัด" :
+                       m.category === "noodles" ? "🍜 เมนูเส้น" :
+                       m.category === "vegetarian" ? "🥬 มังสวิรัติ" :
+                       m.category === "drinks" ? "🥤 เครื่องดื่ม" :
+                       m.category === "dessert" ? "🍧 ของหวาน" : m.category}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-sm truncate group-hover:text-[#002e47] transition-colors" style={{ color: BRAND }}>
+                    {tMenu(m.name, "name")}
+                  </h3>
+                  <p className="text-xs mt-0.5 text-slate-500 line-clamp-1 font-light">
+                    {tMenu(m.desc, "desc")}
+                  </p>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="font-extrabold text-base" style={{ color: BRAND }}>
+                    ฿{m.price}
+                  </span>
+                  <button
+                    aria-label={`หยิบ ${tMenu(m.name, "name")} ใส่ตะกร้า`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!orderType) {
+                        setShowTypeError(true);
+                        orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                        return;
+                      }
+                      if (orderType === "dine-in" && !selectedTable) {
+                        onOpenTablePicker();
+                        return;
+                      }
+                      if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                        setShowAddressError(true);
+                        orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
+                        return;
+                      }
+                      onPickItem(m);
+                    }}
+                    className="grid h-8 w-8 place-items-center rounded-full shadow-sm cursor-pointer transition-transform duration-200 active:scale-90 hover:scale-105"
+                    style={{ background: BRAND, color: GOLD }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -2091,6 +2390,7 @@ function TablePickerBottomSheet({
                   return (
                     <motion.button
                       key={table.id}
+                      aria-label={`เลือก ${table.label}`}
                       disabled={isWalkIn || (!available && !isSelected)}
                       onClick={() => !isWalkIn && available && onSelect(table.id)}
                       className="rounded-2xl p-4 text-left relative overflow-hidden"
@@ -2158,6 +2458,7 @@ function ItemModal({
   checkOptionOutOfStock: (optionId: string) => boolean;
   cartLine?: CartLine;
 }) {
+  const { language, t, tMenu } = useLanguage();
   const [qty, setQty] = useState(cartLine ? cartLine.qty : 1);
   const [options, setOptions] = useState<Record<string, string>>(() => {
     if (cartLine) {
@@ -2256,28 +2557,32 @@ function ItemModal({
 
   // Custom formatted dish name for cart
   const formattedName = useMemo(() => {
-    if (!isFood) return item.name;
+    if (!isFood) return tMenu(item.name, "name");
 
-    let name = item.name;
+    let name = tMenu(item.name, "name");
     const defaultProtein = PROTEINS.find((p) => p.id === defaultProteinId);
     const proteinItem = PROTEINS.find((p) => p.id === protein);
 
     if (defaultProtein && proteinItem && defaultProtein.id !== proteinItem.id) {
-      const newProteinName = proteinItem.name === "ไม่เอาเนื้อสัตว์" ? "" : proteinItem.name;
-      if (name.includes(defaultProtein.name)) {
-        name = name.replace(defaultProtein.name, newProteinName);
+      const newProteinName = proteinItem.name === "ไม่เอาเนื้อสัตว์" ? "" : t(proteinItem.name);
+      const defaultProteinNameTranslated = t(defaultProtein.name);
+      if (name.includes(defaultProteinNameTranslated)) {
+        name = name.replace(defaultProteinNameTranslated, newProteinName);
       } else {
-        name = `${name} ${newProteinName}`;
+        name = name.trim() + " " + newProteinName;
       }
     }
 
     const sizeItem = SIZES.find((s) => s.id === size);
-    if (sizeItem && sizeItem.id === "s_special" && !name.includes("(พิเศษ)")) {
-      name += " (พิเศษ)";
+    if (sizeItem && sizeItem.id === "s_special") {
+      const specialLabel = ` (${t("พิเศษ")})`;
+      if (!name.includes(specialLabel)) {
+        name += specialLabel;
+      }
     }
 
     return name;
-  }, [item.name, isFood, defaultProteinId, protein, size]);
+  }, [item.name, isFood, defaultProteinId, protein, size, t, tMenu]);
 
   const handleAdd = () => {
     if (!isFood) {
@@ -2337,16 +2642,16 @@ function ItemModal({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 280 }}
-        className="absolute inset-x-0 bottom-0 top-12 z-50 bg-white rounded-t-3xl overflow-hidden flex flex-col"
+                className="absolute inset-x-0 bottom-0 top-12 md:top-24 md:bottom-24 md:max-w-xl md:mx-auto md:rounded-3xl md:shadow-2xl z-50 bg-white overflow-hidden flex flex-col"
       >
         <div className="px-5 pt-5 pb-4 border-b" style={{ borderColor: "#f1ece4" }}>
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">ปรับแต่ง</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t("ระบุความต้องการพิเศษ")}</p>
               <h2 className="text-2xl font-bold truncate" style={{ color: BRAND }}>
                 {formattedName}
               </h2>
-              <p className="mt-2 text-sm text-slate-600">{item.desc}</p>
+              <p className="mt-2 text-sm text-slate-600">{tMenu(item.desc, "desc")}</p>
               <p className="mt-3 text-xl font-bold" style={{ color: BRAND }}>
                 ฿{unitPrice}
               </p>
@@ -2366,10 +2671,10 @@ function ItemModal({
             <div key={g.id} className="mt-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold" style={{ color: BRAND }}>
-                  {g.name}
+                  {t(g.name)}
                 </h3>
                 <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: "#fff2d6", color: BRAND }}>
-                  จำเป็น
+                  {t("จำเป็น")}
                 </span>
               </div>
               <div className="space-y-2">
@@ -2378,7 +2683,7 @@ function ItemModal({
                   return (
                     <button
                       key={c.id}
-                      aria-label={`เลือก ${c.label}`}
+                      aria-label={`เลือก ${t(c.label)}`}
                       onClick={() => setOptions({ ...options, [g.id]: c.id })}
                       className="w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left"
                       style={{
@@ -2387,7 +2692,7 @@ function ItemModal({
                       }}
                     >
                       <span className="text-sm font-medium" style={{ color: BRAND }}>
-                        {c.label}
+                        {t(c.label)}
                       </span>
                       <span
                         className="grid h-5 w-5 place-items-center rounded-full border-2"
@@ -2408,10 +2713,10 @@ function ItemModal({
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-2.5">
                   <h3 className="font-semibold text-sm flex items-center gap-1.5" style={{ color: BRAND }}>
-                    🥩 เลือกวัตถุดิบหลัก
+                    🥩 {t("เลือกเนื้อสัตว์")}
                   </h3>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "#fff2d6", color: BRAND }}>
-                    จำเป็น
+                    {t("จำเป็น")}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -2422,7 +2727,7 @@ function ItemModal({
                       <button
                         key={p.id}
                         disabled={isOutOfStock}
-                        aria-label={`เลือกวัตถุดิบ ${p.name}`}
+                        aria-label={`เลือกวัตถุดิบ ${t(p.name)}`}
                         onClick={() => setProtein(p.id)}
                         className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150 relative overflow-hidden"
                         style={{
@@ -2433,10 +2738,10 @@ function ItemModal({
                         }}
                       >
                         <span className={`text-xs font-semibold ${isOutOfStock ? "line-through text-slate-400" : ""}`} style={{ color: isOutOfStock ? undefined : BRAND }}>
-                          {p.name} {isOutOfStock && "(หมด)"}
+                          {t(p.name)} {isOutOfStock && `(${t("หมด")})`}
                         </span>
                         <span className="text-[11px] font-bold" style={{ color: active ? BRAND : INK_MUTED }}>
-                          {isOutOfStock ? "" : p.price > 0 ? `+${p.price} ฿` : "ฟรี"}
+                          {isOutOfStock ? "" : p.price > 0 ? `+${p.price} ฿` : t("ฟรี")}
                         </span>
                       </button>
                     );
@@ -2447,7 +2752,7 @@ function ItemModal({
               {/* Choose Size */}
               <div className="mt-6">
                 <h3 className="font-semibold text-sm flex items-center gap-1.5 mb-2.5" style={{ color: BRAND }}>
-                  ⚖️ เลือกขนาด
+                  ⚖️ {t("ขนาด")}
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   {SIZES.map((s) => {
@@ -2455,7 +2760,7 @@ function ItemModal({
                     return (
                       <button
                         key={s.id}
-                        aria-label={`เลือกขนาด ${s.name}`}
+                        aria-label={`เลือกขนาด ${t(s.name)}`}
                         onClick={() => setSize(s.id)}
                         className="flex items-center justify-between rounded-xl border px-4 py-3 text-left transition duration-150"
                         style={{
@@ -2464,10 +2769,10 @@ function ItemModal({
                         }}
                       >
                         <span className="text-xs font-semibold" style={{ color: BRAND }}>
-                          {s.name}
+                          {t(s.name)}
                         </span>
                         <span className="text-[11px] font-bold" style={{ color: BRAND }}>
-                          {s.price > 0 ? `+${s.price} ฿` : "ฟรี"}
+                          {s.price > 0 ? `+${s.price} ฿` : t("ฟรี")}
                         </span>
                       </button>
                     );
@@ -2478,20 +2783,20 @@ function ItemModal({
               {/* Choose Toppings */}
               <div className="mt-6">
                 <h3 className="font-semibold text-sm flex items-center gap-1.5 mb-2.5" style={{ color: BRAND }}>
-                  🥚 ท็อปปิ้งเพิ่มเติม (เลือกได้หลายรายการ)
+                  🥚 {t("เลือกท็อปปิ้งเพิ่มเติม")}
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {TOPPINGS.map((t) => {
-                    const active = selectedToppings.includes(t.id);
-                    const isOutOfStock = checkOptionOutOfStock(t.id);
+                  {TOPPINGS.map((topping) => {
+                    const active = selectedToppings.includes(topping.id);
+                    const isOutOfStock = checkOptionOutOfStock(topping.id);
                     return (
                       <button
-                        key={t.id}
+                        key={topping.id}
                         disabled={isOutOfStock}
-                        aria-label={`เลือกท็อปปิ้ง ${t.name}`}
+                        aria-label={`เลือกท็อปปิ้ง ${t(topping.name)}`}
                         onClick={() =>
                           setSelectedToppings((prev) =>
-                            active ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                            active ? prev.filter((id) => id !== topping.id) : [...prev, topping.id]
                           )
                         }
                         className="flex items-center justify-between rounded-xl border p-3 text-left transition duration-150 relative overflow-hidden"
@@ -2513,11 +2818,11 @@ function ItemModal({
                             {active && <Check size={10} color={GOLD} strokeWidth={4} />}
                           </span>
                           <span className={`text-xs font-medium ${isOutOfStock ? "line-through text-slate-400" : ""}`} style={{ color: isOutOfStock ? undefined : BRAND }}>
-                            {t.name} {isOutOfStock && "(หมด)"}
+                            {t(topping.name)} {isOutOfStock && `(${t("หมด")})`}
                           </span>
                         </span>
                         <span className="text-[11px] font-bold" style={{ color: BRAND }}>
-                          {isOutOfStock ? "" : `+${t.price} ฿`}
+                          {isOutOfStock ? "" : `+${topping.price} ฿`}
                         </span>
                       </button>
                     );
@@ -2529,7 +2834,7 @@ function ItemModal({
             item.addons && item.addons.length > 0 && (
               <div className="mt-6">
                 <h3 className="font-semibold mb-2" style={{ color: BRAND }}>
-                  เพิ่มเติม
+                  {t("เพิ่มเติม")}
                 </h3>
                 <div className="space-y-2">
                   {item.addons.map((a) => {
@@ -2640,21 +2945,28 @@ function MenuOverlay({
   onOpenCart,
   totalQty,
   subtotal,
+  menuItems,
 }: {
   onBack: () => void;
   onPickItem: (m: MenuItem) => void;
   onOpenCart: () => void;
   totalQty: number;
   subtotal: number;
+  menuItems: MenuItem[];
 }) {
+  const { language, t, tMenu } = useLanguage();
   const [activeCat, setActiveCat] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("default");
   const [showSortModal, setShowSortModal] = useState(false);
 
   const categories = [
-    { id: "all", label: "แนะนำ" },
-    { id: "signature", label: "อาหารจานหลัก" },
+    { id: "all", label: "ทั้งหมด" },
+    { id: "signature", label: "Signature" },
+    { id: "main", label: "ผัด & กับข้าว" },
+    { id: "rice", label: "ข้าวผัด" },
+    { id: "noodles", label: "เมนูเส้น" },
+    { id: "vegetarian", label: "มังสวิรัติ" },
     { id: "drinks", label: "เครื่องดื่ม" },
     { id: "dessert", label: "ของหวาน" },
   ];
@@ -2662,10 +2974,8 @@ function MenuOverlay({
   // Filter and sort items dynamically
   const filteredAndSortedItems = useMemo(() => {
     let list = activeCat === "all"
-      ? MENU.filter((m) => m.category === "signature")
-      : activeCat === "signature"
-        ? MENU.filter((m) => m.category !== "drinks" && m.category !== "dessert")
-        : MENU.filter((m) => m.category === activeCat);
+      ? menuItems
+      : menuItems.filter((m) => m.category === activeCat);
 
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
@@ -2683,19 +2993,20 @@ function MenuOverlay({
     }
 
     return list;
-  }, [activeCat, searchQuery, sortBy]);
+  }, [activeCat, searchQuery, sortBy, menuItems]);
 
 
   return (
-    <motion.div
+        <motion.div
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
       transition={{ type: "tween", duration: 0.3 }}
       className="absolute inset-0 z-30 bg-[var(--linen)] flex flex-col"
     >
-      <div className="z-20 bg-[var(--linen)] border-b border-slate-200/80 px-5 pt-5 pb-4 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-3">
+      <div className="z-20 bg-[var(--linen)] border-b border-slate-200/80 pt-5 pb-4 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-5 w-full">
+          <div className="flex items-center justify-between gap-3">
           <button
             onClick={onBack}
             className="grid h-10 w-10 place-items-center rounded-full bg-white"
@@ -2704,7 +3015,7 @@ function MenuOverlay({
             <ChevronLeft size={20} />
           </button>
           <h1 className="text-lg font-bold text-center flex-1" style={{ color: BRAND }}>
-            รายการเมนู
+            {t("รายการเมนู")}
           </h1>
           <button
             onClick={onOpenCart}
@@ -2727,7 +3038,7 @@ function MenuOverlay({
             <Search size={16} className="text-slate-400" />
             <input
               aria-label="ค้นหาเมนู"
-              placeholder="ค้นหาเมนู..."
+              placeholder={t("ค้นหาเมนู...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
@@ -2777,16 +3088,18 @@ function MenuOverlay({
                     style={{ background: BRAND }}
                   />
                 )}
-                <span className="relative">{cat.label}</span>
+                                <span className="relative">{t(cat.label)}</span>
               </button>
             );
           })}
         </div>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-5 pb-32">
-        <div className="mt-5 space-y-3">
-          {filteredAndSortedItems.length === 0 ? (
+            <div className="flex-1 overflow-y-auto no-scrollbar w-full">
+        <div className="max-w-7xl mx-auto px-5 pt-5 pb-32">
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 space-y-0">
+            {filteredAndSortedItems.length === 0 ? (
             <div className="text-center py-16 flex flex-col items-center justify-center">
               <Search size={32} className="text-slate-300 mb-2" />
               <p className="text-sm font-semibold text-slate-500">ไม่พบเมนูที่คุณค้นหา</p>
@@ -2801,12 +3114,12 @@ function MenuOverlay({
           ) : (
             filteredAndSortedItems.map((m) => (
               <div key={m.id} className="w-full bg-white rounded-2xl p-3 shadow-soft flex items-start gap-3">
-                <img src={encodeURI(String(m.image))} alt={m.name} className="h-20 w-20 rounded-xl object-cover flex-shrink-0" />
+                <img src={encodeURI(String(m.image))} alt={tMenu(m.name, "name")} className="h-20 w-20 rounded-xl object-cover flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-sm truncate" style={{ color: BRAND }}>{m.name}</h3>
-                      <p className="text-xs mt-1 text-slate-500 whitespace-normal">{m.desc}</p>
+                      <h3 className="font-semibold text-sm truncate" style={{ color: BRAND }}>{tMenu(m.name, "name")}</h3>
+                      <p className="text-xs mt-1 text-slate-500 whitespace-normal">{tMenu(m.desc, "desc")}</p>
                     </div>
                     <div className="mt-3 flex items-center justify-between">
                       <span className="font-bold text-lg" style={{ color: "#a16207" }}>฿{m.price}</span>
@@ -2822,11 +3135,12 @@ function MenuOverlay({
                         </button>
                       </div>
                     </div>
-                  </div>
+                                    </div>
                 </div>
               </div>
             ))
           )}
+        </div>
         </div>
       </div>
 
@@ -2838,8 +3152,7 @@ function MenuOverlay({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="absolute z-40"
-            style={{ left: 16, right: 16, bottom: 24 }}
+            className="absolute z-40 w-[calc(100%-32px)] md:max-w-md md:left-1/2 md:-translate-x-1/2 bottom-6 left-4"
           >
             <button
               onClick={onOpenCart}
@@ -2853,7 +3166,7 @@ function MenuOverlay({
                     {totalQty}
                   </span>
                 </div>
-                <span className="font-medium">ดูตะกร้าสินค้า</span>
+                <span className="font-medium">{t("ดูตะกร้าสินค้า")}</span>
               </div>
               <span className="font-bold text-lg" style={{ color: GOLD }}>
                 ฿{subtotal}
@@ -2888,10 +3201,10 @@ function MenuOverlay({
                 <div className="flex items-center justify-between">
                   <h2 className="text-base font-bold flex items-center gap-1.5" style={{ color: BRAND }}>
                     <SlidersHorizontal size={16} />
-                    <span>เรียงลำดับตาม</span>
+                    <span>{t("เรียงลำดับตาม")}</span>
                   </h2>
                   <button onClick={() => setShowSortModal(false)} className="text-sm font-semibold" style={{ color: INK_MUTED }}>
-                    เสร็จสิ้น
+                    {t("เสร็จสิ้นการเลือก")}
                   </button>
                 </div>
               </div>
@@ -2917,8 +3230,8 @@ function MenuOverlay({
                       }}
                     >
                       <div>
-                        <p className="font-semibold text-sm" style={{ color: BRAND }}>{opt.label}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{opt.desc}</p>
+                        <p className="font-semibold text-sm" style={{ color: BRAND }}>{t(opt.label)}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{t(opt.desc)}</p>
                       </div>
                       <div
                         className="h-5 w-5 rounded-full border-2 flex items-center justify-center transition"
@@ -2977,7 +3290,7 @@ function CartDrawer({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 280 }}
-        className="absolute inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl max-h-[85%] flex flex-col"
+                className="absolute inset-x-0 bottom-0 md:left-auto md:right-4 md:bottom-4 md:max-w-md md:w-full md:rounded-3xl md:shadow-2xl z-50 bg-white rounded-t-3xl max-h-[85%] flex flex-col"
       >
         <div className="px-5 pt-3 pb-4 border-b" style={{ borderColor: "#f1ece4" }}>
           <div className="mx-auto h-1.5 w-12 rounded-full bg-[#e5dccc] mb-3" />
@@ -3080,28 +3393,30 @@ function OrderConfirmOverlay({
   const [err, setErr] = useState("");
   const grand = subtotal + deliveryFee;
 
-  return (
+    return (
     <motion.div
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
       transition={{ type: "tween", duration: 0.3 }}
-      className="absolute inset-0 z-40 bg-[var(--surface)] overflow-y-auto no-scrollbar pb-32"
+      className="absolute inset-0 z-40 bg-[var(--surface)] overflow-y-auto no-scrollbar pb-12"
     >
-      <div className="px-5 pt-5 pb-6" style={{ background: BRAND, color: "white" }}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
-          >
-            <ChevronLeft size={20} color={GOLD} />
-          </button>
-          <h1 className="text-lg font-bold">รายการสั่งซื้อในตะกร้า</h1>
+      <div className="w-full" style={{ background: BRAND, color: "white" }}>
+        <div className="max-w-2xl mx-auto px-5 pt-5 pb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
+            >
+              <ChevronLeft size={20} color={GOLD} />
+            </button>
+            <h1 className="text-lg font-bold">รายการสั่งซื้อในตะกร้า</h1>
+          </div>
+          <p className="text-sm mt-2 text-white/70">ตรวจสอบรายการก่อนชำระเงิน</p>
         </div>
-        <p className="text-sm mt-2 text-white/70">ตรวจสอบรายการก่อนชำระเงิน</p>
       </div>
 
-      <div className="px-5 mt-4 space-y-3">
+      <div className="max-w-2xl mx-auto px-5 mt-4 space-y-3">
         {cart.map((l) => (
           <div key={l.id} className="bg-white rounded-2xl p-4 shadow-soft">
             <div className="flex gap-3">
@@ -3164,7 +3479,7 @@ function OrderConfirmOverlay({
           <label className="text-sm font-semibold flex items-center gap-2" style={{ color: BRAND }}>
             <Phone size={14} /> เบอร์โทรสำหรับติดต่อ
           </label>
-          <input
+                    <input
             type="tel"
             value={phone}
             onChange={(e) => {
@@ -3176,23 +3491,26 @@ function OrderConfirmOverlay({
             style={{ borderColor: err ? "#ef4444" : "#ece4d6", color: BRAND }}
           />
           {err && <p className="text-xs text-red-500 mt-1">{err}</p>}
+          
+          <div className="pb-8 mt-4">
+            <button
+              onClick={() => {
+                if (phone.length < 10) {
+                  setErr("กรุณากรอกเบอร์โทรให้ครบ 10 หลัก");
+                  return;
+                }
+                onProceed();
+              }}
+              className="w-full h-14 rounded-full font-bold text-white shadow-lift active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #635bff 0%, #8073ea 100%)",
+              }}
+            >
+              <CreditCard size={18} />
+              <span>ชำระผ่าน Stripe · ฿{grand.toLocaleString()}</span>
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="px-5 pb-8 mt-4">
-        <button
-          onClick={() => {
-            if (phone.length < 10) {
-              setErr("กรุณากรอกเบอร์โทรให้ครบ 10 หลัก");
-              return;
-            }
-            onProceed();
-          }}
-          className="w-full h-12 rounded-full font-semibold flex items-center justify-center gap-2"
-          style={{ background: BRAND, color: "white" }}
-        >
-          <CreditCard size={16} /> ไปยังช่องทางชำระเงิน · ฿{grand}
-        </button>
       </div>
     </motion.div>
   );
@@ -3214,151 +3532,177 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 // ─────────────────────────────────────────────────────────────
 function PaymentOverlay({
   total,
+  cart,
+  orderType,
+  deliveryFee,
+  subtotal,
+  selectedTable,
+  address,
   onBack,
   onSuccess,
 }: {
   total: number;
+  cart: CartLine[];
+  orderType: OrderType;
+  deliveryFee: number;
+  subtotal: number;
+  selectedTable: string;
+  address: string;
   onBack: () => void;
   onSuccess: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-  const [slip, setSlip] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const PROMPTPAY = "089-123-4567";
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeErrorMsg, setStripeErrorMsg] = useState<string | null>(null);
 
-  const handleCopy = () => {
-    navigator.clipboard?.writeText(PROMPTPAY).catch(() => { });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleStripeCheckout = async () => {
+    setStripeLoading(true);
+    setStripeErrorMsg(null);
+    try {
+      // 1. Save state to localStorage so we can restore it on redirect back
+      const pendingOrder = {
+        cart,
+        orderType,
+        selectedTable,
+        address,
+      };
+      localStorage.setItem("ran-lung-get-pending-stripe-order", JSON.stringify(pendingOrder));
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const url = URL.createObjectURL(f);
-    setSlip(url);
+      // 2. Call server function to create checkout session
+      const origin = window.location.origin;
+      const result = await createStripeSession({
+        data: {
+          cart: cart.map(l => ({
+            name: l.name,
+            price: l.price,
+            qty: l.qty,
+            image: l.image || null,
+          })),
+          subtotal,
+          deliveryFee,
+          orderType,
+          origin,
+        }
+      });
+
+      if (result.url) {
+        // 3. Redirect to Stripe Checkout or mock Sandbox page
+        window.location.href = result.url;
+      } else {
+        throw new Error("ไม่สามารถสร้าง URL สำหรับการชำระเงินได้");
+      }
+    } catch (err: any) {
+      console.error("[Stripe] Checkout error:", err);
+      setStripeErrorMsg(err?.message || "เกิดข้อผิดพลาดในการเชื่อมต่อกับ Stripe");
+      setStripeLoading(false);
+    }
   };
 
   return (
-    <motion.div
+        <motion.div
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
       transition={{ type: "tween", duration: 0.3 }}
-      className="absolute inset-0 z-50 bg-[var(--surface)] overflow-y-auto no-scrollbar pb-32"
+      className="absolute inset-0 z-50 bg-[var(--surface)] overflow-y-auto no-scrollbar pb-12"
     >
-      <div className="px-5 pt-5 pb-6" style={{ background: BRAND, color: "white" }}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
-          >
-            <ChevronLeft size={20} color={GOLD} />
-          </button>
-          <h1 className="text-lg font-bold">ชำระค่าอาหารผ่านพร้อมเพย์</h1>
+      {/* Header */}
+      <div className="w-full" style={{ background: BRAND, color: "white" }}>
+        <div className="max-w-2xl mx-auto px-5 pt-5 pb-6 mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
+            >
+              <ChevronLeft size={20} color={GOLD} />
+            </button>
+            <h1 className="text-lg font-bold">ชำระเงินค่าอาหาร</h1>
+          </div>
         </div>
       </div>
 
-      <div className="px-5 -mt-3 space-y-4">
-        <div className="bg-white rounded-2xl p-6 shadow-soft flex flex-col items-center">
-          <div className="px-3 py-1 rounded-md text-[10px] font-bold tracking-widest" style={{ background: "#003d6b", color: "white" }}>
-            PROMPTPAY
+      <div className="max-w-2xl mx-auto px-5 space-y-4">
+        {/* Stripe Content */}
+        <div className="bg-white rounded-3xl p-5 shadow-soft border border-slate-50 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <span className="text-sm font-bold text-slate-800">สรุปรายการสั่งซื้อ</span>
+            <span className="text-xs text-slate-400 font-medium">({cart.length} รายการ)</span>
           </div>
-          <div className="mt-4 rounded-2xl p-3 bg-white border-2" style={{ borderColor: "#f1ece4" }}>
-            <MockQR />
-          </div>
-          <p className="mt-3 text-xs" style={{ color: INK_MUTED }}>
-            ยอดที่ต้องชำระ
-          </p>
-          <p className="text-3xl font-bold" style={{ color: BRAND }}>
-            ฿{total.toLocaleString()}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-soft">
-          <p className="text-xs" style={{ color: INK_MUTED }}>
-            หมายเลขพร้อมเพย์
-          </p>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="text-lg font-bold tracking-wide" style={{ color: BRAND }}>
-              {PROMPTPAY}
-            </p>
-            <AnimatePresence mode="wait">
-              {copied ? (
-                <motion.button
-                  key="ok"
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold"
-                  style={{ background: "#dcfce7", color: "#16a34a" }}
-                >
-                  <Check size={14} /> คัดลอกแล้ว
-                </motion.button>
-              ) : (
-                <motion.button
-                  key="copy"
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  onClick={handleCopy}
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold"
-                  style={{ background: "#fff2d6", color: BRAND }}
-                >
-                  <Copy size={14} /> คัดลอก
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-sm font-semibold mb-2" style={{ color: BRAND }}>
-            แนบหลักฐานการโอน
-          </p>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="relative w-full rounded-2xl border-2 border-dashed overflow-hidden"
-            style={{
-              borderColor: slip ? "transparent" : "#cbd5d8",
-              background: slip ? "#000" : "white",
-              minHeight: 200,
-            }}
-          >
-            {slip ? (
-              <>
-                <img src={slip} alt="slip" className="w-full h-56 object-contain" />
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
-                  <span className="text-xs font-semibold text-white">เปลี่ยนไฟล์</span>
-                </div>
-              </>
-            ) : (
-              <div className="py-12 flex flex-col items-center gap-2">
-                <div className="grid h-12 w-12 place-items-center rounded-full" style={{ background: "#fff2d6" }}>
-                  <Upload size={20} color={BRAND} />
-                </div>
-                <p className="text-sm font-medium" style={{ color: BRAND }}>
-                  แตะเพื่ออัปโหลดสลิป
-                </p>
-                <p className="text-xs" style={{ color: INK_MUTED }}>
-                  JPG / PNG ไม่เกิน 5MB
-                </p>
+          
+          <div className="space-y-2 text-sm text-slate-600">
+            <div className="flex justify-between">
+              <span>ค่าอาหาร (Subtotal)</span>
+              <span>฿{subtotal.toLocaleString()}</span>
+            </div>
+            {deliveryFee > 0 && (
+              <div className="flex justify-between">
+                <span>ค่าจัดส่ง (Delivery Fee)</span>
+                <span>฿{deliveryFee.toLocaleString()}</span>
               </div>
             )}
-          </button>
+            <div className="flex justify-between pt-3 border-t border-slate-100 font-bold text-slate-800 text-base">
+              <span>ยอดชำระทั้งหมด</span>
+              <span style={{ color: BRAND }}>฿{total.toLocaleString()}</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="px-5 pb-8">
-        <div className="mt-4">
+        {/* Information Card */}
+        <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200/50 flex gap-3 text-xs text-amber-800 leading-relaxed shadow-sm">
+          <span className="text-lg">💡</span>
+          <div>
+            <p className="font-bold mb-0.5">ระบบชำระเงิน Stripe (โอนเงิน/บัตรเครดิต)</p>
+            <p className="text-amber-700">ชำระได้ทั้ง PromptPay QR Code และ บัตรเครดิต ผ่านแพลตฟอร์ม Stripe ที่ปลอดภัยระดับมาตรฐานสากล</p>
+            <p className="mt-1.5 text-[10px] text-amber-600 italic">หมายเหตุ: หากผู้พัฒนายังไม่ได้ใส่กุญแจ Stripe ลับในระบบ ระบบจะทำงานใน sandbox mode อัตโนมัติ เพื่อให้จำลองความสำเร็จได้ทันที</p>
+          </div>
+        </div>
+
+        {/* Stripe Badges */}
+        <div className="flex flex-col items-center justify-center py-4 bg-white rounded-3xl border border-slate-100 shadow-soft gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
+            <span>Secured by</span>
+            <span className="text-[#635bff] font-extrabold tracking-tight text-sm">stripe</span>
+          </div>
+          <div className="flex items-center gap-3 opacity-60">
+            <span className="text-[10px] bg-slate-100 px-2 py-1 rounded font-bold text-slate-500">VISA</span>
+            <span className="text-[10px] bg-slate-100 px-2 py-1 rounded font-bold text-slate-500">MASTERCARD</span>
+            <span className="text-[10px] bg-slate-100 px-2 py-1 rounded font-bold text-slate-500">JCB</span>
+            <span className="text-[10px] bg-slate-100 px-2 py-1 rounded font-bold text-slate-500">PROMPTPAY</span>
+          </div>
+        </div>
+
+        {stripeErrorMsg && (
+          <div className="bg-red-50 rounded-xl p-3 border border-red-200 text-xs text-red-700 text-center">
+            {stripeErrorMsg}
+          </div>
+        )}
+
+        {/* Pay Button */}
+        <div className="pb-8">
           <button
-            onClick={onSuccess}
-            disabled={!slip}
-            className="w-full h-12 rounded-full font-semibold disabled:opacity-50"
-            style={{ background: BRAND, color: "white" }}
+            onClick={handleStripeCheckout}
+            disabled={stripeLoading}
+            className="w-full h-14 rounded-full font-bold text-white shadow-lift active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+            style={{
+              background: "linear-gradient(135deg, #635bff 0%, #8073ea 100%)",
+            }}
           >
-            ยืนยันการชำระเงินเรียบร้อย
+            {stripeLoading ? (
+              <div
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  border: "2px solid rgba(255,255,255,0.2)",
+                  borderTopColor: "white",
+                  animation: "spin 0.8s linear infinite",
+                }}
+              />
+            ) : (
+              <>
+                <CreditCard size={18} />
+                <span>ชำระผ่าน Stripe ฿{total.toLocaleString()}</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -3397,6 +3741,72 @@ function MockQR() {
       <Corner x={size - c * 7} y={0} />
       <Corner x={0} y={size - c * 7} />
     </svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stripe Helpers
+// ─────────────────────────────────────────────────────────────
+function StripeVerifyingFlash() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-[60] flex items-center justify-center"
+      style={{ background: BRAND }}
+    >
+      <div className="flex flex-col items-center gap-4">
+        <div
+          style={{
+            width: 50,
+            height: 50,
+            borderRadius: "50%",
+            border: "4px solid rgba(255,255,255,0.1)",
+            borderTopColor: GOLD,
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <p className="text-white font-bold text-lg">
+          กำลังตรวจสอบการชำระเงินผ่าน Stripe...
+        </p>
+        <p className="text-white/60 text-sm">
+          กรุณาอย่าปิดหน้านี้
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+function StripeErrorOverlay({ error, onClose }: { error: string; onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-[60] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-red-100"
+      >
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-500 mb-4">
+          <X size={32} />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900 mb-2">การชำระเงินไม่สำเร็จ</h3>
+        <p className="text-sm text-slate-500 mb-6 leading-relaxed">{error}</p>
+        <button
+          onClick={onClose}
+          className="w-full h-12 rounded-full font-semibold text-white transition-all shadow-md active:scale-[0.98]"
+          style={{ background: BRAND }}
+        >
+          ตกลง
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -3512,7 +3922,9 @@ function StatusScreen({
     // สำหรับสถานะเตรียมอาหาร หรือจัดส่งสำเร็จ
     return {
       title: currentStatus === "สำเร็จ" ? "รายการสำเร็จ" : "กำลังดำเนินการ",
-      subtitle: orderType === "dine-in" ? "รอเสิร์ฟอาหารในอีก 10 นาที" : "รอรับอาหารในอีก 14 นาที",
+      subtitle: currentStatus === "สำเร็จ"
+        ? ""
+        : (orderType === "dine-in" ? "รอเสิร์ฟอาหารในอีก 10 นาที" : "รอรับอาหารในอีก 14 นาที"),
       color: "#10b981", // Emerald
       bg: "rgba(16, 185, 129, 0.08)",
       iconColor: "#10b981"
@@ -3572,10 +3984,11 @@ function StatusScreen({
     setErrorText("");
   };
 
-  return (
-    <div className="min-h-full pb-28 relative" style={{ background: SURFACE }}>
-      {/* Reassurance Banner */}
-      {currentStatus === "ขอคืนเงิน" && (
+    return (
+    <div className="min-h-full pb-28 relative w-full" style={{ background: SURFACE }}>
+      <div className="max-w-2xl mx-auto w-full">
+        {/* Reassurance Banner */}
+        {currentStatus === "ขอคืนเงิน" && (
         <div className="mx-5 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col gap-1.5 shadow-sm">
           <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
             <span className="animate-pulse">●</span>
@@ -3630,9 +4043,11 @@ function StatusScreen({
         <h2 className="mt-5 text-2xl font-bold" style={{ color: BRAND }}>
           {statusTheme.title}
         </h2>
-        <p className="mt-1 text-sm max-w-xs mx-auto leading-relaxed" style={{ color: INK_MUTED }}>
-          {statusTheme.subtitle}
-        </p>
+        {statusTheme.subtitle && (
+          <p className="mt-1 text-sm max-w-xs mx-auto leading-relaxed" style={{ color: INK_MUTED }}>
+            {statusTheme.subtitle}
+          </p>
+        )}
 
         {activeOrder?.orderType === "takeaway" && activeOrder?.queueNumber && (
           <motion.div
@@ -3764,6 +4179,7 @@ function StatusScreen({
         </div>
       </div>
 
+            </div>
       {/* Cancellation Dialog Overlay */}
       <AnimatePresence>
         {showCancelDialog && (
@@ -3884,26 +4300,75 @@ function MiniOrderTracker({
   orderNumber,
   onGoToStatus,
   orderType,
+  status,
 }: {
   orderNumber: string;
   onGoToStatus: () => void;
   orderType: OrderType;
+  status?: string;
 }) {
+  const { t } = useLanguage();
+
+  const isCompleted = status === "สำเร็จ" || status === "completed" || status === "เสร็จสิ้น";
+  const isCooking   = status === "กำลังทำ" || status === "กำลังเตรียม" || status === "preparing";
+  const isReady     = status === "พร้อมเสิร์ฟ" || status === "delivering" || status === "พร้อมรับอาหาร" || status === "กำลังจัดส่ง";
+  const isReceived  = !isCooking && !isReady && !isCompleted;
+
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    let timerId: any = null;
+    if (isCompleted) {
+      timerId = setTimeout(() => {
+        setIsVisible(false);
+      }, 10000);
+    } else {
+      setIsVisible(true);
+    }
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+    };
+  }, [isCompleted]);
+
+  if (!isVisible) return null;
+
   const steps = orderType === "dine-in"
     ? [
-      { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-      { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: false, active: true },
-      { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
+      { id: 1, label: t("รับออเดอร์"),      icon: Check,        done: isCooking || isReady || isCompleted, active: isReceived },
+      { id: 2, label: t("กำลังทำอาหาร"),    icon: ChefHat,      done: isReady || isCompleted,              active: isCooking },
+      { id: 3, label: t("เสร็จสิ้น"),       icon: PartyPopper,  done: false,                               active: isCompleted },
     ]
-    : [
-      { id: 1, label: "รับออเดอร์", icon: Check, done: true },
-      { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: true },
-      { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: false, active: true },
-      { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: false },
-    ];
+    : orderType === "takeaway"
+      ? [
+        { id: 1, label: t("รับออเดอร์"),       icon: Check,       done: isCooking || isReady || isCompleted, active: isReceived },
+        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat,     done: isReady || isCompleted,              active: isCooking },
+        { id: 3, label: t("พร้อมรับอาหาร"),    icon: ShoppingBag, done: false,                               active: isReady || isCompleted },
+      ]
+      : [
+        { id: 1, label: t("รับออเดอร์"),               icon: Check,        done: isCooking || isReady || isCompleted, active: isReceived },
+        { id: 2, label: t("กำลังเตรียมอาหาร"),         icon: ChefHat,      done: isReady || isCompleted,              active: isCooking },
+        { id: 3, label: t("คนรับอาหาร/กำลังขับไป"),   icon: Bike,         done: isCompleted,                         active: isReady },
+        { id: 4, label: t("เสร็จสิ้น"),                icon: PartyPopper,  done: false,                               active: isCompleted },
+      ];
 
-  const doneCount = steps.filter((s) => s.done).length;
-  const progressPercent = ((doneCount + 0.5) / steps.length) * 100; // halfway through active step
+  const activeIndex = steps.findIndex((s) => s.active);
+  const doneCount   = steps.filter((s) => s.done).length;
+
+  // Progress bar: jump to 100% on completion, otherwise sit halfway through the active step
+  const progressPercent = isCompleted
+    ? 100
+    : activeIndex !== -1
+      ? ((activeIndex + 0.5) / steps.length) * 100
+      : ((doneCount + 0.5) / steps.length) * 100;
+
+  // Yellow connecting line fraction (0–1)
+  const lineFraction = isCompleted
+    ? 1
+    : activeIndex > 0
+      ? activeIndex / (steps.length - 1)
+      : 0;
 
   return (
     <div
@@ -3929,13 +4394,16 @@ function MiniOrderTracker({
           </div>
         </div>
         <motion.span
-          animate={{ scale: [1, 1.03, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          animate={!isCompleted ? { scale: [1, 1.03, 1] } : undefined}
+          transition={!isCompleted ? { duration: 2, repeat: Infinity } : undefined}
           className="px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1"
-          style={{ background: "rgba(59,130,246,0.08)", color: "#2563eb" }}
+          style={{
+            background: isCompleted ? "rgba(16,185,129,0.08)" : "rgba(59,130,246,0.08)",
+            color:      isCompleted ? "#10b981"               : "#2563eb",
+          }}
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-          กำลังดำเนินการ
+          <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isCompleted ? "bg-emerald-500" : "bg-blue-500"}`} />
+          {isCompleted ? t("เสร็จสิ้น") : t("กำลังดำเนินการ")}
         </motion.span>
       </div>
 
@@ -3957,13 +4425,13 @@ function MiniOrderTracker({
           className="absolute top-4 h-[2px] -translate-y-1/2"
           style={{ background: "#eef2f6", left: 16, right: 16 }}
         />
-        {/* Yellow active connecting line */}
+        {/* Yellow active connecting line — stretches to each step as status advances */}
         <div
-          className="absolute top-4 h-[2px] -translate-y-1/2 transition-all duration-500"
+          className="absolute top-4 h-[2px] -translate-y-1/2 transition-all duration-700"
           style={{
             background: "#ffcb44",
             left: 16,
-            width: `calc((${Math.max(0, (doneCount - 1) / (steps.length - 1))} * (100% - 32px)))`,
+            width: `calc(${lineFraction} * (100% - 32px))`,
           }}
         />
         {steps.map((s, i) => {
@@ -4026,7 +4494,7 @@ function HistoryOverlay({
   onBack: () => void;
 }) {
   return (
-    <motion.div
+        <motion.div
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
@@ -4034,23 +4502,26 @@ function HistoryOverlay({
       className="absolute inset-0 z-30 bg-[var(--surface)] flex flex-col"
     >
       {/* Header */}
-      <div className="px-5 pt-5 pb-4" style={{ background: BRAND, color: "white" }}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
-          >
-            <ChevronLeft size={20} color={GOLD} />
-          </button>
-          <div>
-            <h1 className="text-lg font-bold">ประวัติการสั่งซื้อ</h1>
-            <p className="text-xs text-white/60">{orderHistory.length} รายการ</p>
+      <div className="w-full" style={{ background: BRAND, color: "white" }}>
+        <div className="max-w-2xl mx-auto px-5 pt-5 pb-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
+            >
+              <ChevronLeft size={20} color={GOLD} />
+            </button>
+            <div>
+              <h1 className="text-lg font-bold">ประวัติการสั่งซื้อ</h1>
+              <p className="text-xs text-white/60">{orderHistory.length} รายการ</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-5 pb-8 space-y-4">
+      <div className="flex-1 overflow-y-auto no-scrollbar w-full">
+        <div className="max-w-2xl mx-auto px-5 pt-5 pb-8 space-y-4">
         {orderHistory.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Package size={48} className="mb-4" style={{ color: INK_MUTED }} />
@@ -4160,7 +4631,8 @@ function HistoryOverlay({
               </div>
             </motion.div>
           ))
-        )}
+                )}
+      </div>
       </div>
     </motion.div>
   );
@@ -4198,7 +4670,7 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <motion.div
+        <motion.div
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
@@ -4206,20 +4678,23 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
       className="absolute inset-0 z-30 bg-[var(--surface)] flex flex-col"
     >
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 flex items-center justify-between" style={{ background: BRAND, color: "white" }}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
-          >
-            <ChevronLeft size={20} color={GOLD} />
-          </button>
-          <h1 className="text-lg font-bold">ข้อมูลร้านค้า</h1>
+      <div className="w-full" style={{ background: BRAND, color: "white" }}>
+        <div className="max-w-2xl mx-auto px-5 pt-5 pb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
+            >
+              <ChevronLeft size={20} color={GOLD} />
+            </button>
+            <h1 className="text-lg font-bold">ข้อมูลร้านค้า</h1>
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+      <div className="flex-1 overflow-y-auto no-scrollbar w-full pb-10">
+        <div className="max-w-2xl mx-auto px-5">
 
         {/* Google Maps Container */}
         <div className="relative h-64 w-full bg-slate-200 overflow-hidden">
@@ -4385,9 +4860,10 @@ function ContactOverlay({ onBack }: { onBack: () => void }) {
                   {r.text}
                 </p>
               </div>
-            ))}
+                        ))}
           </div>
 
+        </div>
         </div>
 
       </div>
@@ -4423,26 +4899,29 @@ function StoreClosedOverlay({
   ];
 
   return (
-    <motion.div
+        <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="absolute inset-0 z-50 bg-[var(--surface)] flex flex-col"
     >
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 flex items-center justify-between shadow-sm" style={{ background: BRAND, color: "white" }}>
-        <button
-          onClick={onOpenSidebar}
-          className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 active:scale-95 transition-transform"
-        >
-          <Menu size={20} color={GOLD} />
-        </button>
-        <span className="text-xs uppercase tracking-[0.25em] text-white/60 font-bold">EPICUREAN</span>
-        <div className="w-10" />
+      <div className="w-full shadow-sm" style={{ background: BRAND, color: "white" }}>
+        <div className="max-w-2xl mx-auto px-5 pt-5 pb-4 flex items-center justify-between">
+          <button
+            onClick={onOpenSidebar}
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 active:scale-95 transition-transform"
+          >
+            <Menu size={20} color={GOLD} />
+          </button>
+          <span className="text-xs uppercase tracking-[0.25em] text-white/60 font-bold">EPICUREAN</span>
+          <div className="w-10" />
+        </div>
       </div>
 
       {/* Main Banner */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-6 flex flex-col justify-between">
+      <div className="flex-1 overflow-y-auto no-scrollbar w-full">
+        <div className="max-w-2xl mx-auto px-6 py-6 flex flex-col justify-between h-full min-h-[calc(100vh-80px)]">
         <div className="space-y-6">
           {/* Pulsing closed icon */}
           <div className="flex justify-center mt-2">
@@ -4510,11 +4989,12 @@ function StoreClosedOverlay({
             onClick={onBypass}
             className="w-full py-4 px-5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 bg-slate-50 border border-slate-200/80 transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98]"
           >
-            เข้าสู่หน้าร้าน (โหมดสาธิตสำหรับทดสอบ)
+                        เข้าสู่หน้าร้าน (โหมดสาธิตสำหรับทดสอบ)
           </button>
           <p className="text-[10px] text-slate-400 text-center">
-            * ปุ่มด้านบนสำหรับผู้ตรวจสอบเพื่อทดสอบการใช้งานในวันหยุด/นอกเวลา
+            * ปุ่มด้านบนสำหรับผู้ตรวจสอบเพื่อทดสอบการใช้งาน in วันหยุด/นอกเวลา
           </p>
+        </div>
         </div>
       </div>
     </motion.div>
@@ -4562,7 +5042,7 @@ function Sidebar({
         animate={{ x: 0 }}
         exit={{ x: "-100%" }}
         transition={{ type: "tween", duration: 0.28 }}
-        className="absolute top-0 left-0 bottom-0 w-[78%] z-[70] flex flex-col"
+                className="absolute top-0 left-0 bottom-0 w-[78%] md:w-[320px] z-[70] flex flex-col"
         style={{ background: BRAND, color: "white" }}
       >
         <div className="p-5 border-b border-white/10">
@@ -4635,9 +5115,6 @@ function Sidebar({
           >
             <LogOut size={16} /> ออกจากระบบ
           </button>
-          <p className="mt-2 text-center text-[10px] text-white/40">
-            © 2026 ร้านลุงเก้ต
-          </p>
         </div>
 
       </motion.aside>

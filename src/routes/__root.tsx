@@ -8,13 +8,14 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "../lib/supabase";
 import { LanguageProvider } from "../lib/i18n";
+import { DevBypassPanel } from "../components/DevBypassPanel";
 
 function NotFoundComponent() {
   return (
@@ -81,16 +82,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LINE LIFF Food Delivery" },
-      { name: "description", content: "A mobile-first food delivery app for LINE LIFF with customer, staff, and admin order workflows." },
+      { title: "Lovable App" },
+      { name: "description", content: "A mobile-first React web app for LINE LIFF food delivery, featuring a minimalist design and intuitive navigation." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "LINE LIFF Food Delivery" },
-      { property: "og:description", content: "A mobile-first food delivery app for LINE LIFF with customer, staff, and admin order workflows." },
+      { property: "og:title", content: "Lovable App" },
+      { property: "og:description", content: "A mobile-first React web app for LINE LIFF food delivery, featuring a minimalist design and intuitive navigation." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "LINE LIFF Food Delivery" },
-      { name: "twitter:description", content: "A mobile-first food delivery app for LINE LIFF with customer, staff, and admin order workflows." },
+      { name: "twitter:title", content: "Lovable App" },
+      { name: "twitter:description", content: "A mobile-first React web app for LINE LIFF food delivery, featuring a minimalist design and intuitive navigation." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7f1ddf64-af89-4dbe-8331-802eb463acb3/id-preview-39d7dc68--7b87f1b8-481d-40c1-a507-b9601d300c39.lovable.app-1781499966608.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7f1ddf64-af89-4dbe-8331-802eb463acb3/id-preview-39d7dc68--7b87f1b8-481d-40c1-a507-b9601d300c39.lovable.app-1781499966608.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -124,13 +127,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [hasMounted, setHasMounted] = useState(false);
 
   const routerState = useRouterState();
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
 
   useEffect(() => {
     // 🚀 ทำให้ทั้งเว็บเป็น Real-Time: คอยดักจับการเปลี่ยนแปลงของทุกตารางในฐานข้อมูล
@@ -143,6 +141,25 @@ function RootComponent() {
           console.log("🔄 Database Changed:", payload);
           // ทันทีที่มีอะไรเปลี่ยน ให้ดึงข้อมูลใหม่ทั้งหมด (ทำให้ UI อัปเดตทันที)
           queryClient.invalidateQueries();
+
+          // Force logout in real-time if the user's role or active status changed
+          if (payload.table === "users" && payload.eventType === "UPDATE") {
+            supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
+              if (user && payload.new && payload.new.auth_user_id === user.id) {
+                if (payload.new.is_active === false) {
+                  alert("สิทธิ์การใช้งานของคุณถูกระงับ (Account Suspended)");
+                  supabase.auth.signOut().then(() => {
+                    window.location.href = "/login";
+                  });
+                } else if (payload.old && payload.new.role !== payload.old.role) {
+                  alert("บทบาทของคุณถูกเปลี่ยนแปลง กรุณาเข้าสู่ระบบใหม่ (Role Changed)");
+                  supabase.auth.signOut().then(() => {
+                    window.location.href = "/login";
+                  });
+                }
+              }
+            });
+          }
         }
       )
       .subscribe();
@@ -152,7 +169,7 @@ function RootComponent() {
     };
   }, [queryClient]);
 
-  const isNavigating = hasMounted && routerState.status === "pending";
+  const isNavigating = routerState.status === "pending";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -174,6 +191,7 @@ function RootComponent() {
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
         </div>
+        <DevBypassPanel />
       </LanguageProvider>
     </QueryClientProvider>
   );
