@@ -205,11 +205,18 @@ export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promis
   // 1. Check if user already exists to preserve their role
   const { data: existingUser } = await client
     .from("users")
-    .select("role")
+    .select("role, is_active")
     .eq("auth_user_id", authUser.id)
     .maybeSingle();
 
   const userRole = existingUser?.role || authUser.user_metadata?.role || "customer";
+
+  let isActive = true;
+  if (existingUser) {
+    isActive = existingUser.is_active !== false;
+  } else {
+    isActive = (userRole === "admin" || userRole === "captain" || userRole === "staff") ? false : true;
+  }
 
   // 2. Upsert User
   const displayName = authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "User";
@@ -222,7 +229,7 @@ export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promis
         email: authUser.email,
         picture_url: authUser.user_metadata?.avatar_url ?? null,
         role: userRole,
-        is_active: true,
+        is_active: isActive,
         updated_at: now,
         last_login_at: now,
       },
@@ -436,3 +443,28 @@ export async function adjustStockFromOrder(
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// Store Settings
+// ─────────────────────────────────────────────────────────────
+
+export async function getNextQueueNumber(): Promise<number> {
+  try {
+    // get current
+    const { data } = await supabase.from("store_settings").select("value").eq("id", "takeaway_queue").single();
+    let current = 1;
+    if (data && data.value && data.value.counter) {
+      current = data.value.counter;
+    }
+    const nextQueue = current + 1;
+    await supabase.from("store_settings").upsert({ 
+      id: "takeaway_queue", 
+      value: { counter: nextQueue },
+      updated_at: new Date().toISOString()
+    });
+    return current;
+  } catch (err) {
+    console.error("Queue counter failed:", err);
+    return Date.now() % 1000;
+  }
+}
