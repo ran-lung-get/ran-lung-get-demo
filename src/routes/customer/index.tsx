@@ -551,24 +551,36 @@ function LiffApp() {
               const pending = JSON.parse(pendingStr);
               console.log("[Stripe Client] Pending order restored:", pending);
               
+              if (!pending.cart || pending.cart.length === 0) {
+                setStripeError("ไม่พบรายการสินค้าในคำสั่งซื้อที่รอดำเนินการ (คุณอาจลบสินค้าออกจากตะกร้าแล้ว)");
+                localStorage.removeItem("ran-lung-get-pending-stripe-order");
+                setOverlay(null);
+                return;
+              }
+
               // Call saveOrderToHistory with override arguments
-              saveOrderToHistory(
+              const savedOk = saveOrderToHistory(
                 pending.cart,
                 pending.orderType,
                 pending.selectedTable,
                 pending.address
               );
 
-              // Clear cart, remove pending order, show success flash
-              setCart([]);
-              localStorage.removeItem("ran-lung-get-pending-stripe-order");
-              setShowSuccess(true);
-              setOverlay(null);
-              setTab("status");
+              if (savedOk) {
+                // Clear cart, remove pending order, show success flash
+                setCart([]);
+                localStorage.removeItem("ran-lung-get-pending-stripe-order");
+                setShowSuccess(true);
+                setOverlay(null);
+                setTab("status");
 
-              setTimeout(() => {
-                setShowSuccess(false);
-              }, 2000);
+                setTimeout(() => {
+                  setShowSuccess(false);
+                }, 2000);
+              } else {
+                setStripeError("ไม่สามารถทำรายการได้ สินค้าในตะกร้าถูกลบหรือไม่มีข้อมูล");
+                localStorage.removeItem("ran-lung-get-pending-stripe-order");
+              }
             } else {
               setStripeError("ไม่พบข้อมูลคำสั่งซื้อที่รอดำเนินการ กรุณาตรวจสอบประวัติการสั่งซื้อของคุณ (Pending order details not found)");
             }
@@ -595,6 +607,16 @@ function LiffApp() {
   const [sidebar, setSidebar] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU);
   const [cart, setCart] = useState<CartLine[]>([]);
+
+  // Clean pending stripe order and auto-close checkout screens if cart is emptied
+  useEffect(() => {
+    if (cart.length === 0) {
+      localStorage.removeItem("ran-lung-get-pending-stripe-order");
+      if (overlay === "orderConfirm" || overlay === "payment") {
+        setOverlay(null);
+      }
+    }
+  }, [cart, overlay]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [editingCartLine, setEditingCartLine] = useState<CartLine | null>(null);
   const selectedItemToEdit = useMemo(() => {
@@ -901,13 +923,13 @@ function LiffApp() {
     customOrderType?: OrderType,
     customSelectedTable?: string | null,
     customAddress?: string
-  ) => {
+  ): boolean => {
     const activeCart = customCart || cart;
     const activeOrderType = customOrderType || orderType;
     const activeSelectedTable = customSelectedTable !== undefined ? customSelectedTable : selectedTable;
     const activeAddress = customAddress !== undefined ? customAddress : address;
 
-    if (activeCart.length === 0) return;
+    if (!activeCart || activeCart.length === 0) return false;
     const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
     const selectedTableObj = tables.find((t) => t.id === activeSelectedTable);
     const tableNumStr = activeOrderType === "dine-in" && selectedTableObj ? selectedTableObj.label : undefined;
@@ -1026,6 +1048,7 @@ function LiffApp() {
     };
 
     void insertOrder();
+    return true;
   };
 
   const resetAll = () => {
@@ -3412,6 +3435,45 @@ function OrderConfirmOverlay({
   const [err, setErr] = useState("");
   const grand = subtotal + deliveryFee;
 
+  if (cart.length === 0) {
+    return (
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "tween", duration: 0.3 }}
+        className="absolute inset-0 z-40 bg-[var(--surface)] overflow-y-auto no-scrollbar pb-12"
+      >
+        <div className="w-full" style={{ background: BRAND, color: "white" }}>
+          <div className="max-w-2xl mx-auto px-5 pt-5 pb-6">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onBack}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
+              >
+                <ChevronLeft size={20} color={GOLD} />
+              </button>
+              <h1 className="text-lg font-bold">รายการสั่งซื้อในตะกร้า</h1>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto px-5 mt-8 text-center space-y-4">
+          <div className="bg-white rounded-3xl p-8 shadow-soft space-y-3">
+            <p className="text-base font-semibold text-slate-700">ไม่มีรายการสินค้าในตะกร้าของคุณ</p>
+            <p className="text-xs text-slate-500">กรุณาเลือกอาหารจากเมนูก่อนทำการชำระเงิน</p>
+            <button
+              onClick={onBack}
+              className="mt-4 px-6 py-3 rounded-full font-bold text-white shadow-lift cursor-pointer"
+              style={{ background: BRAND }}
+            >
+              กลับไปเลือกซื้ออาหาร
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
     return (
     <motion.div
       initial={{ x: "100%" }}
@@ -3574,6 +3636,10 @@ function PaymentOverlay({
   const [stripeErrorMsg, setStripeErrorMsg] = useState<string | null>(null);
 
   const handleStripeCheckout = async () => {
+    if (cart.length === 0 || subtotal <= 0) {
+      setStripeErrorMsg("ไม่มีรายการสินค้าในตะกร้า ไม่สามารถทำการชำระเงินได้");
+      return;
+    }
     setStripeLoading(true);
     setStripeErrorMsg(null);
     try {
@@ -3699,8 +3765,8 @@ function PaymentOverlay({
         <div className="pb-8">
           <button
             onClick={handleStripeCheckout}
-            disabled={stripeLoading}
-            className="w-full h-14 rounded-full font-bold text-white shadow-lift active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+            disabled={stripeLoading || cart.length === 0 || subtotal <= 0}
+            className="w-full h-14 rounded-full font-bold text-white shadow-lift active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: "linear-gradient(135deg, #635bff 0%, #8073ea 100%)",
             }}
