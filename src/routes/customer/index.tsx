@@ -3487,7 +3487,9 @@ function OrderConfirmOverlay({
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
+              aria-label="ย้อนกลับไปหน้าสั่งอาหาร"
+              title="ย้อนกลับไปหน้าสั่งอาหาร"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
             >
               <ChevronLeft size={20} color={GOLD} />
             </button>
@@ -3696,6 +3698,8 @@ function PaymentOverlay({
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
+              aria-label="ย้อนกลับไปหน้าสั่งอาหาร"
+              title="ย้อนกลับไปหน้าสั่งอาหาร"
               className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
             >
               <ChevronLeft size={20} color={GOLD} />
