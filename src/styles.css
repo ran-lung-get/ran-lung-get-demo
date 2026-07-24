@@ -69,13 +69,8 @@
 
 html, body {
   font-family: "Prompt", ui-sans-serif, system-ui, sans-serif;
-  background: var(--background);
+  background: #0b1620;
   color: var(--foreground);
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
 }
 
 /* Custom Scrollbar Styles for premium feel */
