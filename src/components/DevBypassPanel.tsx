@@ -45,7 +45,7 @@ export function DevBypassPanel() {
   const currentRoleName = roles.find(r => r.id === activeRole)?.name.split(" (")[0] || "ลูกค้า / สั่งอาหาร";
 
   return (
-    <div className="fixed bottom-6 right-6 z-[99999] font-sans">
+    <div className="fixed bottom-6 left-6 z-[99999] font-sans">
       {isOpen ? (
         <div className="w-80 rounded-2xl border border-white/10 bg-[#0f1f2b]/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-200">
           {/* Header */}

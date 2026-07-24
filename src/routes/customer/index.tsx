@@ -1216,6 +1216,10 @@ function LiffApp() {
               key="history"
               orderHistory={orderHistory}
               onBack={() => setOverlay(null)}
+              onClearHistory={() => {
+                setOrderHistory([]);
+                localStorage.removeItem("ran-lung-get-orders");
+              }}
             />
           )}
           {overlay === "contact" && (
@@ -1724,7 +1728,11 @@ function HomeScreen({
     <div className="pb-36" style={{ background: LINEN }}>
             {/* Hero */}
       <div className="relative h-72 md:h-96 w-full overflow-hidden">
-        <img src={HERO_IMG} alt="restaurant" className="absolute inset-0 h-full w-full object-cover" />
+        <img
+          src={HERO_IMG}
+          alt="restaurant"
+          className="absolute inset-0 h-full w-full object-cover object-center scale-110 transition-transform duration-700 ease-out hover:scale-115"
+        />
         <div
           className="absolute inset-0"
           style={{
@@ -1734,99 +1742,110 @@ function HomeScreen({
         />
         <div className="absolute inset-0 max-w-7xl mx-auto w-full h-full px-5 md:px-12 pointer-events-none">
           <div className="relative w-full h-full pointer-events-auto">
-            <button
-              aria-label="เปิดเมนูด้านข้าง"
-          onClick={onOpenSidebar}
-          className="absolute top-5 left-5 grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur-md text-white border border-white/20"
-        >
-          <Menu size={20} />
-        </button>
-
-        {/* Language Selector */}
-        <div className="absolute top-5 right-24 z-30">
-          <button
-            aria-label="เปลี่ยนภาษา"
-            onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-            className="flex items-center bg-black/35 hover:bg-black/45 backdrop-blur-md px-3.5 py-2.5 rounded-full border border-white/20 text-white shadow-md transition-all cursor-pointer min-w-[125px] justify-between h-10 select-none active:scale-95 border-box"
-          >
-            <div className="flex items-center gap-2">
-              <FlagIcon lang={language} />
-              <span className="font-extrabold text-[11px] tracking-wide whitespace-nowrap">
-                {language === "th" ? "ภาษาไทย" : language === "en" ? "English" : "中文"}
-              </span>
-            </div>
-            <ChevronDown 
-              size={13} 
-              className={`opacity-75 transition-transform duration-200 ${langDropdownOpen ? "rotate-180" : ""}`} 
-            />
-          </button>
-
-          {/* Invisible clickaway backdrop */}
-          {langDropdownOpen && (
-            <div 
-              className="fixed inset-0 z-40 cursor-default" 
-              onClick={() => setLangDropdownOpen(false)}
-            />
-          )}
-
-          {/* Premium styled Dropdown Menu */}
-          <AnimatePresence>
-            {langDropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full mt-0 w-44 bg-black/80 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl overflow-hidden z-50 p-1.5 flex flex-col gap-1"
+            {/* Top Navigation Bar — perfectly aligned icons & actions */}
+            <div className="absolute top-5 left-5 right-5 z-30 flex items-center justify-between pointer-events-auto">
+              {/* Menu Button */}
+              <button
+                aria-label="เปิดเมนูด้านข้าง"
+                onClick={onOpenSidebar}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur-md text-white border border-white/20 active:scale-95 transition-all shadow-sm cursor-pointer"
               >
-                {[
-                  { code: "th", label: "ภาษาไทย", text: "Thai" },
-                  { code: "en", label: "English", text: "English" },
-                  { code: "zh", label: "中文", text: "Chinese" }
-                ].map((item) => {
-                  const isActive = language === item.code;
-                  return (
-                    <button
-                      key={item.code}
-                      aria-label={`เลือกภาษา ${item.label}`}
-                      onClick={() => {
-                        setLanguage(item.code as Language);
-                        setLangDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
-                      style={{
-                        background: isActive ? "rgba(252,193,74,0.15)" : "transparent",
-                        color: isActive ? "#fcc14a" : "#ffffff",
-                        fontWeight: isActive ? "800" : "600"
-                      }}
-                    >
-                      <span className="flex items-center gap-2 tracking-wide">
-                        <FlagIcon lang={item.code} />
-                        {item.label}
-                      </span>
-                      {isActive && (
-                        <Check size={12} className="text-[#fcc14a]" strokeWidth={3} />
-                      )}
-                    </button>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                <Menu size={20} />
+              </button>
 
-        <button
-          aria-label={`เปิดตะกร้าสินค้า มีสินค้าทั้งหมด ${totalQty} ชิ้น`}
-          onClick={onOpenCart}
-          className="absolute top-5 right-5 flex items-center gap-1 text-white/90 text-xs bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-white/15"
-        >
-          <ShoppingBag size={14} />
-          {totalQty > 0 && (
-            <span className="ml-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-bold" style={{ background: GOLD, color: BRAND }}>
-              {totalQty}
-            </span>
-          )}
-        </button>
+              {/* Right Action Group (Language Selector & Cart) */}
+              <div className="flex items-center gap-2">
+                {/* Language Selector */}
+                <div className="relative">
+                  <button
+                    aria-label="เปลี่ยนภาษา"
+                    onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                    className="flex items-center bg-black/35 hover:bg-black/45 backdrop-blur-md px-3 rounded-full border border-white/20 text-white shadow-md transition-all cursor-pointer min-w-[120px] justify-between h-10 select-none active:scale-95"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <FlagIcon lang={language} />
+                      <span className="font-extrabold text-[11px] tracking-wide whitespace-nowrap">
+                        {language === "th" ? "ภาษาไทย" : language === "en" ? "English" : "中文"}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      size={13}
+                      className={`opacity-75 transition-transform duration-200 ${langDropdownOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {/* Invisible clickaway backdrop */}
+                  {langDropdownOpen && (
+                    <div
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setLangDropdownOpen(false)}
+                    />
+                  )}
+
+                  {/* Dropdown Menu */}
+                  <AnimatePresence>
+                    {langDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-1.5 w-44 bg-black/85 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl overflow-hidden z-50 p-1.5 flex flex-col gap-1"
+                      >
+                        {[
+                          { code: "th", label: "ภาษาไทย", text: "Thai" },
+                          { code: "en", label: "English", text: "English" },
+                          { code: "zh", label: "中文", text: "Chinese" },
+                        ].map((item) => {
+                          const isActive = language === item.code;
+                          return (
+                            <button
+                              key={item.code}
+                              aria-label={`เลือกภาษา ${item.label}`}
+                              onClick={() => {
+                                setLanguage(item.code as Language);
+                                setLangDropdownOpen(false);
+                              }}
+                              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
+                              style={{
+                                background: isActive ? "rgba(252,193,74,0.15)" : "transparent",
+                                color: isActive ? "#fcc14a" : "#ffffff",
+                                fontWeight: isActive ? "800" : "600",
+                              }}
+                            >
+                              <span className="flex items-center gap-2 tracking-wide">
+                                <FlagIcon lang={item.code} />
+                                {item.label}
+                              </span>
+                              {isActive && (
+                                <Check size={12} className="text-[#fcc14a]" strokeWidth={3} />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Cart Button */}
+                <button
+                  aria-label={`เปิดตะกร้าสินค้า มีสินค้าทั้งหมด ${totalQty} ชิ้น`}
+                  onClick={onOpenCart}
+                  className="h-10 px-3.5 flex items-center gap-1.5 text-white/90 text-xs bg-white/15 hover:bg-white/25 backdrop-blur-md rounded-full border border-white/20 shadow-md active:scale-95 transition-all cursor-pointer"
+                >
+                  <ShoppingBag size={15} />
+                  {totalQty > 0 && (
+                    <span
+                      className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-bold"
+                      style={{ background: GOLD, color: BRAND }}
+                    >
+                      {totalQty}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
 
         <div className="absolute bottom-5 left-5 right-5 text-white">
           <p className="text-xs uppercase tracking-[0.2em] text-white/70">EPICUREAN</p>
@@ -4489,12 +4508,20 @@ function MiniOrderTracker({
 function HistoryOverlay({
   orderHistory,
   onBack,
+  onClearHistory,
 }: {
   orderHistory: OrderHistory[];
   onBack: () => void;
+  onClearHistory: () => void;
 }) {
+  const handleClear = () => {
+    if (window.confirm("คุณต้องการล้างประวัติการสั่งซื้อทั้งหมดใช่หรือไม่?")) {
+      onClearHistory();
+    }
+  };
+
   return (
-        <motion.div
+    <motion.div
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
@@ -4504,17 +4531,30 @@ function HistoryOverlay({
       {/* Header */}
       <div className="w-full" style={{ background: BRAND, color: "white" }}>
         <div className="max-w-2xl mx-auto px-5 pt-5 pb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15"
-            >
-              <ChevronLeft size={20} color={GOLD} />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold">ประวัติการสั่งซื้อ</h1>
-              <p className="text-xs text-white/60">{orderHistory.length} รายการ</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onBack}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 active:scale-95 transition-all"
+              >
+                <ChevronLeft size={20} color={GOLD} />
+              </button>
+              <div>
+                <h1 className="text-lg font-bold">ประวัติการสั่งซื้อ</h1>
+                <p className="text-xs text-white/60">{orderHistory.length} รายการ</p>
+              </div>
             </div>
+
+            {orderHistory.length > 0 && (
+              <button
+                onClick={handleClear}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/30 transition active:scale-95 cursor-pointer"
+                title="ล้างประวัติการสั่งซื้อ"
+              >
+                <Trash2 size={14} />
+                <span>ล้างประวัติ</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -4522,117 +4562,130 @@ function HistoryOverlay({
       {/* Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar w-full">
         <div className="max-w-2xl mx-auto px-5 pt-5 pb-8 space-y-4">
-        {orderHistory.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Package size={48} className="mb-4" style={{ color: INK_MUTED }} />
-            <p className="text-sm font-medium" style={{ color: INK_MUTED }}>
-              ยังไม่มีประวัติการสั่งซื้อ
-            </p>
-            <p className="text-xs mt-1" style={{ color: INK_MUTED }}>
-              เริ่มสั่งอาหารเลย!
-            </p>
-          </div>
-        ) : (
-          orderHistory.map((order, idx) => (
-            <motion.div
-              key={order.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.06 }}
-              className="bg-white rounded-2xl shadow-soft overflow-hidden"
-            >
-              {/* Order header */}
-              <div
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ background: "rgba(0,46,71,0.03)", borderBottom: "1px solid #f1ece4" }}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="grid h-10 w-10 place-items-center rounded-xl"
-                    style={{ background: BRAND, color: GOLD }}
-                  >
-                    <Receipt size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: BRAND }}>
-                      {order.orderNumber}
-                    </p>
-                    <p className="text-[10px]" style={{ color: INK_MUTED }}>
-                      {order.date}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className="px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5"
-                  style={{
-                    background:
-                      order.status === "สำเร็จ"
-                        ? "#dcfce7"
-                        : order.status === "กำลังจัดส่ง"
-                          ? "#dbeafe"
-                          : "#fef9c3",
-                    color:
-                      order.status === "สำเร็จ"
-                        ? "#15803d"
-                        : order.status === "กำลังจัดส่ง"
-                          ? "#1d4ed8"
-                          : "#a16207",
-                  }}
+          {orderHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Package size={48} className="mb-4" style={{ color: INK_MUTED }} />
+              <p className="text-sm font-medium" style={{ color: INK_MUTED }}>
+                ยังไม่มีประวัติการสั่งซื้อ
+              </p>
+              <p className="text-xs mt-1" style={{ color: INK_MUTED }}>
+                เริ่มสั่งอาหารเลย!
+              </p>
+            </div>
+          ) : (
+            <>
+              {orderHistory.map((order, idx) => (
+                <motion.div
+                  key={order.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.06 }}
+                  className="bg-white rounded-2xl shadow-soft overflow-hidden"
                 >
-                  {order.status === "สำเร็จ" && <CheckCircle size={12} />}
-                  {order.status === "กำลังจัดส่ง" && <Bike size={12} />}
-                  {order.status === "กำลังเตรียม" && <ChefHat size={12} />}
-                  {order.status}
-                </span>
-              </div>
-
-              {/* Order items */}
-              <div className="px-4 py-3 space-y-2.5">
-                {order.items.map((item, itemIdx) => (
-                  <div key={itemIdx} className="flex items-center gap-3">
-                    <img
-                      src={encodeURI(String(item.image))}
-                      alt={item.name}
-                      className="h-12 w-12 rounded-xl object-cover flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: BRAND }}>
-                        {item.name}
-                      </p>
-                      <p className="text-xs" style={{ color: INK_MUTED }}>
-                        × {item.qty} · ฿{item.price}/ชิ้น
-                      </p>
+                  {/* Order header */}
+                  <div
+                    className="px-4 py-3 flex items-center justify-between"
+                    style={{ background: "rgba(0,46,71,0.03)", borderBottom: "1px solid #f1ece4" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="grid h-10 w-10 place-items-center rounded-xl"
+                        style={{ background: BRAND, color: GOLD }}
+                      >
+                        <Receipt size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold" style={{ color: BRAND }}>
+                          {order.orderNumber}
+                        </p>
+                        <p className="text-[10px]" style={{ color: INK_MUTED }}>
+                          {order.date}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold" style={{ color: BRAND }}>
-                      ฿{item.price * item.qty}
-                    </p>
+                    <span
+                      className="px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5"
+                      style={{
+                        background:
+                          order.status === "สำเร็จ"
+                            ? "#dcfce7"
+                            : order.status === "กำลังจัดส่ง"
+                              ? "#dbeafe"
+                              : "#fef9c3",
+                        color:
+                          order.status === "สำเร็จ"
+                            ? "#15803d"
+                            : order.status === "กำลังจัดส่ง"
+                              ? "#1d4ed8"
+                              : "#a16207",
+                      }}
+                    >
+                      {order.status === "สำเร็จ" && <CheckCircle size={12} />}
+                      {order.status === "กำลังจัดส่ง" && <Bike size={12} />}
+                      {order.status === "กำลังเตรียม" && <ChefHat size={12} />}
+                      {order.status}
+                    </span>
                   </div>
-                ))}
-              </div>
 
-              {/* Order total */}
-              <div
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ background: "#fafbfc", borderTop: "1px solid #f1ece4" }}
-              >
-                <div className="text-xs" style={{ color: INK_MUTED }}>
-                  <span>อาหาร ฿{order.subtotal}</span>
-                  <span className="mx-1.5">·</span>
-                  <span>จัดส่ง ฿{order.delivery}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs" style={{ color: INK_MUTED }}>
-                    รวม
-                  </span>
-                  <span className="text-lg font-bold" style={{ color: BRAND }}>
-                    ฿{order.total}
-                  </span>
-                </div>
+                  {/* Order items */}
+                  <div className="px-4 py-3 space-y-2.5">
+                    {order.items.map((item, itemIdx) => (
+                      <div key={itemIdx} className="flex items-center gap-3">
+                        <img
+                          src={encodeURI(String(item.image))}
+                          alt={item.name}
+                          className="h-12 w-12 rounded-xl object-cover flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: BRAND }}>
+                            {item.name}
+                          </p>
+                          <p className="text-xs" style={{ color: INK_MUTED }}>
+                            × {item.qty} · ฿{item.price}/ชิ้น
+                          </p>
+                        </div>
+                        <p className="text-sm font-bold" style={{ color: BRAND }}>
+                          ฿{item.price * item.qty}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Order total */}
+                  <div
+                    className="px-4 py-3 flex items-center justify-between"
+                    style={{ background: "#fafbfc", borderTop: "1px solid #f1ece4" }}
+                  >
+                    <div className="text-xs" style={{ color: INK_MUTED }}>
+                      <span>อาหาร ฿{order.subtotal}</span>
+                      <span className="mx-1.5">·</span>
+                      <span>จัดส่ง ฿{order.delivery}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs" style={{ color: INK_MUTED }}>
+                        รวม
+                      </span>
+                      <span className="text-lg font-bold" style={{ color: BRAND }}>
+                        ฿{order.total}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* Bottom Clear History Action */}
+              <div className="pt-4 pb-2 flex justify-center">
+                <button
+                  onClick={handleClear}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition cursor-pointer active:scale-95 shadow-sm"
+                >
+                  <Trash2 size={15} />
+                  <span>ล้างประวัติการสั่งซื้อทั้งหมด</span>
+                </button>
               </div>
-            </motion.div>
-          ))
-                )}
-      </div>
+            </>
+          )}
+        </div>
       </div>
     </motion.div>
   );
