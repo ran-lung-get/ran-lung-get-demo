@@ -18,6 +18,7 @@ import {
   X,
   Copy,
   Check,
+  Bot,
   Upload,
   CheckCircle,
   ChefHat,
@@ -370,61 +371,226 @@ function LiffApp() {
   const [profile, setProfile] = useState<LiffProfile | null>(null);
   const { language, setLanguage, t, tMenu } = useLanguage();
 
-  // Load WebAvatar widget for customer route only
+  // WebAvatar Integration with full Idle Animation Manager & Event Listeners
+  const [isWebAvatarOpen, setIsWebAvatarOpen] = useState(false);
+
   useEffect(() => {
-    // Set up ChatWidgetConfig
+    document.body.classList.add("avatar-hidden");
+
     (window as any).ChatWidgetConfig = {
       mode: "realtime-widget",
-      widgetId: "ran-lung-get",
       avatarUrl: "Botnoi",
-      container: "#webavatar-container",
+      widgetId: "ran-lung-get",
       greetingInstruction: "",
-      enableBubble: "true",
-      cameraOffset: "0,0,0"
+      enableBubble: "false",
+      cameraOffset: "0,0,0.5",
+      animationUrl: "Greeting",
+      defaultAnimationUrl: "Idleloop, idle_breatheloop, Idle_Swayloop",
+      randomGeneric: "false",
     };
 
-    // Load JSSDK script
-    let scriptElement: HTMLScriptElement | null = null;
-    if (!document.getElementById('webavatar-jssdk')) {
-      const s = document.createElement('script');
-      s.id = 'webavatar-jssdk';
-      s.src = 'https://webavatar.didthat.cc/chat-widget.js';
+    if (!document.getElementById("webavatar-jssdk")) {
+      const s = document.createElement("script");
+      s.id = "webavatar-jssdk";
+      s.src = "https://webavatar.didthat.cc/chat-widget.js";
       s.async = true;
       (document.head || document.body).appendChild(s);
-      scriptElement = s;
     }
 
-    // Handle JSSDK navigation event for SPA
-    const handleNavigate = (e: any) => {
-      e.preventDefault();
-      const target = e.detail.target;
-      navigate({ to: target });
+    let isConnected = false;
+    let animationTimeout: any = null;
+    let minInterval = 30;
+    let maxInterval = 50;
+    let maxLoopTime = 10;
+    let animationReset = ["Idleloop", "idle_breatheloop", "Idle_Swayloop"];
+    let animations = [
+      "GangnamStyle",
+      "fusionL",
+      "fusionR",
+      "Generic_HandFan",
+      "Generic_Lazy",
+      "Generic_look_around",
+      "Generic_Squat",
+      "GenericLookAround",
+      "Generic_Happy",
+      "funnypose",
+      "Excited_dance",
+      "Emote_OrangeJusticeLoop",
+      "Emote_KpopLoop",
+      "Emote_InfiniDab_loop",
+      "angelTaisou",
+      "ArmWaveDanceloop",
+      "Bellydancing",
+      "chunibyou",
+      "Dance_INTERNET_YAMEROloop",
+      "Dance_Loli_Kami_Requiem",
+      "Dance_monkeyloop",
+      "Dance_washing",
+      "graceful_dance",
+      "HandpumpDanceloop",
+      "HipHopDanceloop",
+      "Humming",
+      "LookAround",
+      "LookingBehind",
+      "ModelPose",
+      "NervouslyLookAround",
+      "pose_peace1",
+      "Relax",
+      "RumbaDanceloop",
+      "SalsaDanceloop",
+      "SambaDance1loop",
+      "SambaDanceloop",
+      "ShowFullBody",
+      "ToothlessLoop",
+    ];
+
+    let resetTimeout: any = null;
+
+    function showAvatar() {
+      document.body.classList.remove("avatar-hidden");
+      document.body.classList.add("avatar-visible");
+    }
+
+    function hideAvatar() {
+      document.body.classList.remove("avatar-visible");
+      document.body.classList.add("avatar-hidden");
+    }
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const root = document.getElementById("root");
+      if (root && target && root.contains(target)) return;
+
+      let el: HTMLElement | null = target;
+      while (el && el !== document.body) {
+        const cls = typeof el.className === "string" ? el.className : "";
+        const id = el.id || "";
+        if (
+          cls.includes("bcw") ||
+          cls.includes("fab") ||
+          cls.includes("widget-call") ||
+          cls.includes("widget-connect") ||
+          cls.includes("chat-widget") ||
+          id.includes("bcw") ||
+          id.includes("widget")
+        ) {
+          showAvatar();
+          break;
+        }
+        el = el.parentElement;
+      }
     };
 
-    window.addEventListener('webavatar-navigate', handleNavigate);
+    document.addEventListener("click", handleGlobalClick, true);
 
-    return () => {
-      window.removeEventListener('webavatar-navigate', handleNavigate);
-      // Clean up script if we created it
-      if (scriptElement && scriptElement.parentNode) {
-        scriptElement.parentNode.removeChild(scriptElement);
+    function clearResetTimeout() {
+      if (resetTimeout) {
+        clearTimeout(resetTimeout);
+        resetTimeout = null;
       }
-      const existingScript = document.getElementById('webavatar-jssdk');
-      if (existingScript && existingScript.parentNode) {
-        existingScript.parentNode.removeChild(existingScript);
-      }
-      // Disconnect WebAvatar on unmount to release resources
-      if ((window as any).WebAvatar) {
-        try {
-          (window as any).WebAvatar.disconnect();
-        } catch (err) {
-          console.error("Error disconnecting WebAvatar on unmount:", err);
+    }
+
+    function triggerRandomAnimation() {
+      if (isConnected) return;
+      clearResetTimeout();
+
+      const win = window as any;
+      if (win.WebAvatar && typeof win.WebAvatar.loadAnimation === "function") {
+        const anim = animations[Math.floor(Math.random() * animations.length)];
+        console.log("[Demo] Loading random idle animation in disconnected state:", anim);
+        win.WebAvatar.loadAnimation(anim);
+        if (typeof win.WebAvatar.setEmotion === "function") {
+          win.WebAvatar.setEmotion("happy", 10);
+        }
+
+        if (anim.toLowerCase().includes("loop")) {
+          resetTimeout = setTimeout(() => {
+            if (isConnected) return;
+            const resetList = Array.isArray(animationReset)
+              ? animationReset
+              : typeof animationReset === "string"
+              ? (animationReset as string).split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
+            const resetAnim = resetList[Math.floor(Math.random() * resetList.length)];
+            console.log("[Demo] Max loop time reached. Resetting animation to:", resetAnim);
+            win.WebAvatar.loadAnimation(resetAnim);
+            if (typeof win.WebAvatar.setEmotion === "function") {
+              win.WebAvatar.setEmotion("idle", 10);
+            }
+          }, maxLoopTime * 1000);
         }
       }
-      // Remove config
-      delete (window as any).ChatWidgetConfig;
+      scheduleNext();
+    }
+
+    function scheduleNext() {
+      if (animationTimeout) clearTimeout(animationTimeout);
+      const nextInterval = (minInterval + Math.random() * (maxInterval - minInterval)) * 1000;
+      animationTimeout = setTimeout(triggerRandomAnimation, nextInterval);
+    }
+
+    function startAnimations() {
+      scheduleNext();
+    }
+
+    function stopAnimations() {
+      if (animationTimeout) {
+        clearTimeout(animationTimeout);
+        animationTimeout = null;
+      }
+      clearResetTimeout();
+    }
+
+    const handleAvatarReady = () => {
+      console.log("[Demo] Avatar widget ready.");
+      if (!isConnected) {
+        hideAvatar();
+        startAnimations();
+      } else {
+        showAvatar();
+      }
+    };
+
+    const handleConnect = () => {
+      console.log("[Demo] Connected. Showing avatar.");
+      isConnected = true;
+      setIsWebAvatarOpen(true);
+      showAvatar();
+      stopAnimations();
+    };
+
+    const handleDisconnect = () => {
+      console.log("[Demo] Disconnected. Hiding avatar.");
+      isConnected = false;
+      setIsWebAvatarOpen(false);
+      hideAvatar();
+      startAnimations();
+    };
+
+    const handleNavigate = (e: any) => {
+      e.preventDefault();
+      const target = e.detail?.target;
+      if (target) {
+        navigate({ to: target });
+      }
+    };
+
+    window.addEventListener("avatar-widget-ready", handleAvatarReady);
+    window.addEventListener("onConnect", handleConnect);
+    window.addEventListener("onDisconnect", handleDisconnect);
+    window.addEventListener("webavatar-navigate", handleNavigate);
+
+    return () => {
+      document.removeEventListener("click", handleGlobalClick, true);
+      window.removeEventListener("avatar-widget-ready", handleAvatarReady);
+      window.removeEventListener("onConnect", handleConnect);
+      window.removeEventListener("onDisconnect", handleDisconnect);
+      window.removeEventListener("webavatar-navigate", handleNavigate);
+      stopAnimations();
     };
   }, [navigate]);
+
+
 
 
   // ── Auth Guard (Supabase Session OR LINE LIFF) ──────────────

@@ -122,3 +122,24 @@ button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* WebAvatar Widget avatar-hidden / avatar-visible visibility control */
+body.avatar-hidden body > div:not(#root) canvas,
+body.avatar-hidden [class*="bcw"] canvas,
+body.avatar-hidden [id*="bcw"] canvas,
+body.avatar-hidden .bcw-avatar-container {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.avatar-visible [class*="bcw"] canvas,
+body.avatar-visible [id*="bcw"] canvas,
+body.avatar-visible .bcw-avatar-container {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transition: opacity 0.35s ease-in-out;
+}
+
