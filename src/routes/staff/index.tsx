@@ -360,7 +360,7 @@ function KitchenMonitor() {
         });
 
         setOrders((prev) => {
-          const localOnly = prev.filter(p => !p.id.startsWith("hist_") && !p.id.includes("-") && !mappedOrders.some(m => m.id === p.id));
+          const localOnly = prev.filter(p => !mappedOrders.some(m => m.id === p.id || (m.orderNumber && m.orderNumber === p.orderNumber)));
           const combined = [...mappedOrders, ...localOnly];
           localStorage.setItem("ran-lung-get-orders", JSON.stringify(combined));
           return combined;
@@ -439,14 +439,53 @@ function KitchenMonitor() {
     });
   };
 
+  const isWaiting = (s: string) => s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending";
+  const isCooking = (s: string) => s === "กำลังทำ" || s === "กำลังเตรียม" || s === "preparing";
+  const isReady = (s: string) => s === "พร้อมเสิร์ฟ" || s === "กำลังจัดส่ง" || s === "delivering" || s === "ready";
+  const isCompleted = (s: string) => s === "สำเร็จ" || s === "completed";
+  const isCancelled = (s: string) => s === "ยกเลิก" || s === "ยกเลิกแล้ว" || s === "cancelled";
+
+  const syncTableStatusForOrder = async (order: OrderHistory, nextOrderList: OrderHistory[]) => {
+    if (!order.tableNumber) return;
+    const tableLabel = order.tableNumber.trim();
+    const rawNum = tableLabel.replace("โต๊ะ ", "").trim();
+
+    // Check if there are remaining active orders for this table
+    const hasActive = nextOrderList.some((o) => {
+      if (isCompleted(o.status) || isCancelled(o.status)) return false;
+      if (!o.tableNumber) return false;
+      const tLabel = o.tableNumber.trim();
+      const tNum = tLabel.replace("โต๊ะ ", "").trim();
+      return tLabel === tableLabel || tNum === rawNum;
+    });
+
+    const targetStatus = hasActive ? "occupied" : "available";
+
+    try {
+      const { data: dbTables } = await supabase.from("restaurant_tables").select("id, label, status");
+      if (dbTables && Array.isArray(dbTables)) {
+        const found = dbTables.find((t: any) =>
+          String(t.id) === rawNum ||
+          t.label === tableLabel ||
+          t.label.replace("โต๊ะ ", "").trim() === rawNum
+        );
+        if (found && found.status !== targetStatus) {
+          await supabase.from("restaurant_tables").update({ status: targetStatus }).eq("id", found.id);
+        }
+      }
+    } catch (e) {
+      console.warn("[syncTableStatusForOrder] Table update:", e);
+    }
+  };
+
   const advanceOrderStatus = async (id: string) => {
     let nextStatus = "สำเร็จ";
     let dbStatus = "completed";
     const targetOrder = orders.find((o) => o.id === id);
     if (!targetOrder) return;
-    if (targetOrder.status === "รอดำเนินการ") { nextStatus = "กำลังทำ"; dbStatus = "preparing"; }
-    else if (targetOrder.status === "กำลังทำ") { nextStatus = "พร้อมเสิร์ฟ"; dbStatus = "delivering"; }
-    else if (targetOrder.status === "พร้อมเสิร์ฟ") { nextStatus = "สำเร็จ"; dbStatus = "completed"; }
+    if (isWaiting(targetOrder.status)) { nextStatus = "กำลังทำ"; dbStatus = "preparing"; }
+    else if (isCooking(targetOrder.status)) { nextStatus = "พร้อมเสิร์ฟ"; dbStatus = "delivering"; }
+    else if (isReady(targetOrder.status)) { nextStatus = "สำเร็จ"; dbStatus = "completed"; }
     const nextList = orders.map((o) => (o.id === id ? { ...o, status: nextStatus } : o));
     setOrders(nextList);
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextList));
@@ -458,6 +497,7 @@ function KitchenMonitor() {
         await adjustStockFromOrder(itemsToAdjust, "deduct");
       }
     } catch { console.warn("Offline status update completed locally."); }
+    await syncTableStatusForOrder(targetOrder, nextList);
   };
 
   const regressOrderStatus = async (id: string) => {
@@ -465,58 +505,85 @@ function KitchenMonitor() {
     let dbStatus = "pending";
     const targetOrder = orders.find((o) => o.id === id);
     if (!targetOrder) return;
-    if (targetOrder.status === "กำลังทำ") { nextStatus = "รอดำเนินการ"; dbStatus = "pending"; }
-    else if (targetOrder.status === "พร้อมเสิร์ฟ") { nextStatus = "กำลังทำ"; dbStatus = "preparing"; }
-    else if (targetOrder.status === "สำเร็จ") { nextStatus = "พร้อมเสิร์ฟ"; dbStatus = "delivering"; }
+    if (isCooking(targetOrder.status)) { nextStatus = "รอดำเนินการ"; dbStatus = "pending"; }
+    else if (isReady(targetOrder.status)) { nextStatus = "กำลังทำ"; dbStatus = "preparing"; }
+    else if (isCompleted(targetOrder.status)) { nextStatus = "พร้อมเสิร์ฟ"; dbStatus = "delivering"; }
     const nextList = orders.map((o) => (o.id === id ? { ...o, status: nextStatus } : o));
     setOrders(nextList);
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextList));
     try { await supabase.from("orders").update({ status: dbStatus }).eq("id", id); } catch { }
+    await syncTableStatusForOrder(targetOrder, nextList);
   };
 
   const cancelOrder = async (id: string) => {
     if (!confirm("คุณต้องการยกเลิกคำสั่งซื้อนี้ใช่หรือไม่?")) return;
+    const targetOrder = orders.find((o) => o.id === id);
     const nextList = orders.map((o) => (o.id === id ? { ...o, status: "ยกเลิก" } : o));
     setOrders(nextList);
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextList));
     try { await supabase.from("orders").update({ status: "cancelled" }).eq("id", id); } catch { }
+    if (targetOrder) {
+      await syncTableStatusForOrder(targetOrder, nextList);
+    }
+  };
+
+  const clearAllOrders = () => {
+    if (!confirm("คุณต้องการล้างรายการออเดอร์ทั้งหมดเพื่อเริ่มต้นใหม่ใช่หรือไม่?")) return;
+    setOrders([]);
+    localStorage.removeItem("ran-lung-get-orders");
+    try {
+      const dbStr = localStorage.getItem("ran-lung-get-mock-db");
+      if (dbStr) {
+        const db = JSON.parse(dbStr);
+        db.orders = [];
+        db.order_items = [];
+        if (Array.isArray(db.restaurant_tables)) {
+          db.restaurant_tables = db.restaurant_tables.map((t: any) => ({ ...t, status: "available" }));
+        }
+        localStorage.setItem("ran-lung-get-mock-db", JSON.stringify(db));
+      }
+    } catch {}
   };
 
   const clearCompletedOrders = () => {
     if (!confirm("คุณต้องการล้างรายการออเดอร์ที่เสร็จสิ้นออกใช่หรือไม่?")) return;
-    const nextList = orders.filter(o => o.status !== "สำเร็จ" && o.status !== "ยกเลิก");
+    const nextList = orders.filter(o => !isCompleted(o.status) && !isCancelled(o.status));
     setOrders(nextList);
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextList));
   };
 
   const stats = useMemo(() => {
-    const active = orders.filter(o => o.status !== "สำเร็จ" && o.status !== "ยกเลิก");
+    const active = orders.filter(o => !isCompleted(o.status) && !isCancelled(o.status));
     return {
       totalActive: active.length,
-      waiting: orders.filter(o => o.status === "รอดำเนินการ").length,
-      cooking: orders.filter(o => o.status === "กำลังทำ").length,
-      ready: orders.filter(o => o.status === "พร้อมเสิร์ฟ").length,
-      completed: orders.filter(o => o.status === "สำเร็จ").length,
+      waiting: orders.filter(o => isWaiting(o.status)).length,
+      cooking: orders.filter(o => isCooking(o.status)).length,
+      ready: orders.filter(o => isReady(o.status)).length,
+      completed: orders.filter(o => isCompleted(o.status)).length,
     };
   }, [orders]);
 
   const ordersByStatus = useMemo(() => {
     const list = orders.filter(o => typeFilter === "all" || o.orderType === typeFilter);
     return {
-      waiting: list.filter(o => o.status === "รอดำเนินการ").reverse(),
-      cooking: list.filter(o => o.status === "กำลังทำ"),
-      ready: list.filter(o => o.status === "พร้อมเสิร์ฟ"),
+      waiting: list.filter(o => isWaiting(o.status)).reverse(),
+      cooking: list.filter(o => isCooking(o.status)),
+      ready: list.filter(o => isReady(o.status)),
     };
   }, [orders, typeFilter]);
 
   const filteredOrders = useMemo(() => {
     const list = orders.filter(o => typeFilter === "all" || o.orderType === typeFilter);
-    if (statusFilter === "active") return list.filter(o => o.status !== "สำเร็จ" && o.status !== "ยกเลิก");
+    if (statusFilter === "active") return list.filter(o => !isCompleted(o.status) && !isCancelled(o.status));
+    if (statusFilter === "รอดำเนินการ") return list.filter(o => isWaiting(o.status));
+    if (statusFilter === "กำลังทำ") return list.filter(o => isCooking(o.status));
+    if (statusFilter === "พร้อมเสิร์ฟ") return list.filter(o => isReady(o.status));
+    if (statusFilter === "สำเร็จ") return list.filter(o => isCompleted(o.status));
     return list.filter(o => o.status === statusFilter);
   }, [orders, statusFilter, typeFilter]);
 
   const menuSummary = useMemo(() => {
-    const activeCookingOrders = orders.filter(o => o.status === "กำลังทำ" || o.status === "รอดำเนินการ");
+    const activeCookingOrders = orders.filter(o => isCooking(o.status) || isWaiting(o.status));
     const counts: Record<string, number> = {};
     activeCookingOrders.forEach(o => {
       o.items.forEach(item => {
@@ -612,11 +679,18 @@ function KitchenMonitor() {
                   {view === "kitchen" && (
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={clearMockOrders}
-                        className="flex items-center gap-1.5 hover:bg-red-100 active:scale-95 text-red-600 bg-red-50 px-3.5 py-2.5 rounded-xl font-bold text-xs tracking-wider transition shadow-sm cursor-pointer border border-red-200"
+                        onClick={clearAllOrders}
+                        title="ล้างออเดอร์ทั้งหมดเพื่อเริ่มทดสอบใหม่"
+                        className="flex items-center gap-1.5 hover:bg-rose-100 active:scale-95 text-rose-700 bg-rose-50 px-3.5 py-2.5 rounded-xl font-bold text-xs tracking-wider transition shadow-sm cursor-pointer border border-rose-200"
                       >
                         <Trash2 size={13} />
-                        <span>ยกเลิกจำลองออเดอร์</span>
+                        <span>ล้างทุกออเดอร์</span>
+                      </button>
+                      <button
+                        onClick={clearMockOrders}
+                        className="flex items-center gap-1.5 hover:bg-slate-200 active:scale-95 text-slate-700 bg-slate-100 px-3 py-2.5 rounded-xl font-bold text-xs tracking-wider transition shadow-sm cursor-pointer border border-slate-200"
+                      >
+                        <span>ลบออเดอร์จำลอง</span>
                       </button>
                       <button
                         onClick={triggerMockOrder}
@@ -825,10 +899,14 @@ function OrderCard({ order, advanceOrderStatus, regressOrderStatus, cancelOrder 
   let borderLeftColor = "border-l-[#fcc14a]";
   if (isTakeaway) { typeBadge = "กลับบ้าน"; typeColor = "bg-blue-50 text-blue-800 border-blue-200"; borderLeftColor = "border-l-[#5a6e7a]"; }
   else if (isDelivery) { typeBadge = "เดลิเวอรี่"; typeColor = "bg-amber-50 text-amber-800 border-amber-200"; borderLeftColor = "border-l-[#002e47]"; }
+  const isCooking = (s: string) => s === "กำลังทำ" || s === "กำลังเตรียม" || s === "preparing";
+  const isReady = (s: string) => s === "พร้อมเสิร์ฟ" || s === "กำลังจัดส่ง" || s === "delivering" || s === "ready";
+  const isWaiting = (s: string) => s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending";
+
   let nextBtnText = "เริ่มทำครัว";
   let nextBtnColor = "bg-[#002e47] text-white hover:bg-[#003957]";
-  if (order.status === "กำลังทำ") { nextBtnText = "ปรุงสำเร็จ"; nextBtnColor = "bg-blue-600 text-white hover:bg-blue-700"; }
-  else if (order.status === "พร้อมเสิร์ฟ") { nextBtnText = "ส่งเสิร์ฟสำเร็จ"; nextBtnColor = "bg-emerald-600 text-white hover:bg-emerald-700"; }
+  if (isCooking(order.status)) { nextBtnText = "ปรุงสำเร็จ"; nextBtnColor = "bg-blue-600 text-white hover:bg-blue-700"; }
+  else if (isReady(order.status)) { nextBtnText = "ส่งเสิร์ฟสำเร็จ"; nextBtnColor = "bg-emerald-600 text-white hover:bg-emerald-700"; }
 
   return (
     <div className={`bg-white border-2 border-l-[6px] border-[#ece4d6] ${borderLeftColor} rounded-2xl p-4 shadow-sm hover:shadow transition relative space-y-3`}>
@@ -859,7 +937,7 @@ function OrderCard({ order, advanceOrderStatus, regressOrderStatus, cancelOrder 
         </div>
       )}
       <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
-        <button onClick={() => regressOrderStatus(order.id)} disabled={order.status === "รอดำเนินการ"} className="p-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-slate-600 transition disabled:opacity-50">
+        <button onClick={() => regressOrderStatus(order.id)} disabled={isWaiting(order.status)} className="p-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-slate-600 transition disabled:opacity-50">
           <RotateCcw size={13} />
         </button>
         <button onClick={() => advanceOrderStatus(order.id)} className={`flex-1 py-1.5 rounded-xl text-[11px] font-black tracking-wide shadow-sm transition flex items-center justify-center gap-1 cursor-pointer ${nextBtnColor}`}>
@@ -1085,12 +1163,22 @@ function TableManagementView({ orders, onRefreshOrders }: { orders: OrderHistory
     }
   };
 
-  // Auto-occupy tables
+  // Auto-sync table occupancy and vacancy based on active orders
   useEffect(() => {
     if (tables.length === 0) return;
-    const tablesToUpdate = tables.filter(t => getActiveOrdersForTable(t.label).length > 0 && t.status === "available");
-    if (tablesToUpdate.length > 0) {
-      tablesToUpdate.forEach(t => { void updateTableStatus(t.id, "occupied"); });
+    // 1. Auto-occupy tables that have active orders
+    const toOccupy = tables.filter(t => getActiveOrdersForTable(t.label).length > 0 && t.status === "available");
+    if (toOccupy.length > 0) {
+      toOccupy.forEach(t => { void updateTableStatus(t.id, "occupied"); });
+    }
+
+    // 2. Auto-vacate normal tables that are occupied but have NO active orders
+    const toVacate = tables.filter(t => {
+      const isWalkIn = t.table_type === "walkin" || t.label.toLowerCase().includes("walk-in");
+      return !isWalkIn && t.status === "occupied" && getActiveOrdersForTable(t.label).length === 0;
+    });
+    if (toVacate.length > 0) {
+      toVacate.forEach(t => { void updateTableStatus(t.id, "available"); });
     }
   }, [orders, tables]);
 

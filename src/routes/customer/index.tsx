@@ -664,12 +664,26 @@ function LiffApp() {
     };
   }, [navigate]);
 
-  // Load orders from localStorage and listen for changes (cross-tab sync)
+  // Load orders from localStorage, sync active order and listen for changes (cross-tab & Supabase sync)
   useEffect(() => {
+    const syncActiveOrder = (historyList: OrderHistory[]) => {
+      const active = historyList.find(
+        (o) => o.status !== "สำเร็จ" && o.status !== "ยกเลิกแล้ว"
+      );
+      if (active) {
+        setActiveOrderNumber(active.orderNumber);
+        setHasActiveOrder(true);
+      } else {
+        setHasActiveOrder(false);
+      }
+    };
+
     const saved = localStorage.getItem("ran-lung-get-orders");
     if (saved) {
       try {
-        setOrderHistory(JSON.parse(saved));
+        const parsed: OrderHistory[] = JSON.parse(saved);
+        setOrderHistory(parsed);
+        syncActiveOrder(parsed);
       } catch (e) {
         console.error("Failed to parse orders from storage:", e);
       }
@@ -680,13 +694,49 @@ function LiffApp() {
         try {
           const updated: OrderHistory[] = JSON.parse(e.newValue);
           setOrderHistory(updated);
+          syncActiveOrder(updated);
         } catch (err) {
           console.error("Failed to parse synced orders:", err);
         }
       }
     };
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+
+    // Subscribe to Supabase real-time updates for orders
+    const chOrders = supabase
+      .channel("customer-orders-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload: any) => {
+        if (payload.eventType === "UPDATE" || payload.eventType === "INSERT") {
+          const updatedRow = payload.new;
+          if (updatedRow && updatedRow.order_number) {
+            setOrderHistory((prev) => {
+              const statusMap: Record<string, OrderHistory["status"]> = {
+                pending: "รอรับออเดอร์",
+                preparing: "กำลังเตรียม",
+                ready: "พร้อมเสิร์ฟ" as any,
+                delivering: "กำลังจัดส่ง",
+                completed: "สำเร็จ",
+                cancelled: "ยกเลิกแล้ว",
+              };
+              const mappedStatus = statusMap[updatedRow.status] || updatedRow.status;
+              const nextHistory = prev.map((o) =>
+                o.orderNumber === updatedRow.order_number
+                  ? { ...o, status: mappedStatus }
+                  : o
+              );
+              localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextHistory));
+              syncActiveOrder(nextHistory);
+              return nextHistory;
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      supabase.removeChannel(chOrders);
+    };
   }, []);
 
   const [tab, setTab] = useState<"home" | "status">("home");
@@ -738,7 +788,7 @@ function LiffApp() {
                 localStorage.removeItem("ran-lung-get-pending-stripe-order");
                 setShowSuccess(true);
                 setOverlay(null);
-                setTab("status");
+                setTab("home");
 
                 setTimeout(() => {
                   setShowSuccess(false);
@@ -1046,36 +1096,7 @@ function LiffApp() {
     tab === "home" &&
     (overlay === null || overlay === "menu" || overlay === "orderConfirm" || overlay === "payment");
 
-  const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([
-    {
-      id: "hist_1",
-      orderNumber: "#AK-2841",
-      date: "17 มิ.ย. 2026 · 18:30",
-      items: [
-        { name: "กระเพราหมูสับ (ข้าวราด)", qty: 2, price: 60, image: "/meal/krapao.jpg" },
-        { name: "น้ำส้มคั้น", qty: 1, price: 50, image: "/meal/orange_juice.jpg" },
-      ],
-      subtotal: 170,
-      delivery: 40,
-      total: 210,
-      status: "สำเร็จ",
-      orderType: "delivery",
-    },
-    {
-      id: "hist_2",
-      orderNumber: "#AK-2835",
-      date: "15 มิ.ย. 2026 · 12:15",
-      items: [
-        { name: "ผัดซีอิ๊ว (เส้นใหญ่)", qty: 1, price: 70, image: "/meal/pad_see_ew.jpg" },
-        { name: "เฉาก๊วย", qty: 1, price: 40, image: "/meal/grass_jelly.webp" },
-      ],
-      subtotal: 110,
-      delivery: 40,
-      total: 150,
-      status: "สำเร็จ",
-      orderType: "delivery",
-    },
-  ]);
+  const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([]);
 
   const totalQty = cart.reduce((s, l) => s + l.qty, 0);
   const subtotal = cart.reduce((s, l) => s + l.price * l.qty, 0);
@@ -1139,17 +1160,20 @@ function LiffApp() {
 
     if (activeOrderType === "dine-in" && activeSelectedTable) {
       setTables((prev) =>
-        prev.map((t) => (t.id === activeSelectedTable ? { ...t, status: "occupied" } : t))
+        prev.map((t) => (String(t.id) === String(activeSelectedTable) ? { ...t, status: "occupied" } : t))
       );
-      // Update table status in Supabase to occupied
-      void (supabase as any)
-        .from("restaurant_tables")
-        .update({ status: "occupied" })
-        .eq("id", activeSelectedTable);
     }
 
     // Push order to Supabase for real-time Staff Dashboard
     const insertOrder = async () => {
+      if (activeOrderType === "dine-in" && activeSelectedTable) {
+        try {
+          await (supabase as any)
+            .from("restaurant_tables")
+            .update({ status: "occupied" })
+            .eq("id", activeSelectedTable);
+        } catch {}
+      }
       let finalUserId = dbUser?.id;
       let finalCustomerId = dbCustomer?.id;
       
@@ -1392,7 +1416,8 @@ function LiffApp() {
                 setTimeout(() => {
                   setShowSuccess(false);
                   setOverlay(null);
-                  setTab("status");
+                  setCart([]);
+                  setTab("home");
                 }, 1500);
               }}
             />
@@ -1494,28 +1519,30 @@ function LiffApp() {
               key="table-picker"
               tables={tables}
               selectedTable={selectedTable}
-              onSelect={(tableId) => {
+              onSelect={async (tableId) => {
                 const prevTable = selectedTable;
                 setSelectedTable(tableId);
                 // Update local state immediately for both old and new tables
                 setTables((prev) =>
                   prev.map((t) => {
-                    if (t.id === tableId) return { ...t, status: "occupied" };
-                    if (prevTable && t.id === prevTable) return { ...t, status: "available" };
+                    if (String(t.id) === String(tableId)) return { ...t, status: "occupied" };
+                    if (prevTable && String(t.id) === String(prevTable)) return { ...t, status: "available" };
                     return t;
                   })
                 );
-                // Update in Supabase (best-effort)
-                if (prevTable && prevTable !== tableId) {
-                  void (supabase as any)
+                // Update in local DB & trigger realtime sync
+                try {
+                  if (prevTable && prevTable !== tableId) {
+                    await (supabase as any)
+                      .from("restaurant_tables")
+                      .update({ status: "available" })
+                      .eq("id", prevTable);
+                  }
+                  await (supabase as any)
                     .from("restaurant_tables")
-                    .update({ status: "available" })
-                    .eq("id", prevTable);
-                }
-                void (supabase as any)
-                  .from("restaurant_tables")
-                  .update({ status: "occupied" })
-                  .eq("id", tableId);
+                    .update({ status: "occupied" })
+                    .eq("id", tableId);
+                } catch {}
 
                 setTimeout(() => setShowTablePicker(false), 200);
               }}
@@ -2649,11 +2676,11 @@ function TablePickerBottomSheet({
                           className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                           style={{ background: badgeBg, color: badgeText }}
                         >
-                          {isWalkIn ? "Walk-in" : isSelected ? "เลือกแล้ว" : available ? "ว่าง" : "ไม่ว่าง"}
+                          {isWalkIn ? "Walk-in" : isSelected ? "โต๊ะที่คุณเลือก" : available ? "ว่าง" : "ไม่ว่าง"}
                         </span>
                       </div>
                       <p className="mt-1 text-[10px]" style={{ color: boxSub }}>
-                        {isWalkIn ? "สำหรับหน้าร้าน" : "ความจุ 2-4 คน"}
+                        {isWalkIn ? "สำหรับหน้าร้าน" : isSelected ? "โต๊ะปัจจุบันของคุณ" : available ? "ความจุ 2-4 คน" : "มีลูกค้านั่งอยู่"}
                       </p>
                     </motion.button>
                   );
@@ -3964,33 +3991,16 @@ function PaymentOverlay({
           </div>
         )}
 
-        {/* Pay Button */}
+        {/* Confirm Button */}
         <div className="pb-8">
           <button
-            onClick={handleStripeCheckout}
-            disabled={stripeLoading || cart.length === 0 || subtotal <= 0}
+            onClick={onSuccess}
+            disabled={cart.length === 0 || subtotal <= 0}
             className="w-full h-14 rounded-full font-bold text-white shadow-lift active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              background: "linear-gradient(135deg, #635bff 0%, #8073ea 100%)",
-            }}
+            style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #001f30 100%)` }}
           >
-            {stripeLoading ? (
-              <div
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  border: "2px solid rgba(255,255,255,0.2)",
-                  borderTopColor: "white",
-                  animation: "spin 0.8s linear infinite",
-                }}
-              />
-            ) : (
-              <>
-                <CreditCard size={18} />
-                <span>ชำระผ่าน Stripe ฿{total.toLocaleString()}</span>
-              </>
-            )}
+            <CheckCircle size={18} />
+            <span>ยืนยันการสั่งอาหาร · ฿{total.toLocaleString()}</span>
           </button>
         </div>
       </div>
