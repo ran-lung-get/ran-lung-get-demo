@@ -556,9 +556,6 @@ function AdminDashboard() {
           </button>
           <span className="font-black text-sm tracking-wide">หลังบ้านผู้ดูแลระบบ (Admin)</span>
         </div>
-        <button onClick={handleLogout} className="text-red-300 font-bold text-xs">
-          ออก
-        </button>
       </header>
 
       {/* ── Mobile Navigation Drawer ── */}
@@ -819,16 +816,7 @@ function AdminSidebarContent({
         </button>
       </div>
 
-      {/* Logout footer */}
-      <div className="p-4 border-t border-white/10 bg-white/2 shrink-0">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-red-300 hover:text-red-200 hover:bg-white/5 transition duration-200 cursor-pointer text-sm font-semibold"
-        >
-          <LogOut size={16} />
-          <span>ออกจากระบบ</span>
-        </button>
-      </div>
+
     </div>
   );
 }

@@ -1895,6 +1895,28 @@ function HomeScreen({
   const { language, setLanguage, t, tMenu } = useLanguage();
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isHoveredRef = useRef(false);
+
+  // Continuous 60fps Smooth Auto-scroll for Recommended Menu slider
+  useEffect(() => {
+    let animId: number;
+    const speed = 0.6; // pixels per frame for smooth continuous movement
+
+    const step = () => {
+      if (scrollRef.current && !isHoveredRef.current) {
+        const container = scrollRef.current;
+        container.scrollLeft += speed;
+        if (container.scrollLeft >= container.scrollWidth - container.clientWidth - 1) {
+          container.scrollLeft = 0;
+        }
+      }
+      animId = requestAnimationFrame(step);
+    };
+
+    animId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
       const scrollAmount = 240; // width of card (220px) + gap (16px)
@@ -2248,7 +2270,18 @@ function HomeScreen({
           >
             <ChevronLeft size={18} />
           </button>
-          <div ref={scrollRef} className="-mx-5 px-10 overflow-x-auto no-scrollbar scroll-smooth">
+          <div
+            ref={scrollRef}
+            onMouseEnter={() => { isHoveredRef.current = true; }}
+            onMouseLeave={() => { isHoveredRef.current = false; }}
+            onTouchStart={() => { isHoveredRef.current = true; }}
+            onTouchEnd={() => {
+              setTimeout(() => {
+                isHoveredRef.current = false;
+              }, 2000);
+            }}
+            className="-mx-5 px-10 overflow-x-auto no-scrollbar"
+          >
             <div className="flex gap-4">
               {menuItems.filter((m) => m.category !== "drinks" && m.category !== "dessert").map((m, i) => (
                 <motion.div

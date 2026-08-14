@@ -257,12 +257,7 @@ function KitchenSidebarContent({
 
       {/* Footer Info */}
       <div className="p-4 border-t border-white/10 bg-white/2 shrink-0 flex flex-col gap-2">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-xl transition duration-300 cursor-pointer border border-red-500/20"
-        >
-          <LogOut size={16} /> ออกจากระบบ
-        </button>
+
         <p className="text-[9px] text-white/40 text-center font-semibold mt-1">
           ระบบจัดการร้านค้า v1.2.0 · ครัวลุงเกตุ
         </p>
@@ -673,12 +668,7 @@ function KitchenMonitor() {
                   + จำลอง
                 </button>
               )}
-              <button
-                onClick={handleLogout}
-                className="bg-red-50 text-red-600 text-[10px] px-2.5 py-1 rounded-xl font-bold border border-red-100 active:scale-95 transition"
-              >
-                ออก
-              </button>
+
             </div>
           </div>
         </header>
