@@ -1,7 +1,17 @@
 import { supabase } from "./supabase";
 import type { UserRow, CustomerRow } from "./supabase.types";
 import type { LiffProfile } from "./liff";
-import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
+export type LocalAuthUser = {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    full_name?: string;
+    display_name?: string;
+    avatar_url?: string;
+    role?: string;
+    [key: string]: any;
+  };
+};
 
 // ─────────────────────────────────────────────────────────────
 // User Service — จัดการข้อมูล users table
@@ -194,7 +204,7 @@ export async function syncLineUserToSupabase(profile: LiffProfile): Promise<{
  * 2. Upsert customer record
  * คืนค่า { user, customer }
  */
-export async function syncAuthUserToSupabase(authUser: SupabaseAuthUser): Promise<{
+export async function syncAuthUserToSupabase(authUser: LocalAuthUser): Promise<{
   user: UserRow;
   customer: CustomerRow;
 }> {
