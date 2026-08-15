@@ -1544,7 +1544,10 @@ function LiffApp() {
                     .eq("id", tableId);
                 } catch {}
 
-                setTimeout(() => setShowTablePicker(false), 200);
+                setTimeout(() => {
+                  setShowTablePicker(false);
+                  setOverlay("menu");
+                }, 200);
               }}
               onClose={() => setShowTablePicker(false)}
             />
@@ -1580,8 +1583,8 @@ function LiffApp() {
                     </span>
                   </div>
                   <div className="flex flex-col text-left">
-                    <span className="font-bold text-sm leading-tight">ตะกร้าสินค้า</span>
-                    <span className="text-[11px] text-white/60 font-light">กดเพื่อดูและสั่งซื้อ</span>
+                    <span className="font-bold text-sm leading-tight">{t("ตะกร้าสินค้า")}</span>
+                    <span className="text-[11px] text-white/60 font-light">{t("กดเพื่อดูและสั่งซื้อ")}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -1642,20 +1645,20 @@ function DeliveryBlock({
   showAddressError: boolean;
   setShowAddressError: (val: boolean) => void;
 }) {
+  const { t } = useLanguage();
   const [touched, setTouched] = useState(false);
-  const isReady = address.trim().length >= 5 && deliveryMethod !== null;
 
   const DELIVERY_METHODS = [
     {
       id: "leave" as const,
-      label: "วางไว้ที่หน้าประตู",
-      sublabel: "เราวางอาหารไว้ให้",
+      label: t("วางไว้ที่หน้าประตู"),
+      sublabel: t("เราวางอาหารไว้ให้"),
       icon: <HomeIcon size={20} />,
     },
     {
       id: "pickup" as const,
-      label: "ลงมารับเอง",
-      sublabel: "รับที่จุดรับอาหาร",
+      label: t("ลงมารับเอง"),
+      sublabel: t("รับที่จุดรับอาหาร"),
       icon: <User size={20} />,
     },
   ];
@@ -1663,16 +1666,21 @@ function DeliveryBlock({
   const handleAddressChange = (val: string) => {
     setAddress(val);
     setTouched(true);
-    if (val.trim().length >= 5 && deliveryMethod) {
+    if (val.trim().length > 0) {
       setShowAddressError(false);
     }
   };
 
-  const handleDeliveryMethodChange = (method: "leave" | "pickup" | null) => {
+  const handleDeliveryMethodChange = (method: "leave" | "pickup") => {
     setDeliveryMethod(method);
-    if (address.trim().length >= 5 && method) {
-      setShowAddressError(false);
+    if (!address.trim()) {
+      setShowAddressError(true);
+      const el = document.getElementById("delivery-address");
+      if (el) el.focus();
+      return;
     }
+    setShowAddressError(false);
+    onOpenMenu();
   };
 
   return (
@@ -1683,35 +1691,36 @@ function DeliveryBlock({
           <MapPin size={18} />
         </div>
         <div className="flex-1">
-          <label htmlFor="delivery-address" className="text-[10px] uppercase tracking-[0.12em] mb-1 block" style={{ color: INK_MUTED }}>
-            ที่อยู่จัดส่ง
+          <label htmlFor="delivery-address" className="text-[10px] uppercase tracking-[0.12em] mb-1 block font-semibold" style={{ color: INK_MUTED }}>
+            {t("ที่อยู่จัดส่ง")}
           </label>
           <input
             id="delivery-address"
             name="delivery-address"
-            aria-label="ที่อยู่จัดส่ง"
+            aria-label={t("ที่อยู่จัดส่ง")}
             value={address}
             onChange={(e) => handleAddressChange(e.target.value)}
             onBlur={() => setTouched(true)}
-            placeholder="กรอกที่อยู่ เช่น ถนนสุขุมวิท 31"
+            placeholder={t("กรอกที่อยู่ เช่น ถนนสุขุมวิท 31")}
             className="w-full rounded-xl border px-3 py-2.5 text-sm transition"
             style={{
-              borderColor: showAddressError || (touched && address.trim().length < 5) ? "#ef4444" : address.trim().length >= 5 ? "#16a34a" : "#ece4d6",
+              borderColor: showAddressError || (touched && !address.trim()) ? "#ef4444" : address.trim() ? "#16a34a" : "#ece4d6",
               outline: "none",
             }}
           />
-          {(showAddressError || (touched && address.trim().length < 5)) && (
-            <p className="mt-1 text-[11px] text-red-500">กรุณากรอกที่อยู่ให้ครบถ้วน (อย่างน้อย 5 ตัวอักษร)</p>
+          {(showAddressError || (touched && !address.trim())) && (
+            <p className="mt-1 text-[11px] text-red-500 font-medium">{t("กรุณากรอกที่อยู่ให้ครบถ้วน")}</p>
           )}
           <div className="mt-2.5 flex gap-2">
             {(["home", "work", "dorm"] as const).map((id) => {
-              const labels = { home: "บ้าน", work: "ที่ทำงาน", dorm: "หอพัก" };
+              const labels = { home: t("บ้าน"), work: t("ที่ทำงาน"), dorm: t("หอพัก") };
               return (
                 <button
                   key={id}
-                  aria-label={`ประเภทที่อยู่ ${labels[id]}`}
+                  type="button"
+                  aria-label={`${t("ประเภทที่อยู่")} ${labels[id]}`}
                   onClick={() => setAddressType(id)}
-                  className="px-3 py-1 rounded-full border text-xs font-medium transition"
+                  className="px-3.5 py-1.5 rounded-full border text-xs font-semibold transition active:scale-95 cursor-pointer shadow-xs"
                   style={{
                     borderColor: addressType === id ? BRAND : "#ece4d6",
                     background: addressType === id ? BRAND : "white",
@@ -1728,42 +1737,40 @@ function DeliveryBlock({
 
       {/* Delivery method */}
       <div>
-        <p className="text-[10px] uppercase tracking-[0.12em] mb-2" style={{ color: INK_MUTED }}>
-          รูปแบบการรับอาหาร
+        <p className="text-[10px] uppercase tracking-[0.12em] mb-2 font-semibold" style={{ color: INK_MUTED }}>
+          {t("รูปแบบการรับอาหาร")}
         </p>
         {showAddressError && !deliveryMethod && (
-          <p className="text-xs text-red-500 font-semibold mb-2">* กรุณาเลือกรูปแบบการรับอาหาร</p>
+          <p className="text-xs text-red-500 font-semibold mb-2">{t("* กรุณาเลือกรูปแบบการรับอาหาร")}</p>
         )}
-        <div className="grid grid-cols-2 gap-2" style={{ border: showAddressError && !deliveryMethod ? "1px solid #ef4444" : "none", padding: showAddressError && !deliveryMethod ? "4px" : "0px", borderRadius: "12px" }}>
+        <div className="grid grid-cols-2 gap-2.5" style={{ border: showAddressError && !deliveryMethod ? "1px solid #ef4444" : "none", padding: showAddressError && !deliveryMethod ? "4px" : "0px", borderRadius: "14px" }}>
           {DELIVERY_METHODS.map((m) => {
             const active = deliveryMethod === m.id;
             return (
               <button
                 key={m.id}
-                aria-label={`เลือกรูปแบบการรับอาหาร ${m.label}`}
+                type="button"
+                aria-label={`${t("รูปแบบการรับอาหาร")} ${m.label}`}
                 onClick={() => handleDeliveryMethodChange(m.id)}
-                className="flex flex-col items-start gap-1.5 rounded-xl border-2 p-3 text-left transition"
+                className="flex flex-col items-start gap-1.5 rounded-2xl border-2 p-3 text-left transition-all duration-200 active:scale-95 cursor-pointer shadow-xs hover:shadow-sm"
                 style={{
                   borderColor: active ? BRAND : "#ece4d6",
                   background: active ? "#f0f6fa" : "white",
                 }}
               >
                 <div
-                  className="grid h-9 w-9 place-items-center rounded-lg"
+                  className="grid h-9 w-9 place-items-center rounded-xl transition-colors"
                   style={{ background: active ? BRAND : LINEN, color: active ? GOLD : BRAND }}
                 >
                   {m.icon}
                 </div>
-                <span className="text-xs font-semibold leading-tight" style={{ color: BRAND }}>{m.label}</span>
-                <span className="text-[10px]" style={{ color: INK_MUTED }}>{m.sublabel}</span>
+                <span className="text-xs font-bold leading-tight" style={{ color: BRAND }}>{m.label}</span>
+                <span className="text-[10px] line-clamp-1" style={{ color: INK_MUTED }}>{m.sublabel}</span>
               </button>
             );
           })}
         </div>
       </div>
-
-
-
     </div>
   );
 }
@@ -1923,6 +1930,18 @@ function HomeScreen({
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isHoveredRef = useRef(false);
+  const isAutoScrollPaused = useRef(false);
+  const pauseAutoScrollTimeoutRef = useRef<any>(null);
+
+  const pauseAutoScroll = (duration = 4500) => {
+    isAutoScrollPaused.current = true;
+    if (pauseAutoScrollTimeoutRef.current) {
+      clearTimeout(pauseAutoScrollTimeoutRef.current);
+    }
+    pauseAutoScrollTimeoutRef.current = setTimeout(() => {
+      isAutoScrollPaused.current = false;
+    }, duration);
+  };
 
   // Continuous 60fps Smooth Auto-scroll for Recommended Menu slider
   useEffect(() => {
@@ -1930,7 +1949,7 @@ function HomeScreen({
     const speed = 0.6; // pixels per frame for smooth continuous movement
 
     const step = () => {
-      if (scrollRef.current && !isHoveredRef.current) {
+      if (scrollRef.current && !isHoveredRef.current && !isAutoScrollPaused.current) {
         const container = scrollRef.current;
         container.scrollLeft += speed;
         if (container.scrollLeft >= container.scrollWidth - container.clientWidth - 1) {
@@ -1941,11 +1960,15 @@ function HomeScreen({
     };
 
     animId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animId);
+    return () => {
+      cancelAnimationFrame(animId);
+      if (pauseAutoScrollTimeoutRef.current) clearTimeout(pauseAutoScrollTimeoutRef.current);
+    };
   }, []);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
+      pauseAutoScroll(4500);
       const scrollAmount = 240; // width of card (220px) + gap (16px)
       scrollRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
@@ -1955,12 +1978,6 @@ function HomeScreen({
   };
 
   const orderTypeRef = useRef<HTMLDivElement>(null);
-  const [homeSelectedCat, setHomeSelectedCat] = useState("all");
-
-  const homeFilteredItems = useMemo(() => {
-    if (homeSelectedCat === "all") return menuItems;
-    return menuItems.filter((m) => m.category === homeSelectedCat);
-  }, [homeSelectedCat, menuItems]);
 
   return (
     <div className="pb-36" style={{ background: LINEN }}>
@@ -2103,34 +2120,10 @@ function HomeScreen({
               </span>
               {bypassRealClosed && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/25 px-2 py-0.5 text-[9px] font-bold text-amber-300 border border-amber-500/30">
-                  โหมดสาธิต
+                  {t("โหมดสาธิต")}
                 </span>
               )}
             </div>
-            <button
-              aria-label="สั่งอาหาร"
-              onClick={() => {
-                if (!orderType) {
-                  setShowTypeError(true);
-                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                  return;
-                }
-                if (orderType === "dine-in" && !selectedTable) {
-                  onOpenTablePicker();
-                  return;
-                }
-                if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
-                  setShowAddressError(true);
-                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                  return;
-                }
-                onOpenMenu();
-              }}
-              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#ffcb44] to-[#fcc14a] px-5 py-2.5 text-sm font-bold shadow-[0_6px_20px_rgba(252,193,74,0.35)] transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
-              style={{ color: BRAND }}
-            >
-              {t("สั่งอาหาร")} <ChevronRight size={16} strokeWidth={2.5} />
-            </button>
           </div>
         </div>
         </div>
@@ -2265,14 +2258,41 @@ function HomeScreen({
                 <DineInBlock selectedTable={selectedTable} onOpenPicker={onOpenTablePicker} />
               )}
               {orderType === "takeaway" && (
-                <div className="space-y-1.5 p-1 text-center sm:text-left">
-                  <h4 className="font-bold text-sm text-[#002e47] flex items-center justify-center sm:justify-start gap-1.5">
-                    <ShoppingBag size={16} /> {t("รับกลับบ้าน")} (Take Away)
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-normal font-semibold">
-                    {t("ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น")}
-                    <strong className="text-[#059669] mx-1">"{t("พร้อมเสิร์ฟ")}"</strong>
-                  </p>
+                <div className="space-y-3 p-1">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-2xl shrink-0 mt-0.5" style={{ background: "rgba(0,46,71,0.06)", color: BRAND }}>
+                      <ShoppingBag size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm text-[#002e47] flex items-center gap-1.5">
+                        {t("รับกลับบ้าน")} (Take Away)
+                      </h4>
+                      <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                        {t("ร้านจะจัดเตรียมแพ็กอาหารใส่กล่องให้อย่างดี คุณสามารถมารับอาหารได้ที่เคาน์เตอร์ร้านเมื่อสถานะเปลี่ยนเป็น")}
+                        <strong className="text-[#059669] font-bold mx-1">"{t("พร้อมเสิร์ฟ")}"</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2.5 pt-2.5 border-t border-[#ece4d6]/60">
+                    <button
+                      type="button"
+                      aria-label={t("ไม่ยอมรับ")}
+                      onClick={() => setOrderType(null)}
+                      className="px-4 py-2 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all cursor-pointer border border-slate-200"
+                    >
+                      {t("ไม่ยอมรับ")}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("ยอมรับ")}
+                      onClick={onOpenMenu}
+                      className="inline-flex items-center gap-1 px-5 py-2 rounded-full text-xs font-bold shadow-sm hover:shadow transition-all duration-200 active:scale-95 cursor-pointer"
+                      style={{ background: BRAND, color: GOLD }}
+                    >
+                      <span>{t("ยอมรับ")}</span>
+                      <ChevronRight size={14} strokeWidth={2.5} />
+                    </button>
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -2286,16 +2306,27 @@ function HomeScreen({
           <h2 className="text-lg font-bold" style={{ color: BRAND }}>
             {t("เมนูแนะนำ")}
           </h2>
+          <button
+            aria-label={t("เมนูทั้งหมด")}
+            onClick={onOpenMenu}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-[#fcc14a]/20 hover:bg-[#fcc14a]/30 active:scale-95 px-3.5 py-1.5 rounded-full border border-[#fcc14a]/50 transition-all duration-200 cursor-pointer shadow-xs"
+          >
+            <Utensils size={13} className="text-[#002e47]" />
+            <span>{t("เมนูทั้งหมด")}</span>
+            <ChevronRight size={14} className="text-[#002e47]" />
+          </button>
         </div>
         <div className="relative">
           {/* Left arrow */}
           <button
+            type="button"
             onClick={() => scroll("left")}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/50 backdrop-blur-[2px] border border-[#ece4d6]/50 hover:bg-white/80 transition shadow-sm"
-            style={{ color: BRAND, marginLeft: -4 }}
+            onMouseEnter={() => { isHoveredRef.current = true; }}
+            onMouseLeave={() => { isHoveredRef.current = false; }}
+            className="absolute -left-2 md:-left-4 top-1/2 -translate-y-1/2 z-20 grid h-10 w-10 place-items-center rounded-full bg-white/95 text-[#002e47] border border-[#ece4d6] hover:bg-[#002e47] hover:text-[#fcc14a] transition-all shadow-md active:scale-90 cursor-pointer"
             aria-label={t("เลื่อนซ้าย")}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           <div
             ref={scrollRef}
@@ -2326,7 +2357,7 @@ function HomeScreen({
                       onOpenTablePicker();
                       return;
                     }
-                    if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                    if (orderType === "delivery" && (!address || !address.trim() || !deliveryMethod)) {
                       setShowAddressError(true);
                       orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
                       return;
@@ -2374,7 +2405,7 @@ function HomeScreen({
                           onOpenTablePicker();
                           return;
                         }
-                        if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
+                        if (orderType === "delivery" && (!address || !address.trim() || !deliveryMethod)) {
                           setShowAddressError(true);
                           orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
                           return;
@@ -2393,154 +2424,17 @@ function HomeScreen({
           </div>
           {/* Right arrow */}
           <button
+            type="button"
             onClick={() => scroll("right")}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/50 backdrop-blur-[2px] border border-[#ece4d6]/50 hover:bg-white/80 transition shadow-sm"
-            style={{ color: BRAND, marginRight: -4 }}
+            onMouseEnter={() => { isHoveredRef.current = true; }}
+            onMouseLeave={() => { isHoveredRef.current = false; }}
+            className="absolute -right-2 md:-right-4 top-1/2 -translate-y-1/2 z-20 grid h-10 w-10 place-items-center rounded-full bg-white/95 text-[#002e47] border border-[#ece4d6] hover:bg-[#002e47] hover:text-[#fcc14a] transition-all shadow-md active:scale-90 cursor-pointer"
             aria-label={t("เลื่อนขวา")}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
         </div>
       </div>
-
-      {/* Full Menu by Food Type Section */}
-      <div className="px-5 md:px-12 mt-10 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-xl font-extrabold" style={{ color: BRAND }}>
-              {t("รายการอาหารทั้งหมด")}
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5 font-light">
-              เลือกดูตามประเภทอาหารและเครื่องดื่ม
-            </p>
-          </div>
-          <button
-            onClick={onOpenMenu}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-[#fcc14a]/20 hover:bg-[#fcc14a]/30 px-3.5 py-1.5 rounded-full border border-[#fcc14a]/40 transition active:scale-95 cursor-pointer self-start sm:self-auto"
-          >
-            <Search size={14} /> ค้นหาเมนู <ChevronRight size={14} />
-          </button>
-        </div>
-
-        {/* Food Type Pill Tabs */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 pt-1">
-          {[
-            { id: "all", label: "ทั้งหมด", icon: "🍽️" },
-            { id: "signature", label: "Signature", icon: "⭐" },
-            { id: "main", label: "ผัด & กับข้าว", icon: "🍳" },
-            { id: "rice", label: "ข้าวผัด", icon: "🍚" },
-            { id: "noodles", label: "เมนูเส้น", icon: "🍜" },
-            { id: "vegetarian", label: "มังสวิรัติ", icon: "🥬" },
-            { id: "drinks", label: "เครื่องดื่ม", icon: "🥤" },
-            { id: "dessert", label: "ของหวาน", icon: "🍧" },
-          ].map((cat) => {
-            const active = homeSelectedCat === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setHomeSelectedCat(cat.id)}
-                className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer shadow-sm border"
-                style={{
-                  background: active ? BRAND : "white",
-                  color: active ? GOLD : BRAND,
-                  borderColor: active ? BRAND : "#ece4d6",
-                  boxShadow: active ? "0 4px 14px rgba(0,46,71,0.2)" : "0 2px 6px rgba(0,0,0,0.02)",
-                }}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Full Menu Grid */}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {homeFilteredItems.map((m) => (
-            <div
-              key={m.id}
-              onClick={() => {
-                if (!orderType) {
-                  setShowTypeError(true);
-                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                  return;
-                }
-                if (orderType === "dine-in" && !selectedTable) {
-                  onOpenTablePicker();
-                  return;
-                }
-                if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
-                  setShowAddressError(true);
-                  orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                  return;
-                }
-                onPickItem(m);
-              }}
-              className="bg-white rounded-2xl p-3.5 shadow-sm border border-[#ece4d6]/80 flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
-            >
-              <div className="relative h-20 w-20 rounded-xl overflow-hidden flex-shrink-0">
-                <img
-                  src={encodeURI(String(m.image))}
-                  alt={tMenu(m.name, "name")}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              </div>
-              <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-[#002e47] border border-slate-200/80">
-                      {m.category === "signature" ? "⭐ Signature" :
-                       m.category === "main" ? "🍳 ผัด/กับข้าว" :
-                       m.category === "rice" ? "🍚 ข้าวผัด" :
-                       m.category === "noodles" ? "🍜 เมนูเส้น" :
-                       m.category === "vegetarian" ? "🥬 มังสวิรัติ" :
-                       m.category === "drinks" ? "🥤 เครื่องดื่ม" :
-                       m.category === "dessert" ? "🍧 ของหวาน" : m.category}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-sm truncate group-hover:text-[#002e47] transition-colors" style={{ color: BRAND }}>
-                    {tMenu(m.name, "name")}
-                  </h3>
-                  <p className="text-xs mt-0.5 text-slate-500 line-clamp-1 font-light">
-                    {tMenu(m.desc, "desc")}
-                  </p>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="font-extrabold text-base" style={{ color: BRAND }}>
-                    ฿{m.price}
-                  </span>
-                  <button
-                    aria-label={`หยิบ ${tMenu(m.name, "name")} ใส่ตะกร้า`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!orderType) {
-                        setShowTypeError(true);
-                        orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                        return;
-                      }
-                      if (orderType === "dine-in" && !selectedTable) {
-                        onOpenTablePicker();
-                        return;
-                      }
-                      if (orderType === "delivery" && (!address || address.trim().length < 5 || !deliveryMethod)) {
-                        setShowAddressError(true);
-                        orderTypeRef.current?.scrollIntoView({ behavior: "smooth" });
-                        return;
-                      }
-                      onPickItem(m);
-                    }}
-                    className="grid h-8 w-8 place-items-center rounded-full shadow-sm cursor-pointer transition-transform duration-200 active:scale-90 hover:scale-105"
-                    style={{ background: BRAND, color: GOLD }}
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
 
       {/* Inline cart removed — using fixed cart bar inside app frame */}
       {/* Persistent CTA when cart empty */}
@@ -2660,14 +2554,14 @@ function TablePickerBottomSheet({
                       key={table.id}
                       aria-label={`เลือก ${table.label}`}
                       disabled={isWalkIn || (!available && !isSelected)}
-                      onClick={() => !isWalkIn && available && onSelect(table.id)}
+                      onClick={() => !isWalkIn && (available || isSelected) && onSelect(table.id)}
                       className="rounded-2xl p-4 text-left relative overflow-hidden"
                       style={{
                         background: boxBg,
                         color: boxText,
                         border: `2px solid ${boxBorder}`,
                         opacity: isWalkIn ? 0.8 : (!available && !isSelected ? 0.8 : 1),
-                        cursor: isWalkIn ? "not-allowed" : (available ? "pointer" : "not-allowed"),
+                        cursor: isWalkIn ? "not-allowed" : (available || isSelected ? "pointer" : "not-allowed"),
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -2910,7 +2804,7 @@ function ItemModal({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 280 }}
-                className="absolute inset-x-0 bottom-0 top-12 md:top-24 md:bottom-24 md:max-w-xl md:mx-auto md:rounded-3xl md:shadow-2xl z-50 bg-white overflow-hidden flex flex-col"
+        className="absolute inset-x-0 bottom-0 top-12 md:top-24 md:bottom-24 md:max-w-xl md:mx-auto md:rounded-3xl md:shadow-2xl z-50 bg-white overflow-hidden flex flex-col"
       >
         <div className="px-5 pt-5 pb-4 border-b" style={{ borderColor: "#f1ece4" }}>
           <div className="flex items-start justify-between gap-4">
@@ -2934,7 +2828,6 @@ function ItemModal({
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar px-5 pt-5 pb-32">
-
           {item.options?.map((g) => (
             <div key={g.id} className="mt-6">
               <div className="flex items-center justify-between mb-2">
@@ -3194,7 +3087,7 @@ function ItemModal({
               className="flex-1 h-12 rounded-full font-semibold flex items-center justify-between px-5 transition active:scale-95 cursor-pointer"
               style={{ background: BRAND, color: "white" }}
             >
-              <span>{cartLine ? "บันทึกการแก้ไข" : "เพิ่มลงตะกร้า"}</span>
+              <span>{cartLine ? t("บันทึกการแก้ไข") : t("เพิ่มลงตะกร้า")}</span>
               <span>฿{total}</span>
             </button>
           </div>
@@ -3543,96 +3436,126 @@ function CartDrawer({
   onEdit: (line: CartLine) => void;
   onCheckout: () => void;
 }) {
+  const { t, tMenu } = useLanguage();
+
   return (
     <>
+      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/50 z-40"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm z-40"
       />
-      <motion.aside
-        aria-label="ตะกร้าสินค้าของคุณ"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 280 }}
-                className="absolute inset-x-0 bottom-0 md:left-auto md:right-4 md:bottom-4 md:max-w-md md:w-full md:rounded-3xl md:shadow-2xl z-50 bg-white rounded-t-3xl max-h-[85%] flex flex-col"
-      >
-        <div className="px-5 pt-3 pb-4 border-b" style={{ borderColor: "#f1ece4" }}>
-          <div className="mx-auto h-1.5 w-12 rounded-full bg-[#e5dccc] mb-3" />
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold" style={{ color: BRAND }}>
-              ตะกร้าของคุณ
-            </h2>
-            <button aria-label="ปิดตะกร้า" onClick={onClose} className="text-sm" style={{ color: INK_MUTED }}>
-              ปิด
-            </button>
-          </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-3">
-          {cart.length === 0 && (
-            <p className="text-center py-10 text-sm" style={{ color: INK_MUTED }}>
-              ยังไม่มีรายการในตะกร้า
-            </p>
-          )}
-          {cart.map((l) => (
-            <div key={l.id} className="flex gap-3 bg-[var(--surface)] rounded-2xl p-3">
-              <img src={encodeURI(String(l.image))} alt={l.name} className="h-16 w-16 rounded-xl object-cover" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm" style={{ color: BRAND }}>
-                  {l.name}
-                </h3>
-                <p className="text-xs" style={{ color: INK_MUTED }}>
-                  × {l.qty}
-                  {l.addons.length > 0 && ` · ${l.addons.map((a) => a.name).join(", ")}`}
-                </p>
-                <p className="text-sm font-bold mt-1" style={{ color: BRAND }}>
-                  ฿{l.price * l.qty}
-                </p>
+      {/* Centered Modal Container */}
+      <div className="absolute inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <motion.div
+          aria-label={t("ตะกร้าของคุณ")}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          transition={{ type: "spring", damping: 25, stiffness: 350 }}
+          className="w-full max-w-[420px] rounded-[28px] bg-white shadow-2xl flex flex-col pointer-events-auto max-h-[82vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="px-5 pt-4 pb-3.5 border-b border-[#f1ece4] flex items-center justify-between flex-shrink-0 bg-white">
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-8 w-8 place-items-center rounded-full" style={{ background: "rgba(0,46,71,0.08)", color: BRAND }}>
+                <ShoppingBag size={16} />
               </div>
-              <div className="flex flex-col gap-2">
-                <button
-                  aria-label={`แก้ไข ${l.name}`}
-                  onClick={() => onEdit(l)}
-                  className="grid h-8 w-8 place-items-center rounded-full transition active:scale-95 cursor-pointer"
-                  style={{ background: "rgba(0,46,71,0.06)", color: BRAND }}
-                >
-                  <Pencil size={13} />
-                </button>
-                <button
-                  aria-label={`ลบ ${l.name} ออกจากตะกร้า`}
-                  onClick={() => onRemove(l.id)}
-                  className="grid h-8 w-8 place-items-center rounded-full transition active:scale-95 cursor-pointer"
-                  style={{ background: "#fee2e2", color: "#dc2626" }}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
+              <h2 className="text-base font-bold" style={{ color: BRAND }}>
+                {t("ตะกร้าของคุณ")}
+              </h2>
             </div>
-          ))}
-        </div>
-        {cart.length > 0 && (
-          <div className="px-5 pt-3 pb-5 border-t space-y-3" style={{ borderColor: "#f1ece4" }}>
-            <div className="flex items-center justify-between text-sm">
-              <span style={{ color: INK_MUTED }}>ยอดรวม</span>
-              <span className="font-bold text-base" style={{ color: BRAND }}>
-                ฿{subtotal}
-              </span>
-            </div>
-            <button
-              aria-label="ดำเนินการสั่งซื้อสินค้าในตะกร้า"
-              onClick={onCheckout}
-              className="w-full h-12 rounded-full font-semibold"
-              style={{ background: BRAND, color: "white" }}
+            <motion.button
+              whileTap={{ scale: 0.85 }}
+              aria-label={t("ปิด")}
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors shrink-0 cursor-pointer"
             >
-              ดำเนินการสั่งซื้อ
-            </button>
+              <X size={15} />
+            </motion.button>
           </div>
-        )}
-      </motion.aside>
+
+          {/* Cart Item List */}
+          <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-3">
+            {cart.length === 0 && (
+              <div className="text-center py-12">
+                <div className="grid h-14 w-14 place-items-center rounded-full mx-auto mb-3" style={{ background: "rgba(0,46,71,0.05)", color: BRAND }}>
+                  <ShoppingBag size={24} />
+                </div>
+                <p className="text-sm font-semibold" style={{ color: INK_MUTED }}>
+                  {t("ยังไม่มีรายการในตะกร้า")}
+                </p>
+              </div>
+            )}
+            {cart.map((l) => (
+              <div key={l.id} className="flex gap-3 bg-[var(--surface)] rounded-2xl p-3 border border-[#ece4d6]/60 items-center">
+                <img
+                  src={encodeURI(String(l.image))}
+                  alt={tMenu(l.name, "name")}
+                  className="h-16 w-16 rounded-xl object-cover flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm truncate" style={{ color: BRAND }}>
+                    {tMenu(l.name, "name")}
+                  </h3>
+                  <p className="text-xs mt-0.5 line-clamp-2" style={{ color: INK_MUTED }}>
+                    × {l.qty}
+                    {l.addons.length > 0 && ` · ${l.addons.map((a) => t(a.name) || tMenu(a.name, "name")).join(", ")}`}
+                    {l.note && ` · "${l.note}"`}
+                  </p>
+                  <p className="text-sm font-bold mt-1" style={{ color: BRAND }}>
+                    ฿{l.price * l.qty}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1.5 flex-shrink-0">
+                  <button
+                    aria-label={`${t("แก้ไข")} ${tMenu(l.name, "name")}`}
+                    onClick={() => onEdit(l)}
+                    className="grid h-8 w-8 place-items-center rounded-full transition active:scale-90 cursor-pointer shadow-xs"
+                    style={{ background: "rgba(0,46,71,0.06)", color: BRAND }}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    aria-label={`${t("ลบ")} ${tMenu(l.name, "name")}`}
+                    onClick={() => onRemove(l.id)}
+                    className="grid h-8 w-8 place-items-center rounded-full transition active:scale-90 cursor-pointer shadow-xs"
+                    style={{ background: "#fee2e2", color: "#dc2626" }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          {cart.length > 0 && (
+            <div className="px-5 pt-3.5 pb-4 border-t border-[#f1ece4] space-y-3 bg-white flex-shrink-0">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium" style={{ color: INK_MUTED }}>{t("ยอดรวม")}</span>
+                <span className="font-extrabold text-lg" style={{ color: BRAND }}>
+                  ฿{subtotal}
+                </span>
+              </div>
+              <button
+                aria-label={t("ดำเนินการสั่งซื้อ")}
+                onClick={onCheckout}
+                className="w-full h-12 rounded-full font-bold flex items-center justify-center gap-2 transition-all duration-200 active:scale-98 shadow-md cursor-pointer"
+                style={{ background: BRAND, color: GOLD }}
+              >
+                <span>{t("ดำเนินการสั่งซื้อ")}</span>
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+        </motion.div>
+      </div>
     </>
   );
 }
@@ -3657,6 +3580,7 @@ function OrderConfirmOverlay({
   onEdit: (line: CartLine) => void;
   onProceed: () => void;
 }) {
+  const { t, tMenu } = useLanguage();
   const [phone, setPhone] = useState("");
   const [err, setErr] = useState("");
   const grand = subtotal + deliveryFee;
@@ -3675,24 +3599,25 @@ function OrderConfirmOverlay({
             <div className="flex items-center gap-3">
               <button
                 onClick={onBack}
+                aria-label={t("กลับไปเลือกซื้ออาหาร")}
                 className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
               >
                 <ChevronLeft size={20} color={GOLD} />
               </button>
-              <h1 className="text-lg font-bold">รายการสั่งซื้อในตะกร้า</h1>
+              <h1 className="text-lg font-bold">{t("รายการสั่งซื้อในตะกร้า")}</h1>
             </div>
           </div>
         </div>
         <div className="max-w-2xl mx-auto px-5 mt-8 text-center space-y-4">
           <div className="bg-white rounded-3xl p-8 shadow-soft space-y-3">
-            <p className="text-base font-semibold text-slate-700">ไม่มีรายการสินค้าในตะกร้าของคุณ</p>
-            <p className="text-xs text-slate-500">กรุณาเลือกอาหารจากเมนูก่อนทำการชำระเงิน</p>
+            <p className="text-base font-semibold text-slate-700">{t("ไม่มีรายการสินค้าในตะกร้าของคุณ")}</p>
+            <p className="text-xs text-slate-500">{t("กรุณาเลือกอาหารจากเมนูก่อนทำการชำระเงิน")}</p>
             <button
               onClick={onBack}
               className="mt-4 px-6 py-3 rounded-full font-bold text-white shadow-lift cursor-pointer"
               style={{ background: BRAND }}
             >
-              กลับไปเลือกซื้ออาหาร
+              {t("กลับไปเลือกซื้ออาหาร")}
             </button>
           </div>
         </div>
@@ -3700,7 +3625,7 @@ function OrderConfirmOverlay({
     );
   }
 
-    return (
+  return (
     <motion.div
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
@@ -3713,15 +3638,15 @@ function OrderConfirmOverlay({
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              aria-label="ย้อนกลับไปหน้าสั่งอาหาร"
-              title="ย้อนกลับไปหน้าสั่งอาหาร"
+              aria-label={t("ย้อนกลับไปหน้าสั่งอาหาร")}
+              title={t("ย้อนกลับไปหน้าสั่งอาหาร")}
               className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
             >
               <ChevronLeft size={20} color={GOLD} />
             </button>
-            <h1 className="text-lg font-bold">รายการสั่งซื้อในตะกร้า</h1>
+            <h1 className="text-lg font-bold">{t("รายการสั่งซื้อในตะกร้า")}</h1>
           </div>
-          <p className="text-sm mt-2 text-white/70">ตรวจสอบรายการก่อนชำระเงิน</p>
+          <p className="text-sm mt-2 text-white/70">{t("ตรวจสอบรายการก่อนชำระเงิน")}</p>
         </div>
       </div>
 
@@ -3729,22 +3654,22 @@ function OrderConfirmOverlay({
         {cart.map((l) => (
           <div key={l.id} className="bg-white rounded-2xl p-4 shadow-soft">
             <div className="flex gap-3">
-              <img src={encodeURI(String(l.image))} alt={l.name} className="h-16 w-16 rounded-xl object-cover" />
+              <img src={encodeURI(String(l.image))} alt={tMenu(l.name, "name")} className="h-16 w-16 rounded-xl object-cover" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-semibold text-sm" style={{ color: BRAND }}>
-                    {l.name}
+                    {tMenu(l.name, "name")}
                   </h3>
                   <span className="font-bold text-sm" style={{ color: BRAND }}>
                     ฿{l.price * l.qty}
                   </span>
                 </div>
                 <p className="text-xs mt-1" style={{ color: INK_MUTED }}>
-                  จำนวน × {l.qty} · ฿{l.price}/ชิ้น
+                  {t("จำนวน")} × {l.qty} · ฿{l.price}/{t("ชิ้น")}
                 </p>
                 {l.addons.length > 0 && (
                   <p className="text-xs mt-0.5" style={{ color: INK_MUTED }}>
-                    + {l.addons.map((a) => a.name).join(", ")}
+                    + {l.addons.map((a) => t(a.name) || tMenu(a.name, "name")).join(", ")}
                   </p>
                 )}
                 {l.note && (
@@ -3760,14 +3685,14 @@ function OrderConfirmOverlay({
                 className="flex-1 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
                 style={{ background: "rgba(0,46,71,0.06)", color: BRAND }}
               >
-                <Pencil size={14} /> แก้ไขรายการ
+                <Pencil size={14} /> {t("แก้ไขรายการ")}
               </button>
               <button
                 onClick={() => onRemove(l.id)}
                 className="flex-1 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
                 style={{ background: "#fee2e2", color: "#dc2626" }}
               >
-                <Trash2 size={14} /> ลบรายการ
+                <Trash2 size={14} /> {t("ลบรายการ")}
               </button>
             </div>
           </div>
@@ -3775,20 +3700,20 @@ function OrderConfirmOverlay({
 
         <div className="bg-white rounded-2xl p-4 shadow-soft space-y-2.5">
           <h3 className="font-semibold mb-2" style={{ color: BRAND }}>
-            สรุปคำสั่งซื้อ
+            {t("สรุปคำสั่งซื้อ")}
           </h3>
-          <Row label="ยอดรวมอาหาร" value={`฿${subtotal}`} />
-          <Row label="ค่าจัดส่ง" value={`฿${deliveryFee}`} />
+          <Row label={t("ยอดรวมอาหาร")} value={`฿${subtotal}`} />
+          <Row label={t("ค่าจัดส่ง")} value={`฿${deliveryFee}`} />
           <div className="border-t pt-2.5 mt-2.5" style={{ borderColor: "#f1ece4" }}>
-            <Row label="รวมทั้งหมด" value={`฿${grand}`} bold />
+            <Row label={t("รวมทั้งหมด")} value={`฿${grand}`} bold />
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-soft">
           <label className="text-sm font-semibold flex items-center gap-2" style={{ color: BRAND }}>
-            <Phone size={14} /> เบอร์โทรสำหรับติดต่อ
+            <Phone size={14} /> {t("เบอร์โทรสำหรับติดต่อ")}
           </label>
-                    <input
+          <input
             type="tel"
             value={phone}
             onChange={(e) => {
@@ -3805,7 +3730,7 @@ function OrderConfirmOverlay({
             <button
               onClick={() => {
                 if (phone.length < 10) {
-                  setErr("กรุณากรอกเบอร์โทรให้ครบ 10 หลัก");
+                  setErr(t("กรุณากรอกเบอร์โทรให้ครบ 10 หลัก"));
                   return;
                 }
                 onProceed();
@@ -5213,6 +5138,7 @@ function StoreClosedOverlay({
   onBypass: () => void;
   onOpenSidebar: () => void;
 }) {
+  const { t } = useLanguage();
   const todayDay = useMemo(() => {
     const now = new Date();
     const thTimeStr = now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
@@ -5221,17 +5147,17 @@ function StoreClosedOverlay({
   }, []);
 
   const daysInfo = [
-    { name: "วันอาทิตย์", label: "อา.", time: "08:00 - 21:00", open: true, dayIndex: 0 },
-    { name: "วันจันทร์", label: "จ.", time: "08:00 - 21:00", open: true, dayIndex: 1 },
-    { name: "วันอังคาร", label: "อ.", time: "08:00 - 21:00", open: true, dayIndex: 2 },
-    { name: "วันพุธ", label: "พ.", time: "08:00 - 21:00", open: true, dayIndex: 3 },
-    { name: "วันพฤหัสบดี", label: "พฤ.", time: "08:00 - 21:00", open: true, dayIndex: 4 },
-    { name: "วันศุกร์", label: "ศ.", time: "08:00 - 21:00", open: true, dayIndex: 5 },
-    { name: "วันเสาร์", label: "ส.", time: "ปิดทำการ", open: false, dayIndex: 6 },
+    { name: t("วันอาทิตย์"), label: t("อา."), time: "08:00 - 21:00", open: true, dayIndex: 0 },
+    { name: t("วันจันทร์"), label: t("จ."), time: "08:00 - 21:00", open: true, dayIndex: 1 },
+    { name: t("วันอังคาร"), label: t("อ."), time: "08:00 - 21:00", open: true, dayIndex: 2 },
+    { name: t("วันพุธ"), label: t("พ."), time: "08:00 - 21:00", open: true, dayIndex: 3 },
+    { name: t("วันพฤหัสบดี"), label: t("พฤ."), time: "08:00 - 21:00", open: true, dayIndex: 4 },
+    { name: t("วันศุกร์"), label: t("ศ."), time: "08:00 - 21:00", open: true, dayIndex: 5 },
+    { name: t("วันเสาร์"), label: t("ส."), time: t("ปิดทำการ"), open: false, dayIndex: 6 },
   ];
 
   return (
-        <motion.div
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -5242,7 +5168,8 @@ function StoreClosedOverlay({
         <div className="max-w-2xl mx-auto px-5 pt-5 pb-4 flex items-center justify-between">
           <button
             onClick={onOpenSidebar}
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 active:scale-95 transition-transform"
+            aria-label="เมนูนำทาง"
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 active:scale-95 transition-transform cursor-pointer"
           >
             <Menu size={20} color={GOLD} />
           </button>
@@ -5254,79 +5181,83 @@ function StoreClosedOverlay({
       {/* Main Banner */}
       <div className="flex-1 overflow-y-auto no-scrollbar w-full">
         <div className="max-w-2xl mx-auto px-6 py-6 flex flex-col justify-between h-full min-h-[calc(100vh-80px)]">
-        <div className="space-y-6">
-          {/* Pulsing closed icon */}
-          <div className="flex justify-center mt-2">
-            <div className="relative">
-              <div className="grid h-20 w-20 place-items-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 shadow-sm animate-pulse">
-                <Store size={38} className="stroke-[1.5]" />
-              </div>
-              <div className="absolute -bottom-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-red-500 text-white border border-white shadow-md">
-                <Clock size={14} className="animate-spin" style={{ animationDuration: '6s' }} />
+          <div className="space-y-6">
+            {/* Pulsing closed icon */}
+            <div className="flex justify-center mt-2">
+              <div className="relative">
+                <div className="grid h-20 w-20 place-items-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 shadow-sm animate-pulse">
+                  <Store size={38} className="stroke-[1.5]" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 grid h-7 w-7 place-items-center rounded-full bg-red-500 text-white border border-white shadow-md">
+                  <Clock size={14} className="animate-spin" style={{ animationDuration: '6s' }} />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Main Closed Text Box */}
-          <div className="text-center space-y-3">
-            <h2 className="text-xl font-bold text-slate-800 leading-snug">
-              วันนี้ร้านปิดทำการ ขออภัยในความไม่สะดวก
-            </h2>
-            <div className="inline-block bg-amber-500/10 border border-amber-500/20 rounded-2xl px-6 py-4 mt-2 max-w-sm mx-auto">
-              <p className="text-sm font-semibold text-amber-900 leading-relaxed">
-                เราจะเปิดบริการอีกครั้งวันอาทิตย์-ศุกร์<br />
-                เวลา <span className="font-extrabold text-amber-950 text-base">8:00 - 21:00 น.</span>
-              </p>
+            {/* Main Closed Text Box */}
+            <div className="text-center space-y-3">
+              <h2 className="text-xl font-bold text-slate-800 leading-snug">
+                {t("วันนี้ร้านปิดทำการ ขออภัยในความไม่สะดวก")}
+              </h2>
+              <div className="inline-block bg-amber-500/10 border border-amber-500/20 rounded-2xl px-6 py-4 mt-2 max-w-sm mx-auto">
+                <p className="text-sm font-semibold text-amber-900 leading-relaxed">
+                  {t("เราจะเปิดบริการอีกครั้งวันอาทิตย์-ศุกร์")}<br />
+                  {t("เวลา")} <span className="font-extrabold text-amber-950 text-base">{t("8:00 - 21:00 น.")}</span>
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Opening Schedule Grid */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">ตารางเวลาให้บริการ</h3>
-            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-soft divide-y divide-slate-100 overflow-hidden">
-              {daysInfo.map((day) => {
-                const isToday = day.dayIndex === todayDay;
-                return (
-                  <div
-                    key={day.dayIndex}
-                    className={`flex items-center justify-between px-4 py-3.5 transition-colors ${isToday ? "bg-amber-500/5" : ""
+            {/* Opening Schedule Grid */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">{t("ตารางเวลาให้บริการ")}</h3>
+              <div className="bg-white border border-slate-200/80 rounded-2xl shadow-soft divide-y divide-slate-100 overflow-hidden">
+                {daysInfo.map((day) => {
+                  const isToday = day.dayIndex === todayDay;
+                  return (
+                    <div
+                      key={day.dayIndex}
+                      className={`flex items-center justify-between px-4 py-3.5 transition-colors ${
+                        isToday ? "bg-amber-500/5" : ""
                       }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center ${isToday
-                          ? "bg-amber-500 text-white shadow-sm"
-                          : "bg-slate-100 text-slate-500"
-                        }`}>
-                        {day.label}
-                      </span>
-                      <span className={`text-sm font-semibold ${isToday ? "text-slate-800" : "text-slate-600"}`}>
-                        {day.name} {isToday && <span className="ml-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-full">วันนี้</span>}
-                      </span>
-                    </div>
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center ${
+                            isToday
+                              ? "bg-amber-500 text-white shadow-sm"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {day.label}
+                        </span>
+                        <span className={`text-sm font-semibold ${isToday ? "text-slate-800" : "text-slate-600"}`}>
+                          {day.name} {isToday && <span className="ml-1 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-full">{t("วันนี้")}</span>}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-slate-700">{day.time}</span>
-                      <span className={`h-2.5 w-2.5 rounded-full ${day.open ? "bg-emerald-500" : "bg-red-500"}`} />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-slate-700">{day.time}</span>
+                        <span className={`h-2.5 w-2.5 rounded-full ${day.open ? "bg-emerald-500" : "bg-red-500"}`} />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Demo Bypass Button */}
-        <div className="mt-8 space-y-3">
-          <button
-            onClick={onBypass}
-            className="w-full py-4 px-5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 bg-slate-50 border border-slate-200/80 transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98]"
-          >
-                        เข้าสู่หน้าร้าน (โหมดสาธิตสำหรับทดสอบ)
-          </button>
-          <p className="text-[10px] text-slate-400 text-center">
-            * ปุ่มด้านบนสำหรับผู้ตรวจสอบเพื่อทดสอบการใช้งาน in วันหยุด/นอกเวลา
-          </p>
-        </div>
+          {/* Demo Bypass Button */}
+          <div className="mt-8 space-y-3">
+            <button
+              onClick={onBypass}
+              className="w-full py-4 px-5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 bg-slate-50 border border-slate-200/80 transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
+            >
+              {t("เข้าสู่หน้าร้าน (โหมดสาธิตสำหรับทดสอบ)")}
+            </button>
+            <p className="text-[10px] text-slate-400 text-center">
+              {t("* ปุ่มด้านบนสำหรับผู้ตรวจสอบเพื่อทดสอบการใช้งาน ในวันหยุด/นอกเวลา")}
+            </p>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -5353,11 +5284,12 @@ function Sidebar({
   profile: LiffProfile | null;
   onLogout: () => void;
 }) {
+  const { t } = useLanguage();
   const items = [
-    { id: "home", label: "หน้าแรก", icon: HomeIcon },
-    { id: "status", label: "สถานะการสั่งซื้อ", icon: ClipboardList },
-    { id: "history", label: "ประวัติการสั่งซื้อ", icon: History },
-    { id: "contact", label: "ติดต่อเรา", icon: MessageCircle },
+    { id: "home", label: t("หน้าแรก"), icon: HomeIcon },
+    { id: "status", label: t("สถานะการสั่งซื้อ"), icon: ClipboardList },
+    { id: "history", label: t("ประวัติการสั่งซื้อ"), icon: History },
+    { id: "contact", label: t("ติดต่อเรา"), icon: MessageCircle },
   ];
 
   return (
@@ -5374,7 +5306,7 @@ function Sidebar({
         animate={{ x: 0 }}
         exit={{ x: "-100%" }}
         transition={{ type: "tween", duration: 0.28 }}
-                className="absolute top-0 left-0 bottom-0 w-[78%] md:w-[320px] z-[70] flex flex-col"
+        className="absolute top-0 left-0 bottom-0 w-[78%] md:w-[320px] z-[70] flex flex-col"
         style={{ background: BRAND, color: "white" }}
       >
         <div className="p-5 border-b border-white/10">
@@ -5392,8 +5324,8 @@ function Sidebar({
               </div>
             )}
             <div>
-              <p className="font-bold">{profile?.displayName ?? "ผู้ใช้งาน"}</p>
-              <p className="text-xs text-white/60">บัญชีผู้ใช้</p>
+              <p className="font-bold">{profile?.displayName ?? t("ผู้ใช้งาน")}</p>
+              <p className="text-xs text-white/60">{t("บัญชีผู้ใช้")}</p>
             </div>
           </div>
         </div>
@@ -5405,7 +5337,7 @@ function Sidebar({
                 onClick={() => {
                   onNavigate(it.id);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left hover:bg-white/5"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left hover:bg-white/5 cursor-pointer"
               >
                 <it.icon size={18} color={GOLD} />
                 <span className="font-medium text-sm">{it.label}</span>
@@ -5422,19 +5354,22 @@ function Sidebar({
           {/* Simulator Panel */}
           <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
             <p className="text-[11px] font-bold text-white/50 uppercase tracking-wider mb-2.5">
-              โหมดผู้พัฒนา (Developer Mode)
+              {t("โหมดผู้พัฒนา (Developer Mode)")}
             </p>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-white/80">จำลองสถานะร้านปิด</span>
+              <span className="text-xs text-white/80">{t("จำลองสถานะร้านปิด")}</span>
               <button
                 type="button"
+                aria-label={t("จำลองสถานะร้านปิด")}
                 onClick={() => setSimulateClosed(!simulateClosed)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${simulateClosed ? "bg-amber-500" : "bg-white/15"
-                  }`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  simulateClosed ? "bg-amber-500" : "bg-white/15"
+                }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${simulateClosed ? "translate-x-5" : "translate-x-0"
-                    }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    simulateClosed ? "translate-x-5" : "translate-x-0"
+                  }`}
                 />
               </button>
             </div>
@@ -5442,13 +5377,12 @@ function Sidebar({
 
           <button
             onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium cursor-pointer transition active:scale-95"
             style={{ background: "rgba(255,255,255,0.08)", color: "white" }}
           >
-            <LogOut size={16} /> ออกจากระบบ
+            <LogOut size={16} /> {t("ออกจากระบบ")}
           </button>
         </div>
-
       </motion.aside>
     </>
   );

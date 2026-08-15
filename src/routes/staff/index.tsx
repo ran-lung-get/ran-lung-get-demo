@@ -297,7 +297,7 @@ function KitchenMonitor() {
           .eq("auth_user_id", session.user.id)
           .maybeSingle();
 
-        if (error || !data || (data.role !== "staff" && data.role !== "admin" && data.role !== "captain")) {
+        if (error || !data || (data.role !== "staff" && data.role !== "admin")) {
           window.location.href = "/customer";
           return;
         }
@@ -1615,7 +1615,7 @@ function MenuManagementView() {
     setFormDesc(item.description || "");
     setFormPrice(String(item.price));
     setFormCategory(item.category);
-    setFormIsSpicy(item.is_spicy);
+    setFormIsSpicy(Boolean(item.is_spicy));
     setFormImageUrl(item.image_url || item.image || "");
     setFormImagePath(item.image || "");
     setFormOptions(Array.isArray(item.options) ? item.options.map((og: any) => ({
@@ -1985,16 +1985,51 @@ function MenuManagementView() {
               </div>
 
               {/* Spicy toggle */}
-              <div className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <Flame size={16} className="text-red-500" />
-                  <span className="text-sm font-bold text-[#002e47]">เมนูนี้มีรสเผ็ด</span>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setFormIsSpicy((prev) => !prev)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setFormIsSpicy((prev) => !prev);
+                  }
+                }}
+                className={`flex items-center justify-between rounded-xl p-3.5 border transition-all duration-200 cursor-pointer select-none ${
+                  formIsSpicy
+                    ? "bg-red-50/80 border-red-200 shadow-xs"
+                    : "bg-slate-50 border-slate-200 hover:bg-slate-100/70"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${formIsSpicy ? "bg-red-100 text-red-500" : "bg-slate-200 text-slate-400"}`}>
+                    <Flame size={18} className={formIsSpicy ? "fill-red-500 text-red-500" : ""} />
+                  </div>
+                  <div>
+                    <span className={`text-sm font-bold block ${formIsSpicy ? "text-red-700" : "text-[#002e47]"}`}>
+                      เมนูนี้มีรสเผ็ด
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {formIsSpicy ? "เปิดใช้งาน (มีรสเผ็ด)" : "ปิดใช้งาน (เมนูไม่เผ็ด)"}
+                    </span>
+                  </div>
                 </div>
                 <button
-                  onClick={() => setFormIsSpicy(!formIsSpicy)}
-                  className={`relative h-6 w-11 rounded-full transition-colors duration-200 ${formIsSpicy ? "bg-red-500" : "bg-slate-300"}`}
+                  type="button"
+                  aria-label="สลับสถานะเมนูนี้มีรสเผ็ด"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFormIsSpicy((prev) => !prev);
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    formIsSpicy ? "bg-red-500" : "bg-slate-300"
+                  }`}
                 >
-                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${formIsSpicy ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      formIsSpicy ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
                 </button>
               </div>
 

@@ -1854,31 +1854,24 @@ function AdminStaffView({
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      {user.role === "captain" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[10px] font-bold border bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed">
-                          <UserCheck size={11} /> ใช้งานได้ (Locked)
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => toggleUserActiveStatus(user.id, isActive)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[10px] font-bold border transition cursor-pointer active:scale-95 ${
-                            isActive
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-red-50 text-red-700 border-red-200"
-                          }`}
-                        >
-                          {isActive ? <UserCheck size={11} /> : <UserX size={11} />}
-                          {isActive
-                            ? "ใช้งานได้"
-                            : isApprovalsTab
-                              ? "รออนุมัติ / ระงับชั่วคราว"
-                              : "ระงับชั่วคราว"}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => toggleUserActiveStatus(user.id, isActive)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[10px] font-bold border transition cursor-pointer active:scale-95 ${
+                          isActive
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-red-50 text-red-700 border-red-200"
+                        }`}
+                      >
+                        {isActive ? <UserCheck size={11} /> : <UserX size={11} />}
+                        {isActive
+                          ? "ใช้งานได้"
+                          : isApprovalsTab
+                            ? "รออนุมัติ / ระงับชั่วคราว"
+                            : "ระงับชั่วคราว"}
+                      </button>
                     </td>
                     <td className="py-3 px-4 text-right space-x-1.5">
-                      {user.role !== "captain" ? (
-                        <div className="inline-flex gap-1.5 justify-end items-center">
+                      <div className="inline-flex gap-1.5 justify-end items-center">
                           <button
                             onClick={() => updateUserRole(user.id, "admin")}
                             className={`px-2 py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
@@ -1918,11 +1911,6 @@ function AdminStaffView({
                             <span>ลบ</span>
                           </button>
                         </div>
-                      ) : (
-                        <span className="text-[10px] font-bold italic text-rose-700">
-                          เจ้าของระบบสูงสุด
-                        </span>
-                      )}
                     </td>
                   </tr>
                 );
