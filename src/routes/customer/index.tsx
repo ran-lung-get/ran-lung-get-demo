@@ -15,6 +15,7 @@ import {
   type CartLine,
   type OrderHistory,
   type Addon,
+  type ActiveCoupon,
 } from "../../features/customer";
 
 import {
@@ -31,6 +32,8 @@ import {
   CustomerSidebar,
   HomeScreen,
   SuccessFlash,
+  RandomDishModal,
+  GachaModal,
 } from "../../features/customer/components";
 
 import {
@@ -45,7 +48,7 @@ import {
 } from "../../features/customer/hooks";
 
 // Re-export types and menu for backward compatibility
-export type { Addon, MenuItem, CartLine, OrderType, OrderHistory };
+export type { Addon, MenuItem, CartLine, OrderType, OrderHistory, ActiveCoupon };
 export { MENU };
 
 export const Route = createFileRoute("/customer/")({
@@ -116,6 +119,10 @@ function LiffApp() {
   >(null);
   const [sidebar, setSidebar] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showRandomModal, setShowRandomModal] = useState(false);
+  const [showGachaModal, setShowGachaModal] = useState(false);
+  const [earnedTicketsAmount, setEarnedTicketsAmount] = useState<number>(0);
+  const [activeCoupon, setActiveCoupon] = useState<ActiveCoupon | null>(null);
 
   const [orderType, setOrderType] = useState<OrderType | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -234,6 +241,8 @@ function LiffApp() {
                   totalQty={totalQty}
                   subtotal={subtotal}
                   onOpenMenu={() => setOverlay("menu")}
+                  onOpenRandomModal={() => setShowRandomModal(true)}
+                  onOpenGacha={() => setShowGachaModal(true)}
                   hasActiveOrder={hasActiveOrder}
                   activeOrderNumber={activeOrderNumber}
                   onGoToStatus={() => setTab("status")}
@@ -262,6 +271,7 @@ function LiffApp() {
               {tab === "status" && (
                 <StatusScreen
                   onOpenSidebar={() => setSidebar(true)}
+                  onOpenGacha={() => setShowGachaModal(true)}
                   activeOrder={
                     orderHistory.find((o) => o.orderNumber === activeOrderNumber) || orderHistory[0]
                   }
@@ -315,6 +325,7 @@ function LiffApp() {
               cart={cart}
               subtotal={subtotal}
               deliveryFee={deliveryFee}
+              activeCoupon={activeCoupon}
               onBack={() => setOverlay("menu")}
               onRemove={removeLine}
               onEdit={(line) => setEditingCartLine(line)}
@@ -324,7 +335,17 @@ function LiffApp() {
           {overlay === "payment" && (
             <PaymentOverlay
               key="pay"
-              total={subtotal + deliveryFee}
+              total={
+                Math.max(
+                  0,
+                  subtotal -
+                    (activeCoupon
+                      ? activeCoupon.discountPercent
+                        ? Math.round((subtotal * activeCoupon.discountPercent) / 100)
+                        : activeCoupon.discountAmount || 0
+                      : 0)
+                ) + deliveryFee
+              }
               cart={cart}
               orderType={orderType || "delivery"}
               deliveryFee={deliveryFee}
@@ -334,13 +355,38 @@ function LiffApp() {
               onBack={() => setOverlay("orderConfirm")}
               onSuccess={() => {
                 saveOrderToHistory(cart, orderType, selectedTable, address, tables);
+
+                const finalTotal = Math.max(
+                  0,
+                  subtotal -
+                    (activeCoupon
+                      ? activeCoupon.discountPercent
+                        ? Math.round((subtotal * activeCoupon.discountPercent) / 100)
+                        : activeCoupon.discountAmount || 0
+                      : 0)
+                ) + deliveryFee;
+
+                const earned = Math.max(1, Math.floor(finalTotal / 60));
+
+                try {
+                  const STORAGE_KEY_GACHA = "ran-lung-get-gacha-state";
+                  const saved = localStorage.getItem(STORAGE_KEY_GACHA);
+                  const curr = saved ? JSON.parse(saved) : { tickets: 10 };
+                  curr.tickets = (curr.tickets || 0) + earned;
+                  localStorage.setItem(STORAGE_KEY_GACHA, JSON.stringify(curr));
+                } catch {
+                  // ignore
+                }
+
+                setEarnedTicketsAmount(earned);
                 setShowSuccess(true);
                 setTimeout(() => {
                   setShowSuccess(false);
                   setOverlay(null);
                   setCart([]);
-                  setTab("home");
-                }, 1500);
+                  setActiveCoupon(null);
+                  setTab("status");
+                }, 1800);
               }}
             />
           )}
@@ -371,6 +417,9 @@ function LiffApp() {
               key="cd"
               cart={cart}
               subtotal={subtotal}
+              activeCoupon={activeCoupon}
+              onApplyCoupon={(c) => setActiveCoupon(c)}
+              onRemoveCoupon={() => setActiveCoupon(null)}
               onClose={() => setCartDrawer(false)}
               onRemove={removeLine}
               onEdit={(line) => {
@@ -394,6 +443,7 @@ function LiffApp() {
               onNavigate={(tNav) => {
                 setSidebar(false);
                 if (tNav === "home" || tNav === "status") setTab(tNav);
+                if (tNav === "gacha") setShowGachaModal(true);
                 if (tNav === "history") setOverlay("history");
                 if (tNav === "contact") setOverlay("contact");
               }}
@@ -455,7 +505,34 @@ function LiffApp() {
         </AnimatePresence>
 
         {/* Success Animation Flash */}
-        <AnimatePresence>{showSuccess && <SuccessFlash key="sf" />}</AnimatePresence>
+        <AnimatePresence>
+          {showSuccess && <SuccessFlash key="sf" earnedTickets={earnedTicketsAmount} />}
+        </AnimatePresence>
+
+        {/* Random Dish Generator Modal */}
+        <RandomDishModal
+          isOpen={showRandomModal}
+          onClose={() => setShowRandomModal(false)}
+          menuItems={menuItems}
+          onSelectDish={(dish) => {
+            setShowRandomModal(false);
+            setSelectedItem(dish);
+          }}
+        />
+
+        {/* Gacha & Collectible Cards Modal */}
+        <AnimatePresence>
+          {showGachaModal && (
+            <GachaModal
+              isOpen={showGachaModal}
+              onClose={() => setShowGachaModal(false)}
+              onApplyCoupon={(coupon) => {
+                setActiveCoupon(coupon);
+                setCartDrawer(true);
+              }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Floating Cart Bar */}
         <AnimatePresence>

@@ -1,15 +1,30 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { ChevronLeft, Pencil, Trash2, Phone, CreditCard } from "lucide-react";
+import { ChevronLeft, Pencil, Trash2, Phone, CreditCard, Ticket, Sparkles } from "lucide-react";
 import { useLanguage } from "../../../lib/i18n";
-import type { CartLine } from "../types";
+import type { CartLine, ActiveCoupon } from "../types";
 import { BRAND, GOLD, INK_MUTED } from "../constants/colors";
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  color,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  color?: string;
+}) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span style={{ color: bold ? BRAND : INK_MUTED, fontWeight: bold ? 600 : 400 }}>{label}</span>
-      <span className={bold ? "text-lg" : ""} style={{ color: BRAND, fontWeight: bold ? 700 : 500 }}>
+      <span style={{ color: color || (bold ? BRAND : INK_MUTED), fontWeight: bold ? 600 : 400 }}>
+        {label}
+      </span>
+      <span
+        className={bold ? "text-lg" : ""}
+        style={{ color: color || BRAND, fontWeight: bold ? 700 : 500 }}
+      >
         {value}
       </span>
     </div>
@@ -20,6 +35,7 @@ export function OrderConfirmOverlay({
   cart,
   subtotal,
   deliveryFee,
+  activeCoupon,
   onBack,
   onRemove,
   onEdit,
@@ -28,6 +44,7 @@ export function OrderConfirmOverlay({
   cart: CartLine[];
   subtotal: number;
   deliveryFee: number;
+  activeCoupon?: ActiveCoupon | null;
   onBack: () => void;
   onRemove: (id: string) => void;
   onEdit: (line: CartLine) => void;
@@ -36,7 +53,14 @@ export function OrderConfirmOverlay({
   const { t, tMenu } = useLanguage();
   const [phone, setPhone] = useState("");
   const [err, setErr] = useState("");
-  const grand = subtotal + deliveryFee;
+
+  const discountVal = activeCoupon
+    ? activeCoupon.discountPercent
+      ? Math.round((subtotal * activeCoupon.discountPercent) / 100)
+      : activeCoupon.discountAmount || 0
+    : 0;
+
+  const grand = Math.max(0, subtotal - discountVal) + deliveryFee;
 
   if (cart.length === 0) {
     return (
@@ -48,33 +72,21 @@ export function OrderConfirmOverlay({
         className="absolute inset-0 z-40 bg-[var(--surface)] overflow-y-auto no-scrollbar pb-12"
       >
         <div className="w-full" style={{ background: BRAND, color: "white" }}>
-          <div className="max-w-2xl mx-auto px-5 pt-5 pb-6">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onBack}
-                aria-label={t("กลับไปเลือกซื้ออาหาร")}
-                className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
-              >
-                <ChevronLeft size={20} color={GOLD} />
-              </button>
-              <h1 className="text-lg font-bold">{t("รายการสั่งซื้อในตะกร้า")}</h1>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-2xl mx-auto px-5 mt-8 text-center space-y-4">
-          <div className="bg-white rounded-3xl p-8 shadow-xs space-y-3">
-            <p className="text-base font-semibold text-slate-700">{t("ไม่มีรายการสินค้าในตะกร้าของคุณ")}</p>
-            <p className="text-xs text-slate-500">{t("กรุณาเลือกอาหารจากเมนูก่อนทำการชำระเงิน")}</p>
+          <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
             <button
               type="button"
               onClick={onBack}
-              className="mt-4 px-6 py-3 rounded-full font-bold text-white shadow-md cursor-pointer"
-              style={{ background: BRAND }}
+              aria-label="ย้อนกลับ"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white cursor-pointer hover:bg-white/20 transition"
             >
-              {t("กลับไปเลือกซื้ออาหาร")}
+              <ChevronLeft size={20} />
             </button>
+            <h1 className="text-lg font-bold">{t("สรุปคำสั่งซื้อ")}</h1>
+            <div className="w-10" />
           </div>
+        </div>
+        <div className="max-w-md mx-auto px-5 mt-16 text-center text-slate-400">
+          <p className="text-sm font-medium">{t("ยังไม่มีรายการในตะกร้า")}</p>
         </div>
       </motion.div>
     );
@@ -88,44 +100,45 @@ export function OrderConfirmOverlay({
       transition={{ type: "tween", duration: 0.3 }}
       className="absolute inset-0 z-40 bg-[var(--surface)] overflow-y-auto no-scrollbar pb-12"
     >
-      <div className="w-full" style={{ background: BRAND, color: "white" }}>
-        <div className="max-w-2xl mx-auto px-5 pt-5 pb-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label={t("ย้อนกลับไปหน้าสั่งอาหาร")}
-              title={t("ย้อนกลับไปหน้าสั่งอาหาร")}
-              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/15 cursor-pointer"
-            >
-              <ChevronLeft size={20} color={GOLD} />
-            </button>
-            <h1 className="text-lg font-bold">{t("รายการสั่งซื้อในตะกร้า")}</h1>
-          </div>
-          <p className="text-sm mt-2 text-white/70">{t("ตรวจสอบรายการก่อนชำระเงิน")}</p>
+      <div className="w-full sticky top-0 z-10 shadow-xs" style={{ background: BRAND, color: "white" }}>
+        <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="ย้อนกลับ"
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white cursor-pointer hover:bg-white/20 transition"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h1 className="text-lg font-bold">{t("สรุปคำสั่งซื้อ")}</h1>
+          <div className="w-10" />
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-5 mt-4 space-y-3">
+      <div className="max-w-md mx-auto px-5 mt-4 space-y-4">
         {cart.map((l) => (
           <div key={l.id} className="bg-white rounded-2xl p-4 shadow-xs">
             <div className="flex gap-3">
-              <img src={encodeURI(String(l.image))} alt={tMenu(l.name, "name")} className="h-16 w-16 rounded-xl object-cover" />
+              <img
+                src={encodeURI(String(l.image))}
+                alt={tMenu(l.name, "name")}
+                className="h-16 w-16 rounded-xl object-cover shrink-0"
+              />
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-sm" style={{ color: BRAND }}>
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-sm truncate" style={{ color: BRAND }}>
                     {tMenu(l.name, "name")}
                   </h3>
                   <span className="font-bold text-sm" style={{ color: BRAND }}>
                     ฿{l.price * l.qty}
                   </span>
                 </div>
-                <p className="text-xs mt-1" style={{ color: INK_MUTED }}>
-                  {t("จำนวน")} × {l.qty} · ฿{l.price}/{t("ชิ้น")}
+                <p className="text-xs mt-0.5" style={{ color: INK_MUTED }}>
+                  {t("จำนวน")}: {l.qty}
                 </p>
                 {l.addons.length > 0 && (
                   <p className="text-xs mt-0.5" style={{ color: INK_MUTED }}>
-                    + {l.addons.map((a) => t(a.name) || tMenu(a.name, "name")).join(", ")}
+                    {t("ตัวเลือกเสริม")}: {l.addons.map((a) => t(a.name) || tMenu(a.name, "name")).join(", ")}
                   </p>
                 )}
                 {l.note && (
@@ -156,19 +169,54 @@ export function OrderConfirmOverlay({
           </div>
         ))}
 
+        {/* Gacha Coupon Applied Badge */}
+        {activeCoupon && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-purple-500/10 to-amber-500/15 border border-amber-300/60 rounded-2xl p-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Ticket size={18} className="text-amber-600 shrink-0" />
+              <div>
+                <p className="text-xs font-black text-amber-950">{activeCoupon.name}</p>
+                <p className="text-[11px] text-amber-800">{activeCoupon.description}</p>
+              </div>
+            </div>
+            <span className="text-xs font-black text-emerald-600 shrink-0 bg-white px-2 py-1 rounded-full shadow-xs">
+              -฿{discountVal}
+            </span>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl p-4 shadow-xs space-y-2.5">
           <h3 className="font-semibold mb-2" style={{ color: BRAND }}>
             {t("สรุปคำสั่งซื้อ")}
           </h3>
           <Row label={t("ยอดรวมอาหาร")} value={`฿${subtotal}`} />
+          {discountVal > 0 && (
+            <Row
+              label="ส่วนลดคูปองกาชา"
+              value={`-฿${discountVal}`}
+              color="#059669"
+            />
+          )}
           <Row label={t("ค่าจัดส่ง")} value={`฿${deliveryFee}`} />
           <div className="border-t pt-2.5 mt-2.5" style={{ borderColor: "#f1ece4" }}>
             <Row label={t("รวมทั้งหมด")} value={`฿${grand}`} bold />
           </div>
+
+          {/* Ticket Reward Preview */}
+          <div className="mt-3 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-900 text-xs font-black">
+            <Ticket size={15} className="text-amber-600 shrink-0" />
+            <span>
+              {t("สั่งซื้อออเดอร์นี้ รับตั๋วสุ่มกาชาฟรี")} +{Math.max(1, Math.floor(grand / 60))} {t("ใบ")}! 🎫
+            </span>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-xs">
-          <label htmlFor="customer-phone" className="text-sm font-semibold flex items-center gap-2" style={{ color: BRAND }}>
+          <label
+            htmlFor="customer-phone"
+            className="text-sm font-semibold flex items-center gap-2"
+            style={{ color: BRAND }}
+          >
             <Phone size={14} /> {t("เบอร์โทรสำหรับติดต่อ")}
           </label>
           <input
@@ -184,7 +232,7 @@ export function OrderConfirmOverlay({
             style={{ borderColor: err ? "#ef4444" : "#ece4d6", color: BRAND }}
           />
           {err && <p className="text-xs text-red-500 mt-1">{err}</p>}
-          
+
           <div className="pb-8 mt-4">
             <button
               type="button"
@@ -197,11 +245,11 @@ export function OrderConfirmOverlay({
               }}
               className="w-full h-14 rounded-full font-bold text-white shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
               style={{
-                background: "linear-gradient(135deg, #635bff 0%, #8073ea 100%)",
+                background: `linear-gradient(135deg, ${BRAND} 0%, #001f30 100%)`,
               }}
             >
               <CreditCard size={18} />
-              <span>ชำระผ่าน Stripe · ฿{grand.toLocaleString()}</span>
+              <span>{t("ดำเนินการชำระเงิน")} · ฿{grand.toLocaleString()}</span>
             </button>
           </div>
         </div>

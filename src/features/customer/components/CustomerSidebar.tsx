@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Home as HomeIcon, ClipboardList, History, MessageCircle, User, LogOut } from "lucide-react";
+import { Home as HomeIcon, ClipboardList, History, MessageCircle, User, LogOut, Sparkles } from "lucide-react";
 import { useLanguage } from "../../../lib/i18n";
 import type { LiffProfile } from "../../../lib/liff";
 import type { OrderHistory } from "../types";
@@ -25,6 +25,7 @@ export function CustomerSidebar({
   const { t } = useLanguage();
   const items = [
     { id: "home", label: t("หน้าแรก"), icon: HomeIcon },
+    { id: "gacha", label: t("ตู้คำอธิษฐาน & สะสมการ์ด"), icon: Sparkles, badge: "NEW!" },
     { id: "status", label: t("สถานะการสั่งซื้อ"), icon: ClipboardList },
     { id: "history", label: t("ประวัติการสั่งซื้อ"), icon: History },
     { id: "contact", label: t("ติดต่อเรา"), icon: MessageCircle },
@@ -80,6 +81,11 @@ export function CustomerSidebar({
               >
                 <it.icon size={18} color={GOLD} />
                 <span className="font-medium text-sm">{it.label}</span>
+                {it.badge && (
+                  <span className="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full bg-linear-to-r from-amber-400 to-yellow-300 text-slate-950 animate-pulse">
+                    {it.badge}
+                  </span>
+                )}
                 {it.id === "history" && orderHistory.length > 0 && (
                   <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: GOLD, color: BRAND }}>
                     {orderHistory.length}

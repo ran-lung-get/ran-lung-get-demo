@@ -11,6 +11,10 @@ import {
   ChevronLeft,
   Star,
   Plus,
+  Dices,
+  Sparkles,
+  Gift,
+  ThumbsUp,
 } from "lucide-react";
 import { useLanguage, type Language } from "../../../lib/i18n";
 import type { MenuItem, OrderType } from "../types";
@@ -30,6 +34,8 @@ export function HomeScreen({
   totalQty,
   subtotal: _subtotal,
   onOpenMenu,
+  onOpenRandomModal,
+  onOpenGacha,
   hasActiveOrder,
   activeOrderNumber,
   onGoToStatus,
@@ -61,6 +67,8 @@ export function HomeScreen({
   totalQty: number;
   subtotal: number;
   onOpenMenu: () => void;
+  onOpenRandomModal?: () => void;
+  onOpenGacha?: () => void;
   hasActiveOrder: boolean;
   activeOrderNumber: string;
   onGoToStatus: () => void;
@@ -464,22 +472,83 @@ export function HomeScreen({
         </div>
       )}
 
+      {/* Gacha & Cards Lucky Banner */}
+      {onOpenGacha && (
+        <div className="px-5 md:px-12 mt-6 max-w-7xl mx-auto w-full">
+          <button
+            type="button"
+            onClick={onOpenGacha}
+            className="w-full text-left group relative rounded-3xl p-4 sm:p-5 text-white shadow-xl cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] overflow-hidden border border-amber-400/30 hover:border-amber-400/60 block"
+            style={{
+              background: "linear-gradient(135deg, #001f30 0%, #002e47 50%, #1e1035 100%)",
+            }}
+          >
+            {/* Glow ambient background */}
+            <div className="absolute top-0 right-0 h-40 w-40 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-2xl bg-linear-to-tr from-amber-500 to-yellow-300 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/25 shrink-0 group-hover:scale-105 transition-transform duration-300">
+                  <ThumbsUp size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider">
+                      {t("ตู้คำอธิษฐาน & สะสมการ์ด (Gacha)")}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      {t("สุ่มฟรีประจำวัน!")}
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-white leading-tight">
+                    {t("ตู้คำอธิษฐาน & สมุดสะสมการ์ดลุงเกตุ")}
+                  </h3>
+                  <p className="text-xs text-slate-300 font-light mt-0.5 line-clamp-1 sm:line-clamp-none">
+                    {t("ลุ้นรับส่วนลด 50%, ฟรีอาหารจานเด็ด และสะสมการ์ดระดับ UR/SSR ครบเซ็ตรับรางวัลใหญ่!")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="self-start sm:self-auto px-4 py-2.5 rounded-2xl bg-linear-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 flex items-center gap-1.5 shrink-0 group-hover:from-amber-400 group-hover:to-yellow-300 transition-all">
+                <span>{t("หมุนกาชาเลย")}</span>
+                <ChevronRight size={14} strokeWidth={3} />
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
+
       {/* Menu list (horizontal slider) */}
       <div className="px-5 md:px-12 mt-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold" style={{ color: BRAND }}>
             {t("เมนูแนะนำ")}
           </h2>
-          <button
-            type="button"
-            aria-label={t("เมนูทั้งหมด")}
-            onClick={onOpenMenu}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-[#fcc14a]/20 hover:bg-[#fcc14a]/30 active:scale-95 px-3.5 py-1.5 rounded-full border border-[#fcc14a]/50 transition-all duration-200 cursor-pointer shadow-xs"
-          >
-            <Utensils size={13} className="text-[#002e47]" />
-            <span>{t("เมนูทั้งหมด")}</span>
-            <ChevronRight size={14} className="text-[#002e47]" />
-          </button>
+
+          <div className="flex items-center gap-2">
+            {onOpenRandomModal && (
+              <button
+                type="button"
+                aria-label="สุ่มเมนูว่าจะกินอะไรดี"
+                title="สุ่มเมนูว่าจะกินอะไรดี"
+                onClick={onOpenRandomModal}
+                className="grid h-8 w-8 place-items-center rounded-full text-[#002e47] bg-[#fcc14a]/30 hover:bg-[#fcc14a]/45 active:scale-95 border border-[#fcc14a]/60 transition-all duration-200 cursor-pointer shadow-xs"
+              >
+                <Dices size={16} className="text-[#002e47]" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              aria-label={t("เมนูทั้งหมด")}
+              onClick={onOpenMenu}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-[#fcc14a]/20 hover:bg-[#fcc14a]/30 active:scale-95 px-3.5 py-1.5 rounded-full border border-[#fcc14a]/50 transition-all duration-200 cursor-pointer shadow-xs"
+            >
+              <Utensils size={13} className="text-[#002e47]" />
+              <span>{t("เมนูทั้งหมด")}</span>
+              <ChevronRight size={14} className="text-[#002e47]" />
+            </button>
+          </div>
         </div>
         <div className="relative">
           {/* Left arrow */}

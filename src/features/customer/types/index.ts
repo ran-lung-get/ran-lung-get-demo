@@ -49,3 +49,5 @@ export type OrderHistory = {
   tableNumber?: string;
   note?: string;
 };
+
+export * from "./gacha";
