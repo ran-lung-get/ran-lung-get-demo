@@ -1,16 +1,20 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, CheckCircle, Check, ChefHat, PartyPopper, ShoppingBag, Bike } from "lucide-react";
+import { Menu, CheckCircle, Check, ChefHat, PartyPopper, ShoppingBag, Bike, Ticket } from "lucide-react";
 import type { OrderHistory } from "../types";
 import { BRAND, GOLD, INK_MUTED, SURFACE } from "../constants/colors";
+import { useLanguage } from "../../../lib/i18n";
 
 export function StatusScreen({
   onOpenSidebar,
   activeOrder,
+  onOpenGacha,
 }: {
   onOpenSidebar: () => void;
   activeOrder?: OrderHistory;
+  onOpenGacha?: () => void;
 }) {
+  const { t } = useLanguage();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -311,6 +315,32 @@ export function StatusScreen({
                   })}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Gacha Wish & Cards Reward Banner */}
+          {onOpenGacha && (
+            <div className="mt-4 rounded-2xl p-4 bg-linear-to-r from-slate-950 via-indigo-950 to-slate-950 border border-amber-400/30 text-white shadow-lg flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-md">
+                  <Ticket size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-amber-300">
+                    {t("ได้รับตั๋วสุ่มกาชาจากออเดอร์นี้!")}
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    {t("นำตั๋วไปสุ่มลุ้นรับส่วนลด 50% และสะสมการ์ดลุงเกตุ")}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenGacha}
+                className="px-3.5 py-2 rounded-xl bg-linear-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs shadow-md shrink-0 cursor-pointer active:scale-95 transition-all"
+              >
+                {t("หมุนกาชาเลย")}
+              </button>
             </div>
           )}
 

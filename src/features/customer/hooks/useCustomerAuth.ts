@@ -54,12 +54,22 @@ export function useCustomerAuth(navigate: (opts: { to: string }) => void) {
           return;
         }
 
-        // 2. ไม่มี session ใดเลย → redirect ไป login
-        if (!cancelled) navigate({ to: "/login" });
+        // 2. Default to guest mode so customer route always renders seamlessly
+        if (!cancelled) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("ran-lung-get-guest", "true");
+          }
+          setProfile({ userId: "guest", displayName: "ลูกค้าหน้าร้าน" } as LiffProfile);
+          setLiffReady(true);
+        }
       } catch (err) {
         if (!cancelled) {
           console.error("[Auth Guard error]", err);
-          navigate({ to: "/login" });
+          if (typeof window !== "undefined") {
+            localStorage.setItem("ran-lung-get-guest", "true");
+          }
+          setProfile({ userId: "guest", displayName: "ลูกค้าหน้าร้าน" } as LiffProfile);
+          setLiffReady(true);
         }
       }
     }

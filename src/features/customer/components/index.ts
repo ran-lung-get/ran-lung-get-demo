@@ -9,8 +9,6 @@ export { OrderConfirmOverlay } from "./OrderConfirmOverlay";
 export {
   PaymentOverlay,
   MockQR,
-  StripeVerifyingFlash,
-  StripeErrorOverlay,
   SuccessFlash,
 } from "./PaymentOverlay";
 export { StatusScreen } from "./StatusScreen";
@@ -20,3 +18,5 @@ export { ContactOverlay } from "./ContactOverlay";
 export { StoreClosedOverlay } from "./StoreClosedOverlay";
 export { CustomerSidebar } from "./CustomerSidebar";
 export { HomeScreen } from "./HomeScreen";
+export { RandomDishModal } from "./RandomDishModal";
+export { GachaModal } from "./gacha/GachaModal";

@@ -66,15 +66,28 @@ export function useStripeCheckoutVerification({
               );
 
               if (savedOk) {
+                // Award gacha tickets
+                try {
+                  const orderTotal =
+                    pending.cart.reduce((sum: number, it: any) => sum + it.price * it.qty, 0) +
+                    (pending.deliveryFee || 0);
+                  const earned = Math.max(1, Math.floor(orderTotal / 60));
+                  const STORAGE_KEY_GACHA = "ran-lung-get-gacha-state";
+                  const saved = localStorage.getItem(STORAGE_KEY_GACHA);
+                  const curr = saved ? JSON.parse(saved) : { tickets: 10 };
+                  curr.tickets = (curr.tickets || 0) + earned;
+                  localStorage.setItem(STORAGE_KEY_GACHA, JSON.stringify(curr));
+                } catch {}
+
                 setCart([]);
                 localStorage.removeItem("ran-lung-get-pending-stripe-order");
                 setShowSuccess(true);
                 setOverlay(null);
-                setTab("home");
+                setTab("status");
 
                 setTimeout(() => {
                   setShowSuccess(false);
-                }, 2000);
+                }, 2500);
               } else {
                 setStripeError("ไม่สามารถทำรายการได้ สินค้าในตะกร้าถูกลบหรือไม่มีข้อมูล");
                 localStorage.removeItem("ran-lung-get-pending-stripe-order");
