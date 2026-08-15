@@ -13,7 +13,6 @@ export function getDevBypassRole(): string | null {
   const path = window.location.pathname;
   if (path.includes("/admin")) return "admin";
   if (path.includes("/staff")) return "staff";
-  if (path.includes("/captain")) return "captain";
   if (path.includes("/customer")) return "customer";
 
   return "customer";
