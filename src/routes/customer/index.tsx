@@ -598,10 +598,10 @@ function LiffApp() {
             <button
               type="button"
               onClick={resetAll}
-              className="w-full max-w-md h-12 rounded-full font-semibold cursor-pointer"
+              className="w-full max-w-md h-12 rounded-full font-semibold cursor-pointer shadow-md active:scale-[0.98] transition-all"
               style={{ background: BRAND, color: "white" }}
             >
-              กลับไปยังหน้าหลัก
+              {t("กลับไปยังหน้าหลัก")}
             </button>
           </div>
         )}

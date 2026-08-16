@@ -14,7 +14,7 @@ export function StatusScreen({
   activeOrder?: OrderHistory;
   onOpenGacha?: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, tMenu } = useLanguage();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -26,21 +26,21 @@ export function StatusScreen({
 
   const steps = orderType === "dine-in"
     ? [
-      { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-      { id: 2, label: "กำลังทำอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-      { id: 3, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
+      { id: 1, label: t("รับออเดอร์"), icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+      { id: 2, label: t("กำลังทำอาหาร"), icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+      { id: 3, label: t("เสร็จสิ้น"), icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
     ]
     : orderType === "takeaway"
       ? [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-        { id: 3, label: "พร้อมรับอาหาร", icon: ShoppingBag, done: currentStatus === "สำเร็จ", active: false },
+        { id: 1, label: t("รับออเดอร์"), icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+        { id: 3, label: t("พร้อมรับอาหาร"), icon: ShoppingBag, done: currentStatus === "สำเร็จ", active: false },
       ]
       : [
-        { id: 1, label: "รับออเดอร์", icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-        { id: 2, label: "กำลังเตรียมอาหาร", icon: ChefHat, done: currentStatus === "กำลังจัดส่ง" || currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-        { id: 3, label: "คนรับอาหาร/กำลังขับไป", icon: Bike, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังจัดส่ง" },
-        { id: 4, label: "เสร็จสิ้น", icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
+        { id: 1, label: t("รับออเดอร์"), icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
+        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat, done: currentStatus === "กำลังจัดส่ง" || currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
+        { id: 3, label: t("คนรับอาหาร/กำลังขับไป"), icon: Bike, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังจัดส่ง" },
+        { id: 4, label: t("เสร็จสิ้น"), icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
       ];
 
   const orderItems = activeOrder
@@ -55,8 +55,8 @@ export function StatusScreen({
   const statusTheme = useMemo(() => {
     if (currentStatus === "ขอคืนเงิน") {
       return {
-        title: "ยื่นขอคืนเงินแล้ว",
-        subtitle: "ร้านค้ากำลังตรวจสอบและโอนเงินคืนตามพร้อมเพย์ที่ท่านระบุ",
+        title: t("ยื่นขอคืนเงินแล้ว"),
+        subtitle: t("ร้านค้ากำลังตรวจสอบและโอนเงินคืนตามพร้อมเพย์ที่ท่านระบุ"),
         color: "#f59e0b",
         bg: "rgba(245, 158, 11, 0.08)",
         iconColor: "#f59e0b"
@@ -64,8 +64,8 @@ export function StatusScreen({
     }
     if (currentStatus === "ยกเลิกแล้ว") {
       return {
-        title: "ออเดอร์ถูกยกเลิกแล้ว",
-        subtitle: "การคืนเงินสำเร็จหรือยกเลิกคำสั่งซื้อเรียบร้อยแล้ว",
+        title: t("ออเดอร์ถูกยกเลิกแล้ว"),
+        subtitle: t("การคืนเงินสำเร็จหรือยกเลิกคำสั่งซื้อเรียบร้อยแล้ว"),
         color: "#ef4444",
         bg: "rgba(239, 68, 68, 0.08)",
         iconColor: "#ef4444"
@@ -73,42 +73,42 @@ export function StatusScreen({
     }
     if (currentStatus === "รอรับออเดอร์") {
       return {
-        title: "กำลังรอรับออเดอร์",
-        subtitle: "ร้านค้ากำลังตรวจสอบสลิปและเตรียมเข้าครัว",
+        title: t("กำลังรอรับออเดอร์"),
+        subtitle: t("ร้านค้ากำลังตรวจสอบสลิปและเตรียมเข้าครัว"),
         color: "#3b82f6",
         bg: "rgba(59, 130, 246, 0.08)",
         iconColor: "#3b82f6"
       };
     }
     return {
-      title: currentStatus === "สำเร็จ" ? "รายการสำเร็จ" : "กำลังดำเนินการ",
+      title: currentStatus === "สำเร็จ" ? t("รายการสำเร็จ") : t("กำลังดำเนินการ"),
       subtitle: currentStatus === "สำเร็จ"
         ? ""
-        : (orderType === "dine-in" ? "รอเสิร์ฟอาหารในอีก 10 นาที" : "รอรับอาหารในอีก 14 นาที"),
+        : (orderType === "dine-in" ? t("รอเสิร์ฟอาหารในอีก 10 นาที") : t("รอรับอาหารในอีก 14 นาที")),
       color: "#10b981",
       bg: "rgba(16, 185, 129, 0.08)",
       iconColor: "#10b981"
     };
-  }, [currentStatus, orderType]);
+  }, [currentStatus, orderType, t]);
 
   const cancelReasonsList = [
-    "สั่งอาหารผิดเมนู / ลืมเพิ่มบางรายการ",
-    "ต้องการเปลี่ยนที่อยู่จัดส่ง / วิธีรับอาหาร",
-    "รอนานเกินไป / เปลี่ยนใจไม่ทานแล้ว",
-    "อื่น ๆ (ระบุด้านล่าง)"
+    t("สั่งอาหารผิดเมนู / ลืมเพิ่มบางรายการ"),
+    t("ต้องการเปลี่ยนที่อยู่จัดส่ง / วิธีรับอาหาร"),
+    t("รอนานเกินไป / เปลี่ยนใจไม่ทานแล้ว"),
+    t("อื่น ๆ (ระบุด้านล่าง)")
   ];
 
   const handleRequestCancel = () => {
     if (!selectedReason) {
-      setErrorText("กรุณาเลือกเหตุผลในการยกเลิก");
+      setErrorText(t("กรุณาเลือกเหตุผลในการยกเลิก"));
       return;
     }
-    if (selectedReason === "อื่น ๆ (ระบุด้านล่าง)" && !customReason.trim()) {
-      setErrorText("กรุณาระบุรายละเอียดเหตุผลเพิ่มเติม");
+    if (selectedReason === t("อื่น ๆ (ระบุด้านล่าง)") && !customReason.trim()) {
+      setErrorText(t("กรุณาระบุรายละเอียดเหตุผลเพิ่มเติม"));
       return;
     }
     if (!promptPayNumber.trim()) {
-      setErrorText("กรุณากรอกเบอร์พร้อมเพย์ หรือเลขบัญชีธนาคารสำหรับรับเงินคืน");
+      setErrorText(t("กรุณากรอกเบอร์พร้อมเพย์ หรือเลขบัญชีธนาคารสำหรับรับเงินคืน"));
       return;
     }
 
@@ -150,15 +150,15 @@ export function StatusScreen({
           <div className="mx-5 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col gap-1.5 shadow-xs">
             <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
               <span className="animate-pulse">●</span>
-              <span>กำลังดำเนินการคืนเงิน</span>
+              <span>{t("กำลังดำเนินการคืนเงิน")}</span>
             </div>
             <p className="text-xs text-amber-700 leading-relaxed font-medium">
-              ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน
+              {t("ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน")}
               <strong className="text-amber-900 mx-1">฿{total.toLocaleString()}</strong>
-              ไปที่พร้อมเพย์: <strong className="text-amber-900">{activeOrder?.refundPromptPay}</strong>
+              {t("ไปที่พร้อมเพย์:")} <strong className="text-amber-900">{activeOrder?.refundPromptPay}</strong>
             </p>
             <p className="text-[10px] text-amber-600">
-              หากต้องการสอบถามเพิ่มเติม โทรหาร้านค้าได้โดยตรงที่ด้านล่าง
+              {t("หากต้องการสอบถามเพิ่มเติม โทรหาร้านค้าได้โดยตรงที่ด้านล่าง")}
             </p>
           </div>
         )}
@@ -167,10 +167,10 @@ export function StatusScreen({
           <div className="mx-5 mt-4 p-4 rounded-2xl bg-red-50 border border-red-200 flex flex-col gap-1 shadow-xs">
             <div className="flex items-center gap-2 text-red-800 font-bold text-sm">
               <span>●</span>
-              <span>ยกเลิกออเดอร์สำเร็จ</span>
+              <span>{t("ยกเลิกออเดอร์สำเร็จ")}</span>
             </div>
             <p className="text-xs text-red-700 font-medium">
-              ออเดอร์นี้ได้ทำการยกเลิกและคืนเงินเรียบร้อยแล้ว
+              {t("ออเดอร์นี้ได้ทำการยกเลิกและคืนเงินเรียบร้อยแล้ว")}
             </p>
           </div>
         )}
@@ -178,7 +178,7 @@ export function StatusScreen({
         <div className="px-5 py-4 bg-white border-b flex items-center gap-3" style={{ borderColor: "#eef2f6" }}>
           <button
             type="button"
-            aria-label="เปิดเมนูด้านข้าง"
+            aria-label={t("เปิดเมนูด้านข้าง")}
             onClick={onOpenSidebar}
             className="grid h-10 w-10 place-items-center rounded-full cursor-pointer hover:bg-slate-100 transition"
             style={{ background: SURFACE, color: BRAND }}
@@ -186,7 +186,7 @@ export function StatusScreen({
             <Menu size={20} />
           </button>
           <h1 className="text-lg font-bold" style={{ color: BRAND }}>
-            สถานะการสั่งซื้อ
+            {t("สถานะการสั่งซื้อ")}
           </h1>
         </div>
 
@@ -216,13 +216,13 @@ export function StatusScreen({
               className="mt-4 px-6 py-2.5 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-purple-50 border-purple-200 w-[90%] mx-auto"
             >
               <span className="text-[10px] uppercase font-black tracking-widest text-purple-600">
-                คิวรับอาหารกลับบ้าน (Takeaway Queue)
+                {t("คิวรับอาหารกลับบ้าน")} (Takeaway Queue)
               </span>
               <span className="text-3xl font-black mt-0.5" style={{ color: BRAND }}>
                 {activeOrder.queueNumber}
               </span>
               <span className="text-[10px] text-slate-400 mt-1 text-center leading-normal font-bold">
-                * โปรดแสดงหมายเลขคิวนี้ต่อพนักงานที่เคาน์เตอร์เพื่อรับอาหาร
+                {t("* โปรดแสดงหมายเลขคิวนี้ต่อพนักงานที่เคาน์เตอร์เพื่อรับอาหาร")}
               </span>
             </motion.div>
           )}
@@ -232,7 +232,7 @@ export function StatusScreen({
           <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs" style={{ color: INK_MUTED }}>
-                หมายเลขออเดอร์
+                {t("หมายเลขออเดอร์")}
               </p>
               <p className="text-sm font-bold" style={{ color: BRAND }}>
                 {activeOrder ? activeOrder.orderNumber : "#AK-2847"}
@@ -242,7 +242,7 @@ export function StatusScreen({
               {orderItems.map((o, i) => (
                 <div key={i} className="flex items-center justify-between text-sm">
                   <span style={{ color: BRAND }}>
-                    {o.name} <span style={{ color: INK_MUTED }}>× {o.qty}</span>
+                    {tMenu(o.name)} <span style={{ color: INK_MUTED }}>× {o.qty}</span>
                   </span>
                   <span className="font-medium" style={{ color: BRAND }}>
                     ฿{o.price * o.qty}
@@ -252,7 +252,7 @@ export function StatusScreen({
             </div>
             <div className="mt-3 pt-3 border-t flex items-center justify-between" style={{ borderColor: "#f1ece4" }}>
               <span className="text-sm" style={{ color: INK_MUTED }}>
-                รวมทั้งหมด
+                {t("รวมทั้งหมด")}
               </span>
               <span className="text-lg font-bold" style={{ color: BRAND }}>
                 ฿{total.toLocaleString()}
@@ -264,7 +264,7 @@ export function StatusScreen({
           {currentStatus !== "ขอคืนเงิน" && currentStatus !== "ยกเลิกแล้ว" && (
             <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-100">
               <h3 className="font-bold mb-4" style={{ color: BRAND }}>
-                ติดตามสถานะ
+                {t("ติดตามสถานะ")}
               </h3>
               <div className="relative">
                 <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-[#eef2f6]" />
@@ -307,7 +307,7 @@ export function StatusScreen({
                             {s.label}
                           </p>
                           <p className="text-xs" style={{ color: INK_MUTED }}>
-                            {isDone ? "เสร็จสมบูรณ์" : isCurrent ? "กำลังดำเนินการ" : "รอดำเนินการ"}
+                            {isDone ? t("เสร็จสมบูรณ์") : isCurrent ? t("กำลังดำเนินการ") : t("รอดำเนินการ")}
                           </p>
                         </div>
                       </div>
@@ -352,7 +352,7 @@ export function StatusScreen({
                 onClick={() => setShowCancelDialog(true)}
                 className="w-full py-3.5 rounded-full font-bold text-sm transition-all hover:bg-red-50 border border-red-200 text-red-500 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
               >
-                <span>ยกเลิกและขอคืนเงิน</span>
+                <span>{t("ยกเลิกและขอคืนเงิน")}</span>
               </button>
             )}
 
@@ -361,7 +361,7 @@ export function StatusScreen({
               href="tel:0891234567"
               className="w-full py-3.5 rounded-full font-bold text-sm bg-white border border-[#ece4d6] text-[#002e47] cursor-pointer active:scale-95 flex items-center justify-center gap-2 hover:bg-slate-50 transition"
             >
-              <span>📞 ติดต่อร้านลุงเกตุ (ด่วน)</span>
+              <span>📞 {t("ติดต่อร้านลุงเกตุ (ด่วน)")}</span>
             </a>
           </div>
         </div>
@@ -386,9 +386,9 @@ export function StatusScreen({
               transition={{ type: "tween", duration: 0.25 }}
               className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl overflow-y-auto max-h-[85vh] z-10 text-[#002e47]"
             >
-              <h3 className="text-lg font-black tracking-tight mb-2">ยกเลิกคำสั่งซื้อและขอคืนเงิน</h3>
+              <h3 className="text-lg font-black tracking-tight mb-2">{t("ยกเลิกคำสั่งซื้อและขอคืนเงิน")}</h3>
               <p className="text-xs text-slate-500 mb-4">
-                กรุณาระบุเหตุผลและข้อมูลพร้อมเพย์สำหรับรับเงินคืนจำนวน <strong>฿{total.toLocaleString()}</strong>
+                {t("กรุณาระบุเหตุผลและข้อมูลพร้อมเพย์สำหรับรับเงินคืนจำนวน")} <strong>฿{total.toLocaleString()}</strong>
               </p>
 
               {errorText && (
@@ -398,7 +398,7 @@ export function StatusScreen({
               )}
 
               <div className="space-y-2 mb-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">เหตุผลในการยกเลิก</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t("เหตุผลในการยกเลิก")}</p>
                 {cancelReasonsList.map((reason) => (
                   <label
                     key={reason}
@@ -423,10 +423,10 @@ export function StatusScreen({
                 ))}
               </div>
 
-              {selectedReason === "อื่น ๆ (ระบุด้านล่าง)" && (
+              {selectedReason === t("อื่น ๆ (ระบุด้านล่าง)") && (
                 <div className="mb-4">
                   <textarea
-                    placeholder="พิมพ์ระบุเหตุผลการยกเลิกที่นี่..."
+                    placeholder={t("พิมพ์ระบุเหตุผลการยกเลิกที่นี่...")}
                     value={customReason}
                     onChange={(e) => setCustomReason(e.target.value)}
                     rows={3}
@@ -436,10 +436,10 @@ export function StatusScreen({
               )}
 
               <div className="mb-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ข้อมูลการรับเงินคืน</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t("ข้อมูลการรับเงินคืน")}</p>
                 <input
                   type="text"
-                  placeholder="เบอร์พร้อมเพย์ หรือ บัญชีธนาคาร + ชื่อบัญชี"
+                  placeholder={t("เบอร์พร้อมเพย์ หรือ บัญชีธนาคาร + ชื่อบัญชี")}
                   value={promptPayNumber}
                   onChange={(e) => {
                     setPromptPayNumber(e.target.value);
@@ -455,7 +455,7 @@ export function StatusScreen({
                   onClick={() => setShowCancelDialog(false)}
                   className="w-full py-3.5 rounded-full font-bold text-xs bg-slate-100 text-slate-500 cursor-pointer hover:bg-slate-200 transition"
                 >
-                  ย้อนกลับ
+                  {t("ย้อนกลับ")}
                 </button>
                 <button
                   type="button"
@@ -463,7 +463,7 @@ export function StatusScreen({
                   className="w-full py-3.5 rounded-full font-bold text-xs text-white cursor-pointer hover:opacity-95 transition"
                   style={{ background: BRAND }}
                 >
-                  ยืนยันขอยกเลิก
+                  {t("ยืนยันขอยกเลิก")}
                 </button>
               </div>
             </motion.div>

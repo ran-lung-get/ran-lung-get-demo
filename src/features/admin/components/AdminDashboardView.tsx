@@ -14,9 +14,18 @@ import {
   Users,
   TrendingUp,
   Flame,
+  Trash2,
 } from "lucide-react";
 
-export function AdminDashboardView({ orders, loading }: { orders: any[]; loading: boolean }) {
+export function AdminDashboardView({
+  orders,
+  loading,
+  onOpenResetModal,
+}: {
+  orders: any[];
+  loading: boolean;
+  onOpenResetModal?: () => void;
+}) {
   const [timeRange, setTimeRange] = useState<"today" | "7days" | "30days" | "all">("all");
 
   const filteredOrders = useMemo(() => {
@@ -143,21 +152,35 @@ export function AdminDashboardView({ orders, loading }: { orders: any[]; loading
         <span className="text-xs font-black text-[#002e47]">
           📅 เลือกช่วงเวลาสรุปข้อมูลแดชบอร์ด:
         </span>
-        <div className="flex flex-wrap gap-1">
-          {rangeOptions.map((opt) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1">
+            {rangeOptions.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setTimeRange(opt.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                  timeRange === opt.id
+                    ? "bg-[#002e47] text-white shadow-xs"
+                    : "bg-slate-50 text-[#5a6e7a] hover:text-[#002e47] hover:bg-slate-100"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {onOpenResetModal && (
             <button
-              key={opt.id}
               type="button"
-              onClick={() => setTimeRange(opt.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
-                timeRange === opt.id
-                  ? "bg-[#002e47] text-white shadow-xs"
-                  : "bg-slate-50 text-[#5a6e7a] hover:text-[#002e47] hover:bg-slate-100"
-              }`}
+              onClick={onOpenResetModal}
+              title="ล้างข้อมูลออเดอร์ทั้งหมดเพื่อเริ่มต้นใหม่"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition cursor-pointer ml-auto sm:ml-2"
             >
-              {opt.label}
+              <Trash2 size={13} />
+              <span>ล้างข้อมูลออเดอร์</span>
             </button>
-          ))}
+          )}
         </div>
       </div>
 

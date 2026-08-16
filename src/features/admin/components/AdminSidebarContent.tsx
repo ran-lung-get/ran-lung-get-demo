@@ -1,18 +1,18 @@
-import { Shield, LayoutDashboard, ClipboardList, Users, UserPlus } from "lucide-react";
+import { Shield, LayoutDashboard, ClipboardList, Users, LogOut } from "lucide-react";
 import type { AdminViewType } from "../types";
 
 export function AdminSidebarContent({
   view,
   setView,
   setSidebarOpen,
-  handleLogout: _handleLogout,
-  pendingCount = 0,
+  handleLogout,
 }: {
   view: string;
   setView: (v: AdminViewType) => void;
   setSidebarOpen?: (b: boolean) => void;
   handleLogout?: () => void;
   pendingCount?: number;
+  onOpenResetModal?: () => void;
 }) {
   const selectTab = (v: AdminViewType) => {
     setView(v);
@@ -88,30 +88,23 @@ export function AdminSidebarContent({
           <Users size={18} className={view === "staff" ? "text-[#fcc14a]" : "text-white/60"} />
           <span className="text-sm">จัดการสิทธิ์พนักงาน</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => selectTab("approvals")}
-          className={`w-full flex items-center justify-between px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
-            view === "approvals"
-              ? "bg-white/10 text-white font-black border-l-4 border-[#fcc14a]"
-              : "text-white/70 hover:text-white hover:bg-white/5 border-l-4 border-transparent"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <UserPlus
-              size={18}
-              className={view === "approvals" ? "text-[#fcc14a]" : "text-white/60"}
-            />
-            <span className="text-sm">คำขออนุมัติสิทธิ์</span>
-          </div>
-          {pendingCount > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-              {pendingCount}
-            </span>
-          )}
-        </button>
       </div>
+
+      {/* Bottom Logout Action */}
+      {handleLogout && (
+        <div className="p-4 border-t border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-white/50 hover:text-white hover:bg-white/5 transition duration-200 cursor-pointer text-xs font-bold"
+          >
+            <LogOut size={15} className="shrink-0" />
+            <span>ออกจากระบบ</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
+
+

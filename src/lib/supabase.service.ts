@@ -478,3 +478,104 @@ export async function getNextQueueNumber(): Promise<number> {
     return Date.now() % 1000;
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Reset & Clear Orders (Admin Danger Zone)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * ล้างข้อมูลออเดอร์ทั้งหมดในระบบ:
+ * 1. ลบรายการ order_items ทั้งหมด
+ * 2. ลบรายการ orders ทั้งหมด
+ * 3. รีเซ็ตสถานะโต๊ะ restaurant_tables ทุกโต๊ะกลับเป็น available
+ * 4. รีเซ็ตตัวนับคิว takeaway_queue เป็น 1
+ * 5. ล้างแคชใน LocalStorage และส่งสัญญาณ realtime ให้หน้าอื่นๆ อัปเดต
+ */
+export async function clearAllOrdersData(): Promise<{ success: boolean; error?: string; count?: number }> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = supabase as any;
+
+    // 1. Delete order_items
+    const { error: itemsError } = await client
+      .from("order_items")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    if (itemsError) {
+      console.warn("[clearAllOrdersData] order_items delete warning:", itemsError);
+    }
+
+    // 2. Delete orders
+    const { data: deletedOrders, error: ordersError } = await client
+      .from("orders")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000")
+      .select("id");
+
+    if (ordersError) {
+      console.warn("[clearAllOrdersData] orders delete warning:", ordersError);
+    }
+
+    // 3. Reset table status to 'available'
+    const { error: tableError } = await client
+      .from("restaurant_tables")
+      .update({ status: "available" })
+      .neq("status", "available");
+
+    if (tableError) {
+      console.warn("[clearAllOrdersData] restaurant_tables reset warning:", tableError);
+    }
+
+    try {
+      await client
+        .from("tables")
+        .update({ status: "available" })
+        .neq("status", "available");
+    } catch {
+      // Ignored if table 'tables' doesn't exist
+    }
+
+    // 4. Reset takeaway queue
+    try {
+      await client.from("store_settings").upsert({
+        id: "takeaway_queue",
+        value: { counter: 1 },
+        updated_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn("[clearAllOrdersData] queue reset warning:", e);
+    }
+
+    // 5. Clear localStorage mock & caches
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("ran-lung-get-orders");
+        localStorage.removeItem("ran-lung-get-cart");
+        localStorage.removeItem("ran-lung-get-order-history");
+        
+        const dbStr = localStorage.getItem("ran-lung-get-mock-db");
+        if (dbStr) {
+          const db = JSON.parse(dbStr);
+          db.orders = [];
+          db.order_items = [];
+          if (Array.isArray(db.restaurant_tables)) {
+            db.restaurant_tables = db.restaurant_tables.map((t: any) => ({ ...t, status: "available" }));
+          }
+          localStorage.setItem("ran-lung-get-mock-db", JSON.stringify(db));
+        }
+
+        window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(new CustomEvent("ran-lung-get-orders-cleared"));
+      } catch (e) {
+        console.warn("[clearAllOrdersData] localStorage clean error:", e);
+      }
+    }
+
+    return { success: true, count: deletedOrders?.length || 0 };
+  } catch (err: any) {
+    console.error("[clearAllOrdersData] error:", err);
+    return { success: false, error: err?.message || "ไม่สามารถล้างข้อมูลออเดอร์ได้" };
+  }
+}
+
