@@ -93,7 +93,7 @@ export function MiniOrderTracker({
           </div>
           <div>
             <p className="text-xs font-bold" style={{ color: BRAND }}>
-              สถานะ Order ของคุณ
+              {t("สถานะ Order ของคุณ")}
             </p>
             <p className="text-[10px]" style={{ color: INK_MUTED }}>
               {orderNumber}
@@ -182,7 +182,7 @@ export function MiniOrderTracker({
           className="text-xs font-semibold underline transition hover:opacity-80 cursor-pointer"
           style={{ color: BRAND }}
         >
-          ดูรายละเอียดสถานะทั้งหมด
+          {t("ดูรายละเอียดสถานะทั้งหมด")}
         </button>
       </div>
     </div>

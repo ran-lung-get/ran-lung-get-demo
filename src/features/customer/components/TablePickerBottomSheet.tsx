@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { X } from "lucide-react";
 import { BRAND, GOLD } from "../constants/colors";
+import { useLanguage } from "../../../lib/i18n";
+import { formatTableLabel } from "./DineInBlock";
 
 export function TablePickerBottomSheet({
   tables,
@@ -14,6 +16,7 @@ export function TablePickerBottomSheet({
   onSelect: (id: string) => void;
   onClose: () => void;
 }) {
+  const { t, language } = useLanguage();
   const [tableFilter, setTableFilter] = useState<"all" | "available" | "occupied">("all");
 
   const displayTables = useMemo(() => {
@@ -48,8 +51,8 @@ export function TablePickerBottomSheet({
           {/* Header */}
           <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3 shrink-0 border-b border-slate-100">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">เลือกโต๊ะ</p>
-              <h2 className="text-base font-bold text-slate-800">ผังที่นั่ง</h2>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">{t("เลือกโต๊ะ")}</p>
+              <h2 className="text-base font-bold text-slate-800">{t("ผังที่นั่ง")}</h2>
             </div>
 
             <motion.button
@@ -64,9 +67,9 @@ export function TablePickerBottomSheet({
           {/* Filter */}
           <div className="px-4 py-3 flex gap-2 shrink-0">
             {[
-              { id: "all", label: "ทั้งหมด", dot: "#94a3b8" },
-              { id: "available", label: "ว่าง", dot: "#15803d" },
-              { id: "occupied", label: "ไม่ว่าง", dot: "#dc2626" },
+              { id: "all", label: t("ทั้งหมด"), dot: "#94a3b8" },
+              { id: "available", label: t("ว่าง"), dot: "#15803d" },
+              { id: "occupied", label: t("ไม่ว่าง"), dot: "#dc2626" },
             ].map((opt) => (
               <motion.button
                 key={opt.id}
@@ -93,13 +96,14 @@ export function TablePickerBottomSheet({
             <div className="grid grid-cols-2 gap-3">
               {displayTables.length === 0 ? (
                 <div className="col-span-2 text-center py-8">
-                  <p className="text-sm font-semibold text-slate-400">ไม่พบข้อมูลโต๊ะ</p>
+                  <p className="text-sm font-semibold text-slate-400">{t("ไม่พบข้อมูลโต๊ะ")}</p>
                 </div>
               ) : (
                 displayTables.map((table) => {
                   const available = table.status === "available";
                   const isSelected = selectedTable === table.id;
                   const isWalkIn = table.label.toLowerCase().includes("walk-in") || table.label.includes("หน้าร้าน");
+                  const localizedLabel = formatTableLabel(table.label, language);
 
                   const boxBg = isWalkIn ? "#f1f5f9" : isSelected ? BRAND : available ? "#dcfce7" : "#fee2e2";
                   const boxBorder = isWalkIn ? "#cbd5e1" : isSelected ? BRAND : available ? "#15803d" : "#dc2626";
@@ -111,7 +115,7 @@ export function TablePickerBottomSheet({
                   return (
                     <motion.button
                       key={table.id}
-                      aria-label={`เลือก ${table.label}`}
+                      aria-label={`${t("เลือก")} ${localizedLabel}`}
                       disabled={isWalkIn || (!available && !isSelected)}
                       onClick={() => !isWalkIn && (available || isSelected) && onSelect(table.id)}
                       className="rounded-2xl p-4 text-left relative overflow-hidden"
@@ -124,16 +128,16 @@ export function TablePickerBottomSheet({
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-xs truncate max-w-[85px]">{table.label}</span>
+                        <span className="font-semibold text-xs truncate max-w-[85px]">{localizedLabel}</span>
                         <span
                           className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                           style={{ background: badgeBg, color: badgeText }}
                         >
-                          {isWalkIn ? "Walk-in" : isSelected ? "โต๊ะที่คุณเลือก" : available ? "ว่าง" : "ไม่ว่าง"}
+                          {isWalkIn ? "Walk-in" : isSelected ? t("โต๊ะที่คุณเลือก") : available ? t("ว่าง") : t("ไม่ว่าง")}
                         </span>
                       </div>
                       <p className="mt-1 text-[10px]" style={{ color: boxSub }}>
-                        {isWalkIn ? "สำหรับหน้าร้าน" : isSelected ? "โต๊ะปัจจุบันของคุณ" : available ? "ความจุ 2-4 คน" : "มีลูกค้านั่งอยู่"}
+                        {isWalkIn ? t("สำหรับหน้าร้าน") : isSelected ? t("โต๊ะปัจจุบันของคุณ") : available ? t("ความจุ 2-4 คน") : t("มีลูกค้านั่งอยู่")}
                       </p>
                     </motion.button>
                   );
@@ -143,16 +147,16 @@ export function TablePickerBottomSheet({
 
             {/* Legend */}
             <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2.5 flex items-center gap-3">
-              <p className="text-[11px] font-semibold text-slate-500">สถานะโต๊ะ:</p>
+              <p className="text-[11px] font-semibold text-slate-500">{t("สถานะโต๊ะ")}:</p>
               <div className="flex gap-2 flex-wrap">
                 <span className="flex items-center gap-1 text-[10px] font-bold text-[#14532d] bg-[#dcfce7] px-2 py-0.5 rounded-full border border-[#15803d]">
-                  ว่าง
+                  {t("ว่าง")}
                 </span>
                 <span className="flex items-center gap-1 text-[10px] font-bold text-[#7f1d1d] bg-[#fee2e2] px-2 py-0.5 rounded-full border border-[#dc2626]">
-                  ไม่ว่าง
+                  {t("ไม่ว่าง")}
                 </span>
                 <span className="flex items-center gap-1 text-[10px] font-bold text-[#475569] bg-[#f1f5f9] px-2 py-0.5 rounded-full border border-[#cbd5e1]">
-                  สำหรับ Walk-in
+                  {t("สำหรับ Walk-in")}
                 </span>
               </div>
             </div>

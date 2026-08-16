@@ -122,7 +122,7 @@ export function PaymentOverlay({
               </div>
               <div>
                 <p className="text-xs font-black text-slate-900">{t("พร้อมเพย์ QR Code")}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">สแกนจ่ายผ่านแอปธนาคาร</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{t("สแกนจ่ายผ่านแอปธนาคาร")}</p>
               </div>
             </button>
 
@@ -147,7 +147,7 @@ export function PaymentOverlay({
                 <p className="text-xs font-black text-slate-900">
                   {orderType === "delivery" ? t("เก็บเงินสดปลายทาง") : t("เงินสด / ชำระที่เคาน์เตอร์")}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">จ่ายเมื่อรับอาหาร</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{t("จ่ายเมื่อรับอาหาร")}</p>
               </div>
             </button>
           </div>
@@ -173,7 +173,7 @@ export function PaymentOverlay({
                 ฿{total.toLocaleString()}
               </p>
               <p className="text-[11px] text-slate-400 pt-1">
-                {t("สแกน QR Code เพื่อชำระเงิน")} และกดปุ่มยืนยันด้านล่าง
+                {t("สแกน QR Code เพื่อชำระเงิน และกดปุ่มยืนยันด้านล่าง")}
               </p>
             </div>
           </div>
@@ -190,7 +190,7 @@ export function PaymentOverlay({
                 <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
                   {orderType === "delivery"
                     ? t("กรุณาเตรียมเงินสดให้พอดีกับยอดสั่งซื้อเมื่อรับอาหาร")
-                    : "สามารถชำระเงินสดได้ที่เคาน์เตอร์ของร้าน หรือกับพนักงาน"}
+                    : t("สามารถชำระเงินสดได้ที่เคาน์เตอร์ของร้าน หรือกับพนักงาน")}
                 </p>
               </div>
             </div>
@@ -205,7 +205,7 @@ export function PaymentOverlay({
         {/* Security Badge */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 pt-1">
           <ShieldCheck size={14} className="text-emerald-500" />
-          <span>ระบบรับออเดอร์ส่งตรงถึงครัวร้านลุงเกตุทันที</span>
+          <span>{t("ระบบรับออเดอร์ส่งตรงถึงครัวร้านลุงเกตุทันที")}</span>
         </div>
 
         {/* Submit Button */}

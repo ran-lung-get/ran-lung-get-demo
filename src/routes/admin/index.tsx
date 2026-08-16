@@ -23,6 +23,7 @@ import {
   AdminDashboardView,
   AdminInventoryView,
   AdminStaffView,
+  AdminResetModal,
 } from "../../features/admin";
 
 export const Route = createFileRoute("/admin/")({
@@ -33,6 +34,7 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const [view, setView] = useState<AdminViewType>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
 
   // Auth check state
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -530,7 +532,6 @@ function AdminDashboard() {
                 setView={setView}
                 setSidebarOpen={setSidebarOpen}
                 handleLogout={handleLogout}
-                pendingCount={users.filter((u) => u.is_active === false).length}
               />
             </motion.aside>
           </>
@@ -543,7 +544,6 @@ function AdminDashboard() {
           view={view}
           setView={setView}
           handleLogout={handleLogout}
-          pendingCount={users.filter((u) => u.is_active === false).length}
         />
       </aside>
 
@@ -596,7 +596,13 @@ function AdminDashboard() {
 
         {/* Dynamic Inner Panel View */}
         <div className="p-4 sm:p-6 flex-1 max-w-6xl w-full mx-auto">
-          {view === "dashboard" && <AdminDashboardView orders={orders} loading={loadingOrders} />}
+          {view === "dashboard" && (
+            <AdminDashboardView
+              orders={orders}
+              loading={loadingOrders}
+              onOpenResetModal={() => setResetModalOpen(true)}
+            />
+          )}
           {view === "inventory" && (
             <AdminInventoryView
               ingredients={ingredients}
@@ -652,6 +658,16 @@ function AdminDashboard() {
           )}
         </div>
       </main>
+
+      {/* Safety Confirmation Modal for Order Reset */}
+      <AdminResetModal
+        isOpen={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+        onSuccess={() => {
+          setOrders([]);
+          fetchSupabaseOrders();
+        }}
+      />
     </div>
   );
 }
