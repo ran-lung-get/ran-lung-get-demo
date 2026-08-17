@@ -20,8 +20,9 @@ export function MiniOrderTracker({
 
   const isCompleted = status === "สำเร็จ" || status === "completed" || status === "เสร็จสิ้น";
   const isCooking   = status === "กำลังทำ" || status === "กำลังเตรียม" || status === "preparing";
-  const isReady     = status === "พร้อมเสิร์ฟ" || status === "delivering" || status === "พร้อมรับอาหาร" || status === "กำลังจัดส่ง";
-  const isReceived  = !isCooking && !isReady && !isCompleted;
+  const isReady     = status === "พร้อมเสิร์ฟ" || status === "ready" || status === "พร้อมรับอาหาร";
+  const isDelivering = status === "กำลังจัดส่ง" || status === "delivering";
+  const isReceived  = !isCooking && !isReady && !isDelivering && !isCompleted;
 
   const [isVisible, setIsVisible] = useState(true);
 
@@ -45,21 +46,21 @@ export function MiniOrderTracker({
 
   const steps = orderType === "dine-in"
     ? [
-      { id: 1, label: t("รับออเดอร์"),      icon: Check,        done: isCooking || isReady || isCompleted, active: isReceived },
-      { id: 2, label: t("กำลังทำอาหาร"),    icon: ChefHat,      done: isReady || isCompleted,              active: isCooking },
-      { id: 3, label: t("เสร็จสิ้น"),       icon: PartyPopper,  done: false,                               active: isCompleted },
+      { id: 1, label: t("รับออเดอร์"),      icon: Check,        done: isCooking || isReady || isDelivering || isCompleted, active: isReceived },
+      { id: 2, label: t("กำลังทำอาหาร"),    icon: ChefHat,      done: isReady || isDelivering || isCompleted,              active: isCooking },
+      { id: 3, label: t("เสร็จสิ้น"),       icon: PartyPopper,  done: false,                                               active: isCompleted },
     ]
     : orderType === "takeaway"
       ? [
-        { id: 1, label: t("รับออเดอร์"),       icon: Check,       done: isCooking || isReady || isCompleted, active: isReceived },
-        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat,     done: isReady || isCompleted,              active: isCooking },
-        { id: 3, label: t("พร้อมรับอาหาร"),    icon: ShoppingBag, done: false,                               active: isReady || isCompleted },
+        { id: 1, label: t("รับออเดอร์"),       icon: Check,       done: isCooking || isReady || isDelivering || isCompleted, active: isReceived },
+        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat,     done: isReady || isDelivering || isCompleted,              active: isCooking },
+        { id: 3, label: t("พร้อมรับอาหาร"),    icon: ShoppingBag, done: false,                                               active: isReady || isCompleted },
       ]
       : [
-        { id: 1, label: t("รับออเดอร์"),               icon: Check,        done: isCooking || isReady || isCompleted, active: isReceived },
-        { id: 2, label: t("กำลังเตรียมอาหาร"),         icon: ChefHat,      done: isReady || isCompleted,              active: isCooking },
-        { id: 3, label: t("คนรับอาหาร/กำลังขับไป"),   icon: Bike,         done: isCompleted,                         active: isReady },
-        { id: 4, label: t("เสร็จสิ้น"),                icon: PartyPopper,  done: false,                               active: isCompleted },
+        { id: 1, label: t("รับออเดอร์"),               icon: Check,        done: isCooking || isReady || isDelivering || isCompleted, active: isReceived },
+        { id: 2, label: t("กำลังเตรียมอาหาร"),         icon: ChefHat,      done: isReady || isDelivering || isCompleted,              active: isCooking },
+        { id: 3, label: t("คนรับอาหาร/กำลังขับไป"),   icon: Bike,         done: isCompleted,                                         active: isReady || isDelivering },
+        { id: 4, label: t("เสร็จสิ้น"),                icon: PartyPopper,  done: false,                                               active: isCompleted },
       ];
 
   const activeIndex = steps.findIndex((s) => s.active);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { supabase } from "../../../lib/supabase";
 import { MENU } from "../../customer/constants/menu";
 
 export function MenuManagementView() {
@@ -31,13 +32,13 @@ export function MenuManagementView() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const toggleStock = (itemId: string) => {
-    let updated: string[];
-    if (outOfStockIds.includes(itemId)) {
-      updated = outOfStockIds.filter((id) => id !== itemId);
-    } else {
-      updated = [...outOfStockIds, itemId];
-    }
+  const toggleStock = async (itemId: string) => {
+    const isCurrentlyOut = outOfStockIds.includes(itemId);
+    const updated = isCurrentlyOut
+      ? outOfStockIds.filter((id) => id !== itemId)
+      : [...outOfStockIds, itemId];
+    const nextIsAvailable = isCurrentlyOut;
+
     setOutOfStockIds(updated);
     localStorage.setItem("ran-lung-get-out-of-stock-items", JSON.stringify(updated));
     window.dispatchEvent(
@@ -46,6 +47,31 @@ export function MenuManagementView() {
         newValue: JSON.stringify(updated),
       })
     );
+
+    const localMenu = localStorage.getItem("ran-lung-get-menu-items");
+    if (localMenu) {
+      try {
+        const parsed = JSON.parse(localMenu).map((m: any) =>
+          m.id === itemId ? { ...m, isAvailable: nextIsAvailable } : m
+        );
+        localStorage.setItem("ran-lung-get-menu-items", JSON.stringify(parsed));
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "ran-lung-get-menu-items",
+            newValue: JSON.stringify(parsed),
+          })
+        );
+      } catch {}
+    }
+    try {
+      window.dispatchEvent(new CustomEvent("ran-lung-get-menu-updated"));
+    } catch {}
+
+    try {
+      await supabase.from("menu_items").update({ is_available: nextIsAvailable }).eq("id", itemId);
+    } catch (e) {
+      console.warn("Supabase toggleStock update failed:", e);
+    }
   };
 
   const categories = [

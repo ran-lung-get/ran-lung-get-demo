@@ -10,6 +10,12 @@ export function useCustomerMenuAndStock() {
 
   useEffect(() => {
     async function loadMenu() {
+      let outOfStockIds: string[] = [];
+      try {
+        const savedOut = localStorage.getItem("ran-lung-get-out-of-stock-items");
+        if (savedOut) outOfStockIds = JSON.parse(savedOut);
+      } catch {}
+
       try {
         const { data: dbItems, error } = await supabase
           .from("menu_items")
@@ -23,7 +29,7 @@ export function useCustomerMenuAndStock() {
             price: Number(item.price),
             image: item.image_url || item.image || "",
             category: item.category,
-            isAvailable: item.is_available ?? true,
+            isAvailable: (item.is_available !== false) && !outOfStockIds.includes(item.id),
             isSpicy: item.is_spicy ?? false,
             options: item.options || undefined,
             addons: item.addons || undefined,
@@ -33,14 +39,22 @@ export function useCustomerMenuAndStock() {
         } else {
           const localMenu = localStorage.getItem("ran-lung-get-menu-items");
           if (localMenu) {
-            setMenuItems(JSON.parse(localMenu));
+            const parsed = JSON.parse(localMenu).map((item: any) => ({
+              ...item,
+              isAvailable: item.isAvailable !== false && !outOfStockIds.includes(item.id),
+            }));
+            setMenuItems(parsed);
           }
         }
       } catch (err) {
         console.warn("Failed to load menu from Supabase:", err);
         const localMenu = localStorage.getItem("ran-lung-get-menu-items");
         if (localMenu) {
-          setMenuItems(JSON.parse(localMenu));
+          const parsed = JSON.parse(localMenu).map((item: any) => ({
+            ...item,
+            isAvailable: item.isAvailable !== false && !outOfStockIds.includes(item.id),
+          }));
+          setMenuItems(parsed);
         }
       }
     }
@@ -103,8 +117,18 @@ export function useCustomerMenuAndStock() {
           console.error("Storage sync parse error:", err);
         }
       }
+      if (e.key === "ran-lung-get-out-of-stock-items") {
+        loadMenu();
+      }
     };
     window.addEventListener("storage", handleStorageChange);
+
+    const handleCustomMenuUpdated = () => {
+      loadMenu();
+      loadStock();
+    };
+    window.addEventListener("ran-lung-get-menu-updated", handleCustomMenuUpdated);
+    window.addEventListener("ran-lung-get-stock-updated", handleCustomMenuUpdated);
 
     const chMenu = supabase
       .channel("menu-items-realtime-customer")
@@ -129,6 +153,8 @@ export function useCustomerMenuAndStock() {
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("ran-lung-get-menu-updated", handleCustomMenuUpdated);
+      window.removeEventListener("ran-lung-get-stock-updated", handleCustomMenuUpdated);
       supabase.removeChannel(chMenu);
       supabase.removeChannel(chIng);
       supabase.removeChannel(chRec);

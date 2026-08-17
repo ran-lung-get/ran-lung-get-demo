@@ -76,9 +76,19 @@ export function AdminInventoryView({
 
   const toggleIngredientActive = async (id: string, current: boolean) => {
     const nextVal = !current;
-    setIngredients((prev: any[]) =>
-      prev.map((i) => (i.id === id ? { ...i, is_active: nextVal } : i)),
+    const nextList = ingredients.map((i: any) => (i.id === id ? { ...i, is_active: nextVal } : i));
+    setIngredients(nextList);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(nextList));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "ran-lung-get-mock-ingredients",
+        newValue: JSON.stringify(nextList),
+      })
     );
+    try {
+      window.dispatchEvent(new CustomEvent("ran-lung-get-stock-updated", { detail: nextList }));
+    } catch {}
+
     try {
       await supabase.from("ingredients").update({ is_active: nextVal }).eq("id", id);
     } catch {}
@@ -435,7 +445,7 @@ export function AdminInventoryView({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMenuItems.map((item: MenuItem) => {
-            const isOutOfStock = outOfStockIds.includes(item.id);
+            const isOutOfStock = outOfStockIds.includes(item.id) || item.isAvailable === false;
             return (
               <div
                 key={item.id}

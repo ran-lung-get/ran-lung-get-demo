@@ -24,23 +24,29 @@ export function StatusScreen({
   const orderType = activeOrder?.orderType || "delivery";
   const currentStatus = activeOrder?.status || "รอรับออเดอร์";
 
+  const isWaiting = currentStatus === "รอรับออเดอร์" || currentStatus === "รอดำเนินการ" || currentStatus === "pending";
+  const isCooking = currentStatus === "กำลังเตรียม" || currentStatus === "กำลังทำ" || currentStatus === "preparing";
+  const isReady = currentStatus === "พร้อมเสิร์ฟ" || currentStatus === "ready" || currentStatus === "พร้อมรับอาหาร";
+  const isDelivering = currentStatus === "กำลังจัดส่ง" || currentStatus === "delivering";
+  const isCompleted = currentStatus === "สำเร็จ" || currentStatus === "completed";
+
   const steps = orderType === "dine-in"
     ? [
-      { id: 1, label: t("รับออเดอร์"), icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-      { id: 2, label: t("กำลังทำอาหาร"), icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-      { id: 3, label: t("เสร็จสิ้น"), icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
+      { id: 1, label: t("รับออเดอร์"), icon: Check, done: !isWaiting, active: isWaiting },
+      { id: 2, label: t("กำลังทำอาหาร"), icon: ChefHat, done: isReady || isCompleted, active: isCooking },
+      { id: 3, label: t("เสร็จสิ้น"), icon: PartyPopper, done: isCompleted, active: false },
     ]
     : orderType === "takeaway"
       ? [
-        { id: 1, label: t("รับออเดอร์"), icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-        { id: 3, label: t("พร้อมรับอาหาร"), icon: ShoppingBag, done: currentStatus === "สำเร็จ", active: false },
+        { id: 1, label: t("รับออเดอร์"), icon: Check, done: !isWaiting, active: isWaiting },
+        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat, done: isReady || isCompleted, active: isCooking },
+        { id: 3, label: t("พร้อมรับอาหาร"), icon: ShoppingBag, done: isCompleted, active: isReady },
       ]
       : [
-        { id: 1, label: t("รับออเดอร์"), icon: Check, done: currentStatus !== "รอรับออเดอร์", active: currentStatus === "รอรับออเดอร์" },
-        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat, done: currentStatus === "กำลังจัดส่ง" || currentStatus === "สำเร็จ", active: currentStatus === "กำลังเตรียม" },
-        { id: 3, label: t("คนรับอาหาร/กำลังขับไป"), icon: Bike, done: currentStatus === "สำเร็จ", active: currentStatus === "กำลังจัดส่ง" },
-        { id: 4, label: t("เสร็จสิ้น"), icon: PartyPopper, done: currentStatus === "สำเร็จ", active: false },
+        { id: 1, label: t("รับออเดอร์"), icon: Check, done: !isWaiting, active: isWaiting },
+        { id: 2, label: t("กำลังเตรียมอาหาร"), icon: ChefHat, done: isReady || isDelivering || isCompleted, active: isCooking },
+        { id: 3, label: t("คนรับอาหาร/กำลังขับไป"), icon: Bike, done: isCompleted, active: isReady || isDelivering },
+        { id: 4, label: t("เสร็จสิ้น"), icon: PartyPopper, done: isCompleted, active: false },
       ];
 
   const orderItems = activeOrder
@@ -71,25 +77,43 @@ export function StatusScreen({
         iconColor: "#ef4444"
       };
     }
-    if (currentStatus === "รอรับออเดอร์") {
+    if (isWaiting) {
       return {
         title: t("กำลังรอรับออเดอร์"),
-        subtitle: t("ร้านค้ากำลังตรวจสอบสลิปและเตรียมเข้าครัว"),
+        subtitle: t("ร้านค้ากำลังตรวจสอบรายการและเตรียมเข้าครัว"),
         color: "#3b82f6",
         bg: "rgba(59, 130, 246, 0.08)",
         iconColor: "#3b82f6"
       };
     }
+    if (isDelivering) {
+      return {
+        title: t("ไรเดอร์กำลังนำส่งอาหาร"),
+        subtitle: t("อาหารปรุงเสร็จแล้ว ไรเดอร์กำลังเดินทางนำส่งให้คุณ"),
+        color: "#2563eb",
+        bg: "rgba(37, 99, 235, 0.08)",
+        iconColor: "#2563eb"
+      };
+    }
+    if (orderType === "delivery" && isReady) {
+      return {
+        title: t("อาหารเสร็จแล้ว · รอไรเดอร์มารับ"),
+        subtitle: t("ทางร้านเตรียมอาหารเสร็จเรียบร้อยแล้ว กำลังรอไรเดอร์เข้ามารับ"),
+        color: "#10b981",
+        bg: "rgba(16, 185, 129, 0.08)",
+        iconColor: "#10b981"
+      };
+    }
     return {
-      title: currentStatus === "สำเร็จ" ? t("รายการสำเร็จ") : t("กำลังดำเนินการ"),
-      subtitle: currentStatus === "สำเร็จ"
+      title: isCompleted ? t("รายการสำเร็จ") : t("กำลังดำเนินการ"),
+      subtitle: isCompleted
         ? ""
         : (orderType === "dine-in" ? t("รอเสิร์ฟอาหารในอีก 10 นาที") : t("รอรับอาหารในอีก 14 นาที")),
       color: "#10b981",
       bg: "rgba(16, 185, 129, 0.08)",
       iconColor: "#10b981"
     };
-  }, [currentStatus, orderType, t]);
+  }, [currentStatus, isWaiting, isDelivering, isReady, isCompleted, orderType, t]);
 
   const cancelReasonsList = [
     t("สั่งอาหารผิดเมนู / ลืมเพิ่มบางรายการ"),
