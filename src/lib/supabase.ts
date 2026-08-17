@@ -316,6 +316,63 @@ class MockQueryBuilder {
     return this;
   }
 
+  or(clause: string) {
+    if (!clause) return this;
+    const subClauses = clause.split(",").map((s) => s.trim()).filter(Boolean);
+    this.filters.push((row) => {
+      return subClauses.some((sub) => {
+        const parts = sub.split(".");
+        if (parts.length >= 3) {
+          const col = parts[0];
+          const op = parts[1];
+          const val = parts.slice(2).join(".");
+          if (!val) return false;
+          if (op === "eq") return String(row[col]) === String(val);
+          if (op === "neq") return String(row[col]) !== String(val);
+          if (op === "like") return new RegExp(val.replace(/%/g, ".*"), "i").test(String(row[col] ?? ""));
+        }
+        return false;
+      });
+    });
+    return this;
+  }
+
+  gt(column: string, value: any) {
+    this.filters.push((row) => row[column] > value);
+    return this;
+  }
+
+  gte(column: string, value: any) {
+    this.filters.push((row) => row[column] >= value);
+    return this;
+  }
+
+  lt(column: string, value: any) {
+    this.filters.push((row) => row[column] < value);
+    return this;
+  }
+
+  lte(column: string, value: any) {
+    this.filters.push((row) => row[column] <= value);
+    return this;
+  }
+
+  not(column: string, operator: string, value: any) {
+    if (operator === "in") {
+      const cleanVal = String(value).replace(/^\(/, "").replace(/\)$/, "").replace(/"/g, "");
+      const arr = cleanVal.split(",").map((s) => s.trim());
+      this.filters.push((row) => !arr.includes(String(row[column])));
+    } else if (operator === "eq") {
+      this.filters.push((row) => String(row[column]) !== String(value));
+    }
+    return this;
+  }
+
+  is(column: string, value: any) {
+    this.filters.push((row) => row[column] === value);
+    return this;
+  }
+
   limit(count: number) {
     this.limitCount = count;
     return this;

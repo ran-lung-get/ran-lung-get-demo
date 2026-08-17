@@ -491,6 +491,7 @@ function LiffApp() {
               tables={tables}
               selectedTable={selectedTable}
               onSelect={async (tableId) => {
+                setOrderType("dine-in");
                 await handleSelectTable(tableId);
                 setTimeout(() => {
                   setShowTablePicker(false);

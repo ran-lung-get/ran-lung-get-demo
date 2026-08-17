@@ -34,10 +34,16 @@ export function useCustomerTables() {
           if (!has10) {
             merged.push({ id: "10", label: "โต๊ะ 10 (Walk-in)", status: "available" });
           }
+
           setTables(merged as any);
+          localStorage.setItem("ran-lung-get-tables", JSON.stringify(merged));
+        } else {
+          const local = localStorage.getItem("ran-lung-get-tables");
+          if (local) setTables(JSON.parse(local));
         }
       } catch {
-        // use local fallback
+        const local = localStorage.getItem("ran-lung-get-tables");
+        if (local) setTables(JSON.parse(local));
       }
     }
     fetchTables();
@@ -50,11 +56,13 @@ export function useCustomerTables() {
         (payload: any) => {
           if (payload.eventType === "UPDATE" || payload.eventType === "INSERT") {
             const updated = payload.new as any;
-            setTables((prev) =>
-              prev.map((t) =>
+            setTables((prev) => {
+              const next = prev.map((t) =>
                 t.id === String(updated.id) ? { ...t, ...updated, id: String(updated.id) } : t
-              )
-            );
+              );
+              localStorage.setItem("ran-lung-get-tables", JSON.stringify(next));
+              return next;
+            });
           }
         }
       )
@@ -65,28 +73,8 @@ export function useCustomerTables() {
     };
   }, []);
 
-  const handleSelectTable = async (tableId: string) => {
-    const prevTable = selectedTable;
+  const handleSelectTable = (tableId: string) => {
     setSelectedTable(tableId);
-    setTables((prev) =>
-      prev.map((tTable) => {
-        if (String(tTable.id) === String(tableId)) return { ...tTable, status: "occupied" };
-        if (prevTable && String(tTable.id) === String(prevTable)) return { ...tTable, status: "available" };
-        return tTable;
-      })
-    );
-    try {
-      if (prevTable && prevTable !== tableId) {
-        await (supabase as any)
-          .from("restaurant_tables")
-          .update({ status: "available" })
-          .eq("id", prevTable);
-      }
-      await (supabase as any)
-        .from("restaurant_tables")
-        .update({ status: "occupied" })
-        .eq("id", tableId);
-    } catch {}
   };
 
   return {
