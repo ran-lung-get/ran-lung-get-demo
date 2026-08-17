@@ -17,14 +17,27 @@ export function useCustomerOrders({
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [activeOrderNumber, setActiveOrderNumber] = useState("");
 
-  const syncActiveOrder = (historyList: OrderHistory[]) => {
-    const active = historyList.find(
-      (o) => o.status !== "สำเร็จ" && o.status !== "ยกเลิกแล้ว"
+  const isOrderFinished = (status?: string) => {
+    if (!status) return true;
+    const s = String(status).trim().toLowerCase();
+    return (
+      s === "สำเร็จ" ||
+      s === "เสร็จสิ้น" ||
+      s === "completed" ||
+      s === "ยกเลิก" ||
+      s === "ยกเลิกแล้ว" ||
+      s === "cancelled" ||
+      s === "canceled"
     );
+  };
+
+  const syncActiveOrder = (historyList: OrderHistory[]) => {
+    const active = historyList.find((o) => !isOrderFinished(o.status));
     if (active) {
       setActiveOrderNumber(active.orderNumber);
       setHasActiveOrder(true);
     } else {
+      setActiveOrderNumber("");
       setHasActiveOrder(false);
     }
   };
@@ -40,6 +53,68 @@ export function useCustomerOrders({
         console.error("Failed to parse orders from storage:", e);
       }
     }
+
+    // Fetch latest order statuses from Supabase on mount
+    const fetchLatestOrdersFromDb = async () => {
+      try {
+        const clearedAt = localStorage.getItem("ran-lung-get-orders-cleared-at");
+        let query = supabase.from("orders").select("id, order_number, status, created_at");
+        if (clearedAt) {
+          query = query.gt("created_at", clearedAt);
+        }
+
+        if (profile?.userId) {
+          query = query.or(`line_user_id.eq.${profile.userId},customer_id.eq.${dbCustomer?.id || ""}`);
+        } else if (dbCustomer?.id) {
+          query = query.eq("customer_id", dbCustomer.id);
+        } else if (dbUser?.id) {
+          query = query.eq("user_id", dbUser.id);
+        } else {
+          const localSaved = localStorage.getItem("ran-lung-get-orders");
+          if (!localSaved) return;
+          const localParsed: OrderHistory[] = JSON.parse(localSaved);
+          const orderNums = localParsed.map((o) => o.orderNumber).filter(Boolean);
+          if (orderNums.length === 0) return;
+          query = query.in("order_number", orderNums);
+        }
+
+        const { data: dbOrders, error } = await query.order("created_at", { ascending: false }).limit(20);
+        if (!error && dbOrders && dbOrders.length > 0) {
+          const statusMap: Record<string, OrderHistory["status"]> = {
+            pending: "รอรับออเดอร์",
+            preparing: "กำลังเตรียม",
+            ready: "พร้อมเสิร์ฟ" as any,
+            delivering: "กำลังจัดส่ง",
+            completed: "สำเร็จ",
+            cancelled: "ยกเลิกแล้ว",
+          };
+
+          setOrderHistory((prev) => {
+            const merged = [...prev];
+            dbOrders.forEach((dbO: any) => {
+              const mappedStatus =
+                statusMap[dbO.status] || (isOrderFinished(dbO.status) ? "ยกเลิกแล้ว" : dbO.status);
+              const existingIdx = merged.findIndex(
+                (o) => o.orderNumber === dbO.order_number || o.id === dbO.id
+              );
+              if (existingIdx >= 0) {
+                merged[existingIdx] = {
+                  ...merged[existingIdx],
+                  status: mappedStatus,
+                };
+              }
+            });
+            localStorage.setItem("ran-lung-get-orders", JSON.stringify(merged));
+            syncActiveOrder(merged);
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to fetch latest customer orders from Supabase:", err);
+      }
+    };
+
+    void fetchLatestOrdersFromDb();
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "ran-lung-get-orders" && e.newValue) {
@@ -72,7 +147,9 @@ export function useCustomerOrders({
                   completed: "สำเร็จ",
                   cancelled: "ยกเลิกแล้ว",
                 };
-                const mappedStatus = statusMap[updatedRow.status] || updatedRow.status;
+                const mappedStatus =
+                  statusMap[updatedRow.status] ||
+                  (isOrderFinished(updatedRow.status) ? "ยกเลิกแล้ว" : updatedRow.status);
                 const nextHistory = prev.map((o) =>
                   o.orderNumber === updatedRow.order_number
                     ? { ...o, status: mappedStatus }
@@ -92,7 +169,7 @@ export function useCustomerOrders({
       window.removeEventListener("storage", handleStorageChange);
       supabase.removeChannel(chOrders);
     };
-  }, []);
+  }, [profile?.userId, dbCustomer?.id, dbUser?.id]);
 
   const saveOrderToHistory = (
     cart: CartLine[],
@@ -234,11 +311,72 @@ export function useCustomerOrders({
     return true;
   };
 
+  const clearOrderHistory = async () => {
+    const currentOrders = orderHistory;
+    const orderIds = currentOrders.map((o) => o.id).filter(Boolean);
+
+    setOrderHistory([]);
+    setHasActiveOrder(false);
+    setActiveOrderNumber("");
+    localStorage.setItem("ran-lung-get-orders", JSON.stringify([]));
+    localStorage.setItem("ran-lung-get-orders-cleared-at", new Date().toISOString());
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "ran-lung-get-orders",
+        newValue: JSON.stringify([]),
+      })
+    );
+
+    try {
+      // 1. Delete order_items first to satisfy foreign key constraints
+      if (orderIds.length > 0) {
+        await supabase.from("order_items").delete().in("order_id", orderIds);
+        await supabase.from("orders").delete().in("id", orderIds);
+      }
+
+      // 2. Delete user's orders from Supabase if authenticated
+      if (profile?.userId) {
+        const { data: userOrders } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("line_user_id", profile.userId);
+        if (userOrders && userOrders.length > 0) {
+          const uIds = userOrders.map((o) => o.id);
+          await supabase.from("order_items").delete().in("order_id", uIds);
+          await supabase.from("orders").delete().in("id", uIds);
+        }
+      } else if (dbCustomer?.id) {
+        const { data: custOrders } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("customer_id", dbCustomer.id);
+        if (custOrders && custOrders.length > 0) {
+          const cIds = custOrders.map((o) => o.id);
+          await supabase.from("order_items").delete().in("order_id", cIds);
+          await supabase.from("orders").delete().in("id", cIds);
+        }
+      } else if (dbUser?.id) {
+        const { data: usrOrders } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("user_id", dbUser.id);
+        if (usrOrders && usrOrders.length > 0) {
+          const usrIds = usrOrders.map((o) => o.id);
+          await supabase.from("order_items").delete().in("order_id", usrIds);
+          await supabase.from("orders").delete().in("id", usrIds);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to delete orders from Supabase:", e);
+    }
+  };
+
   return {
     orderHistory,
     setOrderHistory,
     hasActiveOrder,
     activeOrderNumber,
     saveOrderToHistory,
+    clearOrderHistory,
   };
 }

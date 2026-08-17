@@ -272,23 +272,26 @@ function KitchenMonitor() {
       return tLabel === tableLabel || tNum === rawNum;
     });
 
-    const targetStatus = hasActive ? "occupied" : "available";
-
-    try {
-      const { data: dbTables } = await supabase.from("restaurant_tables").select("id, label, status");
-      if (dbTables && Array.isArray(dbTables)) {
-        const found = dbTables.find(
-          (t: any) =>
-            String(t.id) === rawNum ||
-            t.label === tableLabel ||
-            t.label.replace("โต๊ะ ", "").trim() === rawNum
-        );
-        if (found && found.status !== targetStatus) {
-          await supabase.from("restaurant_tables").update({ status: targetStatus }).eq("id", found.id);
+    // Only auto-mark as occupied if there's an active order.
+    // Do NOT auto-revert to available when food is served/completed,
+    // staff will manually toggle table to available when customers leave.
+    if (hasActive) {
+      try {
+        const { data: dbTables } = await supabase.from("restaurant_tables").select("id, label, status");
+        if (dbTables && Array.isArray(dbTables)) {
+          const found = dbTables.find(
+            (t: any) =>
+              String(t.id) === rawNum ||
+              t.label === tableLabel ||
+              t.label.replace("โต๊ะ ", "").trim() === rawNum
+          );
+          if (found && found.status !== "occupied") {
+            await supabase.from("restaurant_tables").update({ status: "occupied" }).eq("id", found.id);
+          }
         }
+      } catch (e) {
+        console.warn("[syncTableStatusForOrder] Table update:", e);
       }
-    } catch (e) {
-      console.warn("[syncTableStatusForOrder] Table update:", e);
     }
   };
 
