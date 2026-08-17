@@ -14,6 +14,7 @@ import {
   Table,
   BookOpen,
   Inbox,
+  Bike,
 } from "lucide-react";
 
 import {
@@ -29,6 +30,12 @@ import {
 } from "../../features/staff";
 
 export const Route = createFileRoute("/staff/")({
+  head: () => ({
+    meta: [
+      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { name: "description", content: "ระบบจัดการออเดอร์ ผังโต๊ะ และการบริการหน้าร้าน ร้านลุงเก็ต" },
+    ],
+  }),
   component: KitchenMonitor,
 });
 
@@ -43,6 +50,13 @@ function KitchenMonitor() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [view, setView] = useState<"kitchen" | "tables" | "menu" | "stock">("kitchen");
+
+  const isWaiting = (s: string) => s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending";
+  const isCooking = (s: string) => s === "กำลังทำ" || s === "กำลังเตรียม" || s === "preparing";
+  const isReady = (s: string) => s === "พร้อมเสิร์ฟ" || s === "ready";
+  const isDelivering = (s: string) => s === "กำลังจัดส่ง" || s === "delivering";
+  const isCompleted = (s: string) => s === "สำเร็จ" || s === "completed";
+  const isCancelled = (s: string) => s === "ยกเลิก" || s === "ยกเลิกแล้ว" || s === "cancelled";
 
   const handleLogout = async () => {
     document.body.style.display = "none";
@@ -104,9 +118,11 @@ function KitchenMonitor() {
           let localStatus = "รอดำเนินการ";
           if (o.status === "pending") localStatus = "รอดำเนินการ";
           else if (o.status === "preparing") localStatus = "กำลังทำ";
-          else if (o.status === "delivering") localStatus = "พร้อมเสิร์ฟ";
+          else if (o.status === "ready") localStatus = "พร้อมเสิร์ฟ";
+          else if (o.status === "delivering") localStatus = "กำลังจัดส่ง";
           else if (o.status === "completed") localStatus = "สำเร็จ";
           else if (o.status === "cancelled") localStatus = "ยกเลิก";
+          else if (o.status) localStatus = o.status;
 
           return {
             id: o.id,
@@ -243,12 +259,6 @@ function KitchenMonitor() {
     });
   };
 
-  const isWaiting = (s: string) => s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending";
-  const isCooking = (s: string) => s === "กำลังทำ" || s === "กำลังเตรียม" || s === "preparing";
-  const isReady = (s: string) => s === "พร้อมเสิร์ฟ" || s === "กำลังจัดส่ง" || s === "delivering" || s === "ready";
-  const isCompleted = (s: string) => s === "สำเร็จ" || s === "completed";
-  const isCancelled = (s: string) => s === "ยกเลิก" || s === "ยกเลิกแล้ว" || s === "cancelled";
-
   const syncTableStatusForOrder = async (order: OrderHistory, nextOrderList: OrderHistory[]) => {
     if (!order.tableNumber) return;
     const tableLabel = order.tableNumber.trim();
@@ -292,14 +302,26 @@ function KitchenMonitor() {
       dbStatus = "preparing";
     } else if (isCooking(targetOrder.status)) {
       nextStatus = "พร้อมเสิร์ฟ";
-      dbStatus = "delivering";
+      dbStatus = "ready";
     } else if (isReady(targetOrder.status)) {
+      if (targetOrder.orderType === "delivery") {
+        nextStatus = "กำลังจัดส่ง";
+        dbStatus = "delivering";
+      } else {
+        nextStatus = "สำเร็จ";
+        dbStatus = "completed";
+      }
+    } else if (isDelivering(targetOrder.status)) {
       nextStatus = "สำเร็จ";
       dbStatus = "completed";
     }
     const nextList = orders.map((o) => (o.id === id ? { ...o, status: nextStatus } : o));
     setOrders(nextList);
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextList));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-orders",
+      newValue: JSON.stringify(nextList),
+    }));
     try {
       const { error } = await supabase.from("orders").update({ status: dbStatus }).eq("id", id);
       if (error) throw error;
@@ -324,13 +346,25 @@ function KitchenMonitor() {
     } else if (isReady(targetOrder.status)) {
       nextStatus = "กำลังทำ";
       dbStatus = "preparing";
-    } else if (isCompleted(targetOrder.status)) {
+    } else if (isDelivering(targetOrder.status)) {
       nextStatus = "พร้อมเสิร์ฟ";
-      dbStatus = "delivering";
+      dbStatus = "ready";
+    } else if (isCompleted(targetOrder.status)) {
+      if (targetOrder.orderType === "delivery") {
+        nextStatus = "กำลังจัดส่ง";
+        dbStatus = "delivering";
+      } else {
+        nextStatus = "พร้อมเสิร์ฟ";
+        dbStatus = "ready";
+      }
     }
     const nextList = orders.map((o) => (o.id === id ? { ...o, status: nextStatus } : o));
     setOrders(nextList);
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextList));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-orders",
+      newValue: JSON.stringify(nextList),
+    }));
     try {
       await supabase.from("orders").update({ status: dbStatus }).eq("id", id);
     } catch {
@@ -345,6 +379,10 @@ function KitchenMonitor() {
     const nextList = orders.map((o) => (o.id === id ? { ...o, status: "ยกเลิก" } : o));
     setOrders(nextList);
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(nextList));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-orders",
+      newValue: JSON.stringify(nextList),
+    }));
     try {
       await supabase.from("orders").update({ status: "cancelled" }).eq("id", id);
     } catch {
@@ -360,19 +398,8 @@ function KitchenMonitor() {
     setOrders([]);
     localStorage.removeItem("ran-lung-get-orders");
     try {
-      const dbStr = localStorage.getItem("ran-lung-get-mock-db");
-      if (dbStr) {
-        const db = JSON.parse(dbStr);
-        db.orders = [];
-        db.order_items = [];
-        if (Array.isArray(db.restaurant_tables)) {
-          db.restaurant_tables = db.restaurant_tables.map((t: any) => ({ ...t, status: "available" }));
-        }
-        localStorage.setItem("ran-lung-get-mock-db", JSON.stringify(db));
-      }
-    } catch {
-      // Ignored
-    }
+      window.dispatchEvent(new CustomEvent("ran-lung-get-orders-cleared"));
+    } catch {}
   };
 
   const stats = useMemo(() => {
@@ -382,6 +409,7 @@ function KitchenMonitor() {
       waiting: orders.filter((o) => isWaiting(o.status)).length,
       cooking: orders.filter((o) => isCooking(o.status)).length,
       ready: orders.filter((o) => isReady(o.status)).length,
+      delivering: orders.filter((o) => o.status === "กำลังจัดส่ง" || o.status === "delivering").length,
       completed: orders.filter((o) => isCompleted(o.status)).length,
     };
   }, [orders]);
@@ -392,6 +420,7 @@ function KitchenMonitor() {
       waiting: list.filter((o) => isWaiting(o.status)).reverse(),
       cooking: list.filter((o) => isCooking(o.status)),
       ready: list.filter((o) => isReady(o.status)),
+      delivering: list.filter((o) => o.status === "กำลังจัดส่ง" || o.status === "delivering"),
     };
   }, [orders, typeFilter]);
 
@@ -606,6 +635,7 @@ function KitchenMonitor() {
                     { id: "รอดำเนินการ", label: "ออเดอร์ใหม่", count: stats.waiting, dotColor: "bg-amber-500" },
                     { id: "กำลังทำ", label: "กำลังปรุง", count: stats.cooking, dotColor: "bg-blue-500" },
                     { id: "พร้อมเสิร์ฟ", label: "พร้อมเสิร์ฟ", count: stats.ready, dotColor: "bg-emerald-500" },
+                    { id: "กำลังจัดส่ง", label: "ไรเดอร์กำลังส่ง", count: stats.delivering, dotColor: "bg-indigo-500" },
                     { id: "สำเร็จ", label: "เสร็จสิ้น", count: stats.completed },
                   ].map((tab) => (
                     <button
@@ -678,7 +708,11 @@ function KitchenMonitor() {
               {/* Order Area */}
               <div className="flex-1 overflow-y-auto no-scrollbar">
                 {statusFilter === "active" ? (
-                  <div className="hidden md:grid md:grid-cols-3 gap-6 min-w-[960px]">
+                  <div className={`hidden md:grid gap-6 ${
+                    typeFilter === "dine-in" || typeFilter === "takeaway"
+                      ? "md:grid-cols-3 min-w-[960px]"
+                      : "md:grid-cols-4 min-w-[1200px]"
+                  }`}>
                     <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
                       <div className="p-4 bg-amber-500/10 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
                         <span className="font-black text-sm text-[#002e47]">ออเดอร์ใหม่</span>
@@ -727,7 +761,9 @@ function KitchenMonitor() {
                     </div>
                     <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
                       <div className="p-4 bg-emerald-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
-                        <span className="font-black text-sm text-[#002e47]">พร้อมเสิร์ฟ</span>
+                        <span className="font-black text-sm text-[#002e47]">
+                          {typeFilter === "delivery" ? "รอไรเดอร์มารับ" : "พร้อมเสิร์ฟ / รอรับ"}
+                        </span>
                         <span className="text-white text-xs font-black px-2 py-0.5 rounded-full bg-emerald-500">
                           {ordersByStatus.ready.length}
                         </span>
@@ -748,6 +784,34 @@ function KitchenMonitor() {
                         )}
                       </div>
                     </div>
+                    {(typeFilter === "all" || typeFilter === "delivery") && (
+                      <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
+                        <div className="p-4 bg-indigo-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
+                          <div className="flex items-center gap-2">
+                            <Bike size={16} className="text-indigo-600 animate-bounce" />
+                            <span className="font-black text-sm text-[#002e47]">ไรเดอร์กำลังส่ง</span>
+                          </div>
+                          <span className="text-white text-xs font-black px-2 py-0.5 rounded-full bg-indigo-600">
+                            {ordersByStatus.delivering.length}
+                          </span>
+                        </div>
+                        <div className="p-4 space-y-4 bg-[#f8fafc]/50 flex-1 overflow-y-auto max-h-[70vh]">
+                          {ordersByStatus.delivering.length === 0 ? (
+                            <EmptyColumnMessage text="ไม่มีรายการกำลังนำส่ง" />
+                          ) : (
+                            ordersByStatus.delivering.map((o) => (
+                              <StaffOrderCard
+                                key={o.id}
+                                order={o}
+                                advanceOrderStatus={advanceOrderStatus}
+                                regressOrderStatus={regressOrderStatus}
+                                cancelOrder={cancelOrder}
+                              />
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-white rounded-3xl border border-[#ece4d6] p-4">

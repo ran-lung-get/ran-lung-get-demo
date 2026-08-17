@@ -100,12 +100,12 @@ export function RandomDishModal({
   const [winnerDish, setWinnerDish] = useState<MenuItem | null>(null);
   const spinIntervalRef = useRef<any>(null);
 
-  // Eligible pool of dishes (excluding drinks & desserts)
+  // Eligible pool of dishes (excluding drinks & desserts & hidden items)
   const eligibleDishes = useMemo(() => {
     const foodItems = menuItems.filter(
-      (m) => m.category !== "drinks" && m.category !== "dessert"
+      (m) => m.isAvailable !== false && m.category !== "drinks" && m.category !== "dessert"
     );
-    return foodItems.length > 0 ? foodItems : menuItems;
+    return foodItems.length > 0 ? foodItems : menuItems.filter((m) => m.isAvailable !== false);
   }, [menuItems]);
 
   const startRandomSpin = () => {

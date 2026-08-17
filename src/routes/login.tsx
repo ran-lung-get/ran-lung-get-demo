@@ -6,8 +6,8 @@ import { ShoppingBag, User, ChefHat, Headset, ShieldAlert } from "lucide-react";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "เข้าสู่ระบบ · ร้านลุงเก้ต" },
-      { name: "description", content: "เข้าสู่ระบบเพื่อสั่งอาหารจากร้านลุงเก้ต" },
+      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { name: "description", content: "เข้าสู่ระบบเพื่อสั่งอาหารหรือจัดการร้านลุงเก็ต" },
     ],
   }),
   component: LoginPage,

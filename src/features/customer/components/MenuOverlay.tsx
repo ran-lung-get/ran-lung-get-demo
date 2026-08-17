@@ -40,8 +40,8 @@ export function MenuOverlay({
   // Filter and sort items dynamically
   const filteredAndSortedItems = useMemo(() => {
     let list = activeCat === "all"
-      ? menuItems
-      : menuItems.filter((m) => m.category === activeCat);
+      ? menuItems.filter((m) => m.isAvailable !== false)
+      : menuItems.filter((m) => m.category === activeCat && m.isAvailable !== false);
 
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();

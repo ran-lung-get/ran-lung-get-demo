@@ -5,6 +5,8 @@ import {
   ShoppingBag,
   ShieldAlert,
   RotateCcw,
+  CheckCircle,
+  PackageCheck,
 } from "lucide-react";
 import type { OrderHistory } from "../types";
 import { OrderTimer } from "./OrderTimer";
@@ -24,15 +26,17 @@ export function OrderCard({
   const [copied, setCopied] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const isWaiting = order.status === "รอดำเนินการ" || order.status === "รอรับออเดอร์";
-  const isCooking = order.status === "กำลังทำ" || order.status === "กำลังเตรียม";
-  const isReady = order.status === "พร้อมเสิร์ฟ";
-  const isCompleted = order.status === "สำเร็จ";
+  const isWaiting = order.status === "รอดำเนินการ" || order.status === "รอรับออเดอร์" || order.status === "pending";
+  const isCooking = order.status === "กำลังทำ" || order.status === "กำลังเตรียม" || order.status === "preparing";
+  const isReady = order.status === "พร้อมเสิร์ฟ" || order.status === "ready";
+  const isDelivering = order.status === "กำลังจัดส่ง" || order.status === "delivering";
+  const isCompleted = order.status === "สำเร็จ" || order.status === "completed";
   const isRefund = order.status === "ขอคืนเงิน";
 
   let borderClass = "border-[#ece4d6]";
   let actionBtnText = "เริ่มทำ";
   let actionBtnColor = "bg-[#002e47] text-white hover:bg-[#001f30]";
+  let ActionIcon: any = null;
   
   if (isRefund) {
     borderClass = "border-red-500 shadow-[0_8px_20px_rgba(239,68,68,0.12)] bg-red-50/15";
@@ -44,12 +48,31 @@ export function OrderCard({
     actionBtnColor = "bg-blue-600 hover:bg-blue-700 text-white";
   } else if (isCooking) {
     borderClass = "border-blue-400/80 shadow-[0_8px_20px_rgba(37,99,235,0.06)]";
-    actionBtnText = "ทำเสร็จแล้ว";
-    actionBtnColor = "bg-emerald-600 hover:bg-emerald-700 text-white";
+    if (order.orderType === "delivery") {
+      actionBtnText = "ปรุงเสร็จ · รอไรเดอร์";
+      actionBtnColor = "bg-emerald-600 hover:bg-emerald-700 text-white";
+    } else {
+      actionBtnText = "ทำเสร็จแล้ว";
+      actionBtnColor = "bg-emerald-600 hover:bg-emerald-700 text-white";
+    }
   } else if (isReady) {
     borderClass = "border-emerald-400/80 shadow-[0_8px_20px_rgba(16,185,129,0.06)]";
-    actionBtnText = "เสิร์ฟแล้ว / ปิดคิว";
-    actionBtnColor = "bg-slate-700 hover:bg-slate-800 text-white";
+    if (order.orderType === "delivery") {
+      actionBtnText = "ส่งมอบให้ไรเดอร์ (เริ่มนำส่ง)";
+      actionBtnColor = "bg-indigo-600 hover:bg-indigo-700 text-white";
+      ActionIcon = Bike;
+    } else if (order.orderType === "takeaway") {
+      actionBtnText = "ลูกค้ารับแล้ว / ปิดคิว";
+      actionBtnColor = "bg-slate-700 hover:bg-slate-800 text-white";
+    } else {
+      actionBtnText = "เสิร์ฟแล้ว / ปิดคิว";
+      actionBtnColor = "bg-slate-700 hover:bg-slate-800 text-white";
+    }
+  } else if (isDelivering) {
+    borderClass = "border-indigo-400/80 shadow-[0_8px_20px_rgba(99,102,241,0.08)] bg-indigo-50/20";
+    actionBtnText = "จัดส่งสำเร็จ / ปิดคิว";
+    actionBtnColor = "bg-slate-800 hover:bg-slate-900 text-white";
+    ActionIcon = CheckCircle;
   }
 
   let bannerBg = "bg-amber-100 text-[#002e47]";
@@ -181,6 +204,43 @@ export function OrderCard({
           </div>
         )}
 
+        {/* Ready for Rider Pickup Banner */}
+        {isReady && order.orderType === "delivery" && (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2">
+              <PackageCheck size={16} className="text-emerald-600 shrink-0" />
+              <span className="text-xs font-black text-emerald-800">
+                อาหารปรุงเสร็จแล้ว · รอไรเดอร์มารับ
+              </span>
+            </div>
+            <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
+              รอส่งมอบ
+            </span>
+          </div>
+        )}
+
+        {/* Active Delivering Status Alert Banner */}
+        {isDelivering && (
+          <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-indigo-600 text-white flex items-center justify-center animate-bounce">
+                <Bike size={16} className="stroke-[2.5]" />
+              </div>
+              <div>
+                <span className="text-[9px] font-black text-indigo-900 uppercase tracking-wider block">
+                  สถานะการจัดส่ง
+                </span>
+                <span className="text-xs font-black text-indigo-700">
+                  ไรเดอร์กำลังนำส่งอาหารให้ลูกค้า...
+                </span>
+              </div>
+            </div>
+            <span className="text-[9px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold animate-pulse">
+              กำลังส่ง
+            </span>
+          </div>
+        )}
+
         {/* Refund Requested Details Banner */}
         {isRefund && (
           <div className="space-y-2.5">
@@ -254,7 +314,8 @@ export function OrderCard({
             onClick={() => advanceOrderStatus(order.id, order.status)}
             className={`flex-1 py-3 rounded-xl font-black text-xs tracking-wider uppercase transition-colors duration-300 flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer shadow-xs ${actionBtnColor}`}
           >
-            {actionBtnText}
+            {ActionIcon && <ActionIcon size={15} />}
+            <span>{actionBtnText}</span>
           </button>
         ) : (
           <div className="flex-1 py-2 text-center text-[#5a6e7a] text-xs font-bold bg-slate-100 rounded-xl">

@@ -184,6 +184,31 @@ export function MenuManagementView() {
     return "m_" + name.replace(/[^a-zA-Z0-9ก-๙]/g, "_").toLowerCase().slice(0, 30) + "_" + Date.now();
   };
 
+  const syncToLocalAndBroadcast = (items: MenuItemDB[]) => {
+    const mapped = items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      desc: item.description || "",
+      price: Number(item.price),
+      image: item.image_url || item.image || "",
+      category: item.category,
+      isAvailable: item.is_available !== false,
+      isSpicy: item.is_spicy ?? false,
+      options: item.options || undefined,
+      addons: item.addons || undefined,
+    }));
+    localStorage.setItem("ran-lung-get-menu-items", JSON.stringify(mapped));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "ran-lung-get-menu-items",
+        newValue: JSON.stringify(mapped),
+      })
+    );
+    try {
+      window.dispatchEvent(new CustomEvent("ran-lung-get-menu-updated", { detail: mapped }));
+    } catch {}
+  };
+
   const saveMenuItem = async () => {
     if (!formName.trim() || !formPrice) return;
     setSaving(true);
@@ -204,19 +229,20 @@ export function MenuManagementView() {
     };
 
     try {
+      let nextList: MenuItemDB[];
       if (editItem) {
         const { error } = await supabase.from("menu_items").update(payload).eq("id", editItem.id);
         if (error) throw error;
-        setMenuItems((prev) => prev.map((m) => (m.id === editItem.id ? { ...m, ...payload } : m)));
+        nextList = menuItems.map((m) => (m.id === editItem.id ? { ...m, ...payload } : m));
       } else {
         const newId = generateId(formName);
         const { data, error } = await supabase.from("menu_items").insert({ ...payload, id: newId }).select().single();
         if (error) throw error;
-        setMenuItems((prev) => {
-          if (prev.some((m) => m.id === data.id)) return prev;
-          return [...prev, data as MenuItemDB].sort((a, b) => a.sort_order - b.sort_order);
-        });
+        const added = data as MenuItemDB;
+        nextList = [...menuItems.filter((m) => m.id !== added.id), added].sort((a, b) => a.sort_order - b.sort_order);
       }
+      setMenuItems(nextList);
+      syncToLocalAndBroadcast(nextList);
       setIsFormOpen(false);
     } catch (e: any) {
       alert("บันทึกไม่สำเร็จ: " + (e?.message || "เกิดข้อผิดพลาด"));
@@ -230,7 +256,9 @@ export function MenuManagementView() {
     try {
       const { error } = await supabase.from("menu_items").delete().eq("id", item.id);
       if (error) throw error;
-      setMenuItems((prev) => prev.filter((m) => m.id !== item.id));
+      const nextList = menuItems.filter((m) => m.id !== item.id);
+      setMenuItems(nextList);
+      syncToLocalAndBroadcast(nextList);
       if (isFormOpen && editItem?.id === item.id) setIsFormOpen(false);
     } catch (e: any) {
       alert("ลบไม่สำเร็จ: " + (e?.message || "เกิดข้อผิดพลาด"));
@@ -239,7 +267,9 @@ export function MenuManagementView() {
 
   const toggleAvailability = async (item: MenuItemDB) => {
     const next = !item.is_available;
-    setMenuItems((prev) => prev.map((m) => (m.id === item.id ? { ...m, is_available: next } : m)));
+    const nextList = menuItems.map((m) => (m.id === item.id ? { ...m, is_available: next } : m));
+    setMenuItems(nextList);
+    syncToLocalAndBroadcast(nextList);
     try {
       await supabase.from("menu_items").update({ is_available: next }).eq("id", item.id);
     } catch {

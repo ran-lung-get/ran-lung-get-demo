@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   CheckCircle,
   Bell,
+  Bike,
 } from "lucide-react";
 
 import {
@@ -39,6 +40,12 @@ import {
 } from "../features/kitchen";
 
 export const Route = createFileRoute("/kitchen")({
+  head: () => ({
+    meta: [
+      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { name: "description", content: "หน้าจอแสดงผลและจัดการคิวอาหารในห้องครัว ร้านลุงเก็ต" },
+    ],
+  }),
   component: KitchenMonitor,
 });
 
@@ -146,9 +153,22 @@ function KitchenMonitor() {
 
   const advanceOrderStatus = (orderId: string, currentStatus: string) => {
     let nextStatus = "สำเร็จ";
-    if (currentStatus === "รอดำเนินการ") nextStatus = "กำลังทำ";
-    else if (currentStatus === "กำลังทำ" || currentStatus === "กำลังเตรียม") nextStatus = "พร้อมเสิร์ฟ";
-    else if (currentStatus === "พร้อมเสิร์ฟ") nextStatus = "สำเร็จ";
+    const target = orders.find((o) => o.id === orderId);
+    const isDelivery = target?.orderType === "delivery";
+
+    if (currentStatus === "รอดำเนินการ" || currentStatus === "รอรับออเดอร์" || currentStatus === "pending") {
+      nextStatus = "กำลังทำ";
+    } else if (currentStatus === "กำลังทำ" || currentStatus === "กำลังเตรียม" || currentStatus === "preparing") {
+      nextStatus = "พร้อมเสิร์ฟ";
+    } else if (currentStatus === "พร้อมเสิร์ฟ" || currentStatus === "ready") {
+      if (isDelivery) {
+        nextStatus = "กำลังจัดส่ง";
+      } else {
+        nextStatus = "สำเร็จ";
+      }
+    } else if (currentStatus === "กำลังจัดส่ง" || currentStatus === "delivering") {
+      nextStatus = "สำเร็จ";
+    }
 
     const updated = orders.map((o) => {
       if (o.id === orderId) {
@@ -161,9 +181,18 @@ function KitchenMonitor() {
 
   const regressOrderStatus = (orderId: string, currentStatus: string) => {
     let prevStatus = "รอดำเนินการ";
-    if (currentStatus === "กำลังทำ" || currentStatus === "กำลังเตรียม") prevStatus = "รอดำเนินการ";
-    else if (currentStatus === "พร้อมเสิร์ฟ") prevStatus = "กำลังทำ";
-    else if (currentStatus === "สำเร็จ") prevStatus = "พร้อมเสิร์ฟ";
+    const target = orders.find((o) => o.id === orderId);
+    const isDelivery = target?.orderType === "delivery";
+
+    if (currentStatus === "กำลังทำ" || currentStatus === "กำลังเตรียม" || currentStatus === "preparing") {
+      prevStatus = "รอดำเนินการ";
+    } else if (currentStatus === "พร้อมเสิร์ฟ" || currentStatus === "ready") {
+      prevStatus = "กำลังทำ";
+    } else if (currentStatus === "กำลังจัดส่ง" || currentStatus === "delivering") {
+      prevStatus = "พร้อมเสิร์ฟ";
+    } else if (currentStatus === "สำเร็จ" || currentStatus === "completed") {
+      prevStatus = isDelivery ? "กำลังจัดส่ง" : "พร้อมเสิร์ฟ";
+    }
 
     const updated = orders.map((o) => {
       if (o.id === orderId) {
@@ -175,7 +204,7 @@ function KitchenMonitor() {
   };
 
   const clearCompletedOrders = () => {
-    const updated = orders.filter(o => o.status !== "สำเร็จ");
+    const updated = orders.filter(o => o.status !== "สำเร็จ" && o.status !== "completed");
     updateOrdersAndNotify(updated);
   };
 
@@ -242,15 +271,17 @@ function KitchenMonitor() {
     let waiting = 0;
     let cooking = 0;
     let ready = 0;
+    let delivering = 0;
     let completed = 0;
     let refunds = 0;
 
     orders.forEach((o) => {
       const s = o.status;
-      if (s === "รอดำเนินการ" || s === "รอรับออเดอร์") waiting++;
-      else if (s === "กำลังทำ" || s === "กำลังเตรียม") cooking++;
-      else if (s === "พร้อมเสิร์ฟ") ready++;
-      else if (s === "สำเร็จ") completed++;
+      if (s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending") waiting++;
+      else if (s === "กำลังทำ" || s === "กำลังเตรียม" || s === "preparing") cooking++;
+      else if (s === "พร้อมเสิร์ฟ" || s === "ready") ready++;
+      else if (s === "กำลังจัดส่ง" || s === "delivering") delivering++;
+      else if (s === "สำเร็จ" || s === "completed") completed++;
       else if (s === "ขอคืนเงิน") refunds++;
     });
 
@@ -258,9 +289,10 @@ function KitchenMonitor() {
       waiting, 
       cooking, 
       ready, 
+      delivering,
       completed, 
       refunds,
-      totalActive: waiting + cooking + ready 
+      totalActive: waiting + cooking + ready + delivering 
     };
   }, [orders]);
 
@@ -282,9 +314,16 @@ function KitchenMonitor() {
     result.sort((a, b) => getTimestampFromOrderId(a.id) - getTimestampFromOrderId(b.id));
 
     if (statusFilter !== "active") {
-      result = result.filter((o) => o.status === statusFilter);
+      result = result.filter((o) => {
+        if (statusFilter === "รอดำเนินการ") return o.status === "รอดำเนินการ" || o.status === "รอรับออเดอร์" || o.status === "pending";
+        if (statusFilter === "กำลังทำ") return o.status === "กำลังทำ" || o.status === "กำลังเตรียม" || o.status === "preparing";
+        if (statusFilter === "พร้อมเสิร์ฟ") return o.status === "พร้อมเสิร์ฟ" || o.status === "ready";
+        if (statusFilter === "กำลังจัดส่ง") return o.status === "กำลังจัดส่ง" || o.status === "delivering";
+        if (statusFilter === "สำเร็จ") return o.status === "สำเร็จ" || o.status === "completed";
+        return o.status === statusFilter;
+      });
     } else {
-      result = result.filter((o) => o.status !== "สำเร็จ");
+      result = result.filter((o) => o.status !== "สำเร็จ" && o.status !== "completed");
     }
 
     if (typeFilter !== "all") {
@@ -298,11 +337,12 @@ function KitchenMonitor() {
     const list = orders.filter(o => typeFilter === "all" ? true : o.orderType === typeFilter);
     list.sort((a, b) => getTimestampFromOrderId(a.id) - getTimestampFromOrderId(b.id));
 
-    const waiting = list.filter(o => o.status === "รอดำเนินการ");
-    const cooking = list.filter(o => o.status === "กำลังทำ" || o.status === "กำลังเตรียม");
-    const ready = list.filter(o => o.status === "พร้อมเสิร์ฟ");
+    const waiting = list.filter(o => o.status === "รอดำเนินการ" || o.status === "รอรับออเดอร์" || o.status === "pending");
+    const cooking = list.filter(o => o.status === "กำลังทำ" || o.status === "กำลังเตรียม" || o.status === "preparing");
+    const ready = list.filter(o => o.status === "พร้อมเสิร์ฟ" || o.status === "ready");
+    const delivering = list.filter(o => o.status === "กำลังจัดส่ง" || o.status === "delivering");
 
-    return { waiting, cooking, ready };
+    return { waiting, cooking, ready, delivering };
   }, [orders, typeFilter]);
 
   return (
@@ -488,6 +528,7 @@ function KitchenMonitor() {
                     { id: "รอดำเนินการ", label: "ออเดอร์ใหม่", count: stats.waiting, dotColor: "bg-amber-500" },
                     { id: "กำลังทำ", label: "กำลังปรุง", count: stats.cooking, dotColor: "bg-blue-500" },
                     { id: "พร้อมเสิร์ฟ", label: "พร้อมเสิร์ฟ", count: stats.ready, dotColor: "bg-emerald-500" },
+                    { id: "กำลังจัดส่ง", label: "ไรเดอร์กำลังส่ง", count: stats.delivering, dotColor: "bg-indigo-500" },
                     { id: "สำเร็จ", label: "เสร็จสิ้น", count: stats.completed },
                   ].map((tab) => (
                     <button
@@ -579,7 +620,11 @@ function KitchenMonitor() {
                       )}
                     </div>
 
-                    <div className="hidden md:grid md:grid-cols-3 gap-6 min-w-[960px]">
+                    <div className={`hidden md:grid gap-6 ${
+                      typeFilter === "dine-in" || typeFilter === "takeaway"
+                        ? "md:grid-cols-3 min-w-[960px]"
+                        : "md:grid-cols-4 min-w-[1200px]"
+                    }`}>
                       {/* Column 1: Waiting */}
                       <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
                         <div className="p-4 bg-amber-500/10 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
@@ -638,13 +683,13 @@ function KitchenMonitor() {
                         </div>
                       </div>
 
-                      {/* Column 3: Ready */}
+                      {/* Column 3: Ready / Waiting for Pickup */}
                       <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
                         <div className="p-4 bg-emerald-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
                           <div className="flex items-center gap-2">
                             <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
                             <h3 className="font-black text-sm uppercase tracking-wider" style={{ color: BRAND }}>
-                              พร้อมเสิร์ฟ
+                              {typeFilter === "delivery" ? "รอไรเดอร์มารับ" : "พร้อมเสิร์ฟ / รอรับ"}
                             </h3>
                           </div>
                           <span className="text-white text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-500">
@@ -666,6 +711,37 @@ function KitchenMonitor() {
                           )}
                         </div>
                       </div>
+
+                      {/* Column 4: Delivering / Rider Out (shown for all or delivery) */}
+                      {(typeFilter === "all" || typeFilter === "delivery") && (
+                        <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
+                          <div className="p-4 bg-indigo-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-2">
+                              <Bike size={16} className="text-indigo-600 animate-bounce" />
+                              <h3 className="font-black text-sm uppercase tracking-wider" style={{ color: BRAND }}>
+                                ไรเดอร์กำลังส่ง
+                              </h3>
+                            </div>
+                            <span className="text-white text-xs font-black px-2.5 py-0.5 rounded-full bg-indigo-600">
+                              {ordersByStatus.delivering.length}
+                            </span>
+                          </div>
+                          <div className="p-4 space-y-4 bg-[#f8fafc]/50">
+                            {ordersByStatus.delivering.length === 0 ? (
+                              <EmptyColumnMessage text="ไม่มีรายการกำลังนำส่ง" />
+                            ) : (
+                              ordersByStatus.delivering.map(o => (
+                                <OrderCard 
+                                  key={o.id}
+                                  order={o}
+                                  advanceOrderStatus={advanceOrderStatus}
+                                  regressOrderStatus={regressOrderStatus}
+                                />
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -732,8 +808,9 @@ function KitchenMonitor() {
             {[
               { id: "active", label: "ทั้งหมด", icon: ClipboardList, count: stats.totalActive },
               { id: "รอดำเนินการ", label: "ใหม่", icon: Inbox, count: stats.waiting },
-              { id: "กำลังทำ", label: "กำลังปรุง", icon: Flame, count: stats.cooking },
+              { id: "กำลังทำ", label: "ปรุง", icon: Flame, count: stats.cooking },
               { id: "พร้อมเสิร์ฟ", label: "พร้อมเสิร์ฟ", icon: CheckCircle, count: stats.ready },
+              { id: "กำลังจัดส่ง", label: "กำลังส่ง", icon: Bike, count: stats.delivering },
               { id: "สำเร็จ", label: "สำเร็จแล้ว", icon: Trophy, count: stats.completed },
             ].map((tab) => {
               const TabIcon = tab.icon;
@@ -746,7 +823,7 @@ function KitchenMonitor() {
                     setView("kitchen");
                     setStatusFilter(tab.id);
                   }}
-                  className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all cursor-pointer min-w-[60px] ${
+                  className={`relative flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer min-w-[50px] ${
                     isActive
                       ? "text-[#002e47] font-black"
                       : "text-slate-400 font-medium"

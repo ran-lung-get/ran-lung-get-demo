@@ -29,17 +29,26 @@ export function StaffOrderCard({
   }
 
   const isCooking = (s: string) => s === "กำลังทำ" || s === "กำลังเตรียม" || s === "preparing";
-  const isReady = (s: string) => s === "พร้อมเสิร์ฟ" || s === "กำลังจัดส่ง" || s === "delivering" || s === "ready";
+  const isReady = (s: string) => s === "พร้อมเสิร์ฟ" || s === "ready";
+  const isDelivering = (s: string) => s === "กำลังจัดส่ง" || s === "delivering";
   const isWaiting = (s: string) => s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending";
 
   let nextBtnText = "เริ่มทำครัว";
   let nextBtnColor = "bg-[#002e47] text-white hover:bg-[#003957]";
   if (isCooking(order.status)) {
-    nextBtnText = "ปรุงสำเร็จ";
+    nextBtnText = isDelivery ? "ปรุงเสร็จ · รอไรเดอร์" : "ปรุงสำเร็จ";
     nextBtnColor = "bg-blue-600 text-white hover:bg-blue-700";
   } else if (isReady(order.status)) {
-    nextBtnText = "ส่งเสิร์ฟสำเร็จ";
-    nextBtnColor = "bg-emerald-600 text-white hover:bg-emerald-700";
+    if (isDelivery) {
+      nextBtnText = "มอบให้ไรเดอร์ (กำลังส่ง)";
+      nextBtnColor = "bg-indigo-600 text-white hover:bg-indigo-700";
+    } else {
+      nextBtnText = "ส่งเสิร์ฟสำเร็จ";
+      nextBtnColor = "bg-emerald-600 text-white hover:bg-emerald-700";
+    }
+  } else if (isDelivering(order.status)) {
+    nextBtnText = "ส่งถึงแล้ว · สำเร็จ";
+    nextBtnColor = "bg-slate-800 text-white hover:bg-slate-900";
   }
 
   return (

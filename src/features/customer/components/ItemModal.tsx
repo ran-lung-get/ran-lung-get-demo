@@ -490,12 +490,17 @@ export function ItemModal({
             </div>
             <button
               type="button"
+              disabled={item.isAvailable === false}
               aria-label={cartLine ? `บันทึกการแก้ไข ${formattedName} จำนวน ${qty} ชิ้น รวมราคา ${total} บาท` : `เพิ่ม ${formattedName} ลงตะกร้า จำนวน ${qty} ชิ้น รวมราคา ${total} บาท`}
               onClick={handleAdd}
-              className="flex-1 h-12 rounded-full font-semibold flex items-center justify-between px-5 transition active:scale-95 cursor-pointer"
-              style={{ background: BRAND, color: "white" }}
+              className={`flex-1 h-12 rounded-full font-semibold flex items-center justify-between px-5 transition active:scale-95 ${
+                item.isAvailable === false
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed opacity-75"
+                  : "cursor-pointer text-white"
+              }`}
+              style={{ background: item.isAvailable === false ? "#cbd5e1" : BRAND, color: item.isAvailable === false ? "#64748b" : "white" }}
             >
-              <span>{cartLine ? t("บันทึกการแก้ไข") : t("เพิ่มลงตะกร้า")}</span>
+              <span>{item.isAvailable === false ? t("สินค้าหมดชั่วคราว / ซ่อนอยู่") : cartLine ? t("บันทึกการแก้ไข") : t("เพิ่มลงตะกร้า")}</span>
               <span>฿{total}</span>
             </button>
           </div>

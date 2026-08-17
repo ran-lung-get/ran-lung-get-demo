@@ -27,6 +27,12 @@ import {
 } from "../../features/admin";
 
 export const Route = createFileRoute("/admin/")({
+  head: () => ({
+    meta: [
+      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { name: "description", content: "ระบบจัดการคลัง สต็อก เมนู และบัญชีผู้ใช้ ร้านลุงเก็ต" },
+    ],
+  }),
   component: AdminDashboard,
 });
 
@@ -136,9 +142,11 @@ function AdminDashboard() {
           let localStatus = "รอดำเนินการ";
           if (o.status === "pending") localStatus = "รอดำเนินการ";
           else if (o.status === "preparing") localStatus = "กำลังทำ";
-          else if (o.status === "delivering") localStatus = "พร้อมเสิร์ฟ";
+          else if (o.status === "ready") localStatus = "พร้อมเสิร์ฟ";
+          else if (o.status === "delivering") localStatus = "กำลังจัดส่ง";
           else if (o.status === "completed") localStatus = "สำเร็จ";
           else if (o.status === "cancelled") localStatus = "ยกเลิก";
+          else if (o.status) localStatus = o.status;
 
           return {
             id: o.id,
@@ -355,13 +363,13 @@ function AdminDashboard() {
     }
   };
 
-  const toggleStock = (itemId: string) => {
-    let updated: string[];
-    if (outOfStockIds.includes(itemId)) {
-      updated = outOfStockIds.filter((id) => id !== itemId);
-    } else {
-      updated = [...outOfStockIds, itemId];
-    }
+  const toggleStock = async (itemId: string) => {
+    const isCurrentlyOut = outOfStockIds.includes(itemId);
+    const updated = isCurrentlyOut
+      ? outOfStockIds.filter((id) => id !== itemId)
+      : [...outOfStockIds, itemId];
+    const nextIsAvailable = isCurrentlyOut; // If it was out, turning on makes it available (true)
+
     setOutOfStockIds(updated);
     localStorage.setItem("ran-lung-get-out-of-stock-items", JSON.stringify(updated));
     window.dispatchEvent(
@@ -370,6 +378,28 @@ function AdminDashboard() {
         newValue: JSON.stringify(updated),
       }),
     );
+
+    // Update menuItems state & localStorage ran-lung-get-menu-items
+    setMenuItems((prev) => {
+      const next = prev.map((m) => (m.id === itemId ? { ...m, isAvailable: nextIsAvailable } : m));
+      localStorage.setItem("ran-lung-get-menu-items", JSON.stringify(next));
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "ran-lung-get-menu-items",
+          newValue: JSON.stringify(next),
+        }),
+      );
+      try {
+        window.dispatchEvent(new CustomEvent("ran-lung-get-menu-updated", { detail: next }));
+      } catch {}
+      return next;
+    });
+
+    try {
+      await supabase.from("menu_items").update({ is_available: nextIsAvailable }).eq("id", itemId);
+    } catch (e) {
+      console.warn("Supabase toggleStock update failed:", e);
+    }
   };
 
   const adjustIngredientQty = async (id: string, amount: number) => {
@@ -377,7 +407,18 @@ function AdminDashboard() {
     if (!item) return;
     const newQty = Math.max(0, Number(item.quantity) + amount);
 
-    setIngredients((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: newQty } : i)));
+    const nextList = ingredients.map((i) => (i.id === id ? { ...i, quantity: newQty } : i));
+    setIngredients(nextList);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(nextList));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "ran-lung-get-mock-ingredients",
+        newValue: JSON.stringify(nextList),
+      })
+    );
+    try {
+      window.dispatchEvent(new CustomEvent("ran-lung-get-stock-updated", { detail: nextList }));
+    } catch {}
 
     try {
       await updateIngredientStock(id, newQty);
@@ -420,19 +461,28 @@ function AdminDashboard() {
       return;
     }
 
-    setIngredients((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              name: editName.trim(),
-              quantity: q,
-              unit: editUnit,
-              min_threshold: t,
-            }
-          : i,
-      ),
+    const nextList = ingredients.map((i) =>
+      i.id === id
+        ? {
+            ...i,
+            name: editName.trim(),
+            quantity: q,
+            unit: editUnit,
+            min_threshold: t,
+          }
+        : i,
     );
+    setIngredients(nextList);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(nextList));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "ran-lung-get-mock-ingredients",
+        newValue: JSON.stringify(nextList),
+      })
+    );
+    try {
+      window.dispatchEvent(new CustomEvent("ran-lung-get-stock-updated", { detail: nextList }));
+    } catch {}
     setEditingId(null);
 
     try {
@@ -447,7 +497,18 @@ function AdminDashboard() {
 
   const handleRemoveIngredient = async (id: string, name: string) => {
     if (!confirm(`คุณต้องการลบวัตถุดิบ "${name}" ใช่หรือไม่?`)) return;
-    setIngredients((prev) => prev.filter((i) => i.id !== id));
+    const nextList = ingredients.filter((i) => i.id !== id);
+    setIngredients(nextList);
+    localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(nextList));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "ran-lung-get-mock-ingredients",
+        newValue: JSON.stringify(nextList),
+      })
+    );
+    try {
+      window.dispatchEvent(new CustomEvent("ran-lung-get-stock-updated", { detail: nextList }));
+    } catch {}
     try {
       await deleteIngredient(id);
     } catch {

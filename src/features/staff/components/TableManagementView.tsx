@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, X, ChevronRight, PlusCircle, Trash2 } from "lucide-react";
+import { Plus, X, ChevronRight, PlusCircle, Trash2, CheckCircle2, Users, Clock, Filter, Sparkles } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import type { OrderHistory } from "../types";
 
@@ -23,6 +23,7 @@ export function TableManagementView({
     { id: "10", label: "โต๊ะ 10 (Walk-in)", status: "available", capacity: 4, table_type: "walkin" },
   ]);
   const [selectedTable, setSelectedTable] = useState<any | null>(null);
+  const [tableFilter, setTableFilter] = useState<"all" | "available" | "occupied">("all");
   const [loading, setLoading] = useState(false);
   const [isMoveSelectorOpen, setIsMoveSelectorOpen] = useState(false);
   const [isAddTableOpen, setIsAddTableOpen] = useState(false);
@@ -83,6 +84,7 @@ export function TableManagementView({
             localStorage.setItem("ran-lung-get-tables", JSON.stringify(next));
             return next;
           });
+          setSelectedTable((prev: any) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
         }
       })
       .subscribe();
@@ -103,8 +105,17 @@ export function TableManagementView({
     const nextList = tables.map((t) => (t.id === tableId ? { ...t, status: nextStatus } : t));
     setTables(nextList);
     localStorage.setItem("ran-lung-get-tables", JSON.stringify(nextList));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "ran-lung-get-tables",
+      newValue: JSON.stringify(nextList),
+    }));
+    try {
+      window.dispatchEvent(new CustomEvent("ran-lung-get-tables-updated", { detail: nextList }));
+    } catch {}
+
     const currentSelected = nextList.find((t) => t.id === tableId);
     if (currentSelected) setSelectedTable(currentSelected);
+
     try {
       await supabase.from("restaurant_tables").update({ status: nextStatus }).eq("id", tableId);
     } catch {
@@ -210,6 +221,7 @@ export function TableManagementView({
     }
   };
 
+  // Only auto-occupy if an active order arrives on an available table
   useEffect(() => {
     if (tables.length === 0) return;
     const toOccupy = tables.filter((t) => getActiveOrdersForTable(t.label).length > 0 && t.status === "available");
@@ -218,38 +230,83 @@ export function TableManagementView({
         void updateTableStatus(t.id, "occupied");
       });
     }
+  }, [orders]);
 
-    const toVacate = tables.filter((t) => {
-      const isWalkIn = t.table_type === "walkin" || t.label.toLowerCase().includes("walk-in");
-      return !isWalkIn && t.status === "occupied" && getActiveOrdersForTable(t.label).length === 0;
-    });
-    if (toVacate.length > 0) {
-      toVacate.forEach((t) => {
-        void updateTableStatus(t.id, "available");
-      });
-    }
-  }, [orders, tables]);
+  const availableCount = tables.filter((t) => t.status === "available").length;
+  const occupiedCount = tables.filter((t) => t.status === "occupied").length;
+
+  const filteredTables = tables.filter((t) => {
+    if (tableFilter === "all") return true;
+    return t.status === tableFilter;
+  });
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white border border-[#ece4d6] rounded-3xl p-5 shadow-xs flex items-center justify-between flex-wrap gap-3">
+      {/* Header & Quick Stats */}
+      <div className="bg-white border border-[#ece4d6] rounded-3xl p-5 shadow-xs flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-base font-black text-[#002e47]">ผังที่นั่งร้านอาหาร (หน้าร้าน)</h2>
-          <p className="text-xs text-slate-500 font-semibold mt-0.5">รวมทั้งหมด {tables.length} โต๊ะอาหาร (รวมโต๊ะ Walk-in สีเทา)</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-black text-[#002e47]">ผังที่นั่ง & จัดการสถานะโต๊ะอาหาร</h2>
+            <span className="bg-[#fcc14a] text-[#002e47] text-[10px] font-black px-2 py-0.5 rounded-full">
+              {tables.length} โต๊ะ
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 font-semibold mt-1">
+            พนักงานสามารถกดกำหนดสถานะ ว่าง / มีลูกค้า ได้ทันทีด้วยตนเอง
+          </p>
         </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-200/80">
+          <button
+            type="button"
+            onClick={() => setTableFilter("all")}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer ${
+              tableFilter === "all"
+                ? "bg-[#002e47] text-white shadow-xs"
+                : "text-slate-600 hover:bg-slate-200/60"
+            }`}
+          >
+            ทั้งหมด ({tables.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTableFilter("available")}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
+              tableFilter === "available"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-emerald-700 hover:bg-emerald-50"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-emerald-400 inline-block" />
+            <span>ว่าง ({availableCount})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTableFilter("occupied")}
+            className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
+              tableFilter === "occupied"
+                ? "bg-red-600 text-white shadow-xs"
+                : "text-red-700 hover:bg-red-50"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-red-400 inline-block" />
+            <span>มีลูกค้า ({occupiedCount})</span>
+          </button>
+        </div>
+
         <div className="flex gap-2">
           <button
             type="button"
             onClick={fetchTables}
-            className="bg-[#002e47]/5 border hover:bg-[#002e47]/10 text-[#002e47] text-xs font-black px-3.5 py-2 rounded-xl transition"
+            className="bg-[#002e47]/5 border border-[#002e47]/10 hover:bg-[#002e47]/10 text-[#002e47] text-xs font-black px-3.5 py-2 rounded-xl transition cursor-pointer"
           >
             🔄 โหลดใหม่
           </button>
           <button
             type="button"
             onClick={() => setIsAddTableOpen(true)}
-            className="flex items-center gap-1.5 bg-[#002e47] hover:bg-[#003a5c] text-white text-xs font-black px-4 py-2 rounded-xl transition shadow-xs"
+            className="flex items-center gap-1.5 bg-[#002e47] hover:bg-[#003a5c] text-white text-xs font-black px-4 py-2 rounded-xl transition shadow-xs cursor-pointer"
           >
             <Plus size={14} />
             <span>เพิ่มโต๊ะ</span>
@@ -266,51 +323,66 @@ export function TableManagementView({
             </div>
           ) : (
             <div className="grid grid-cols-2 xl:grid-cols-3 gap-5">
-              {[...tables]
+              {[...filteredTables]
                 .sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10))
                 .map((table) => {
                   const activeOrders = getActiveOrdersForTable(table.label);
                   const isOccupied = table.status === "occupied";
+                  const isAvailable = !isOccupied;
                   const isWalkIn = table.table_type === "walkin" || table.label.toLowerCase().includes("walk-in");
                   const isSelected = selectedTable?.id === table.id;
 
-                  let statusLabel = "ว่าง";
-                  let statusColor = "bg-emerald-500 text-white border-emerald-600";
-                  let boxBg = "bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50/50";
-                  if (isOccupied) {
-                    statusLabel = "มีลูกค้า";
-                    statusColor = "bg-red-500 text-white border-red-600";
-                    boxBg = "bg-red-50/30 border-red-200 hover:bg-red-50/50";
-                  } else if (isWalkIn) {
-                    statusLabel = "Walk-in";
-                    statusColor = "bg-slate-500 text-white border-slate-600";
-                    boxBg = "bg-slate-50/40 border-slate-300 hover:bg-slate-50/60";
-                  }
+                  let statusLabel = isOccupied ? "มีลูกค้า" : isWalkIn ? "Walk-in ว่าง" : "ว่าง";
+                  let statusBadgeClass = isOccupied
+                    ? "bg-red-500 text-white border-red-600"
+                    : isWalkIn
+                    ? "bg-slate-600 text-white border-slate-700"
+                    : "bg-emerald-500 text-white border-emerald-600";
+                  let cardBg = isOccupied
+                    ? "bg-red-50/30 border-red-200 hover:bg-red-50/60"
+                    : isWalkIn
+                    ? "bg-slate-50/40 border-slate-300 hover:bg-slate-50/70"
+                    : "bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50/60";
 
                   return (
                     <div
                       key={table.id}
                       onClick={() => setSelectedTable(table)}
-                      className={`border-2 rounded-3xl p-5 text-left relative overflow-hidden transition cursor-pointer flex flex-col justify-between min-h-[160px] shadow-xs hover:shadow-sm ${boxBg} ${isSelected ? "ring-4 ring-[#002e47]/30 border-[#002e47] scale-[1.01]" : ""}`}
+                      className={`border-2 rounded-3xl p-4 text-left relative overflow-hidden transition cursor-pointer flex flex-col justify-between min-h-[140px] shadow-xs hover:shadow-md ${cardBg} ${
+                        isSelected ? "ring-4 ring-[#002e47]/30 border-[#002e47] scale-[1.01]" : ""
+                      }`}
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-black text-base text-[#002e47]">{table.label}</span>
-                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${statusColor}`}>{statusLabel}</span>
+                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs ${statusBadgeClass}`}>
+                            {statusLabel}
+                          </span>
                         </div>
                         <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">
-                          โต๊ะสำหรับ {table.capacity || 4} คน {isWalkIn && <span className="ml-1 text-slate-600 font-extrabold">(Walk-in)</span>}
+                          รองรับ {table.capacity || 4} ท่าน {isWalkIn && <span className="ml-1 text-slate-600 font-extrabold">(Walk-in)</span>}
                         </p>
                       </div>
-                      {isOccupied && (
-                        <div className="mt-4 pt-3 border-t border-red-100 text-xs">
-                          {activeOrders.length > 0 ? (
-                            <span className="font-bold text-red-700">มีออเดอร์ค้าง ({activeOrders.length})</span>
-                          ) : (
-                            <span className="text-slate-400 font-semibold italic text-[11px]">ไม่มีออเดอร์ค้าง</span>
-                          )}
-                        </div>
-                      )}
+
+                      {/* Active Order Summary */}
+                      <div className="mt-3">
+                        {isOccupied && activeOrders.length > 0 ? (
+                          <div className="bg-red-100/80 border border-red-200 rounded-xl px-2.5 py-1.5 text-xs text-red-800 font-bold flex items-center justify-between">
+                            <span>ออเดอร์ค้าง</span>
+                            <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-md font-black">
+                              {activeOrders.length} บิล
+                            </span>
+                          </div>
+                        ) : isOccupied ? (
+                          <div className="bg-slate-100/70 rounded-xl px-2.5 py-1.5 text-[11px] text-slate-500 font-semibold italic">
+                            เปิดโต๊ะแล้ว (ยังไม่มีบิล)
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-emerald-700 font-bold py-0.5">
+                            พร้อมรับลูกค้าทันที
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -325,36 +397,50 @@ export function TableManagementView({
               <div className="flex justify-between items-start pb-4 border-b border-slate-100 mb-5">
                 <div>
                   <h3 className="text-lg font-black">{selectedTable.label}</h3>
-                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border inline-block mt-1 ${selectedTable.status === "occupied" ? "bg-red-500 text-white border-red-600" : "bg-emerald-500 text-white border-emerald-600"}`}>
-                    {selectedTable.status === "occupied" ? "มีลูกค้า" : "ว่าง"}
+                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border inline-block mt-1 ${
+                    selectedTable.status === "occupied"
+                      ? "bg-red-500 text-white border-red-600"
+                      : "bg-emerald-500 text-white border-emerald-600"
+                  }`}>
+                    {selectedTable.status === "occupied" ? "🔴 มีลูกค้า" : "🟢 ว่าง"}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => { setSelectedTable(null); setIsMoveSelectorOpen(false); }}
-                  className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 cursor-pointer text-slate-500"
+                  className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 cursor-pointer text-slate-500 transition"
                 >
                   <X size={15} />
                 </button>
               </div>
 
               {/* Status Selector */}
-              <div className="mb-5">
-                <span className="text-xs font-bold text-slate-500 block mb-2">อัปเดตสถานะโต๊ะ</span>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="mb-5 bg-[#002e47]/5 p-3.5 rounded-2xl border border-[#002e47]/10">
+                <span className="text-xs font-black text-[#002e47] block mb-2">กำหนดสถานะโต๊ะ (คลิกเพื่อเปลี่ยนทันที)</span>
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={() => updateTableStatus(selectedTable.id, "available")}
-                    className={`py-2 rounded-md font-bold text-[10px] border transition ${selectedTable.status === "available" ? "bg-emerald-500 text-white border-emerald-600" : "bg-white border-slate-200 hover:bg-slate-50"}`}
+                    className={`py-3 px-2 rounded-xl font-black text-xs border transition cursor-pointer flex flex-col items-center gap-0.5 ${
+                      selectedTable.status === "available" || selectedTable.status !== "occupied"
+                        ? "bg-emerald-500 text-white border-emerald-600 shadow-md ring-2 ring-emerald-300"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700"
+                    }`}
                   >
-                    🟢 ว่าง
+                    <span>🟢 ว่าง</span>
+                    <span className="text-[9px] font-medium opacity-80">พร้อมรับลูกค้า</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => updateTableStatus(selectedTable.id, "occupied")}
-                    className={`py-2 rounded-md font-bold text-[10px] border transition ${selectedTable.status === "occupied" ? "bg-red-500 text-white border-red-600" : "bg-white border-slate-200 hover:bg-slate-50"}`}
+                    className={`py-3 px-2 rounded-xl font-black text-xs border transition cursor-pointer flex flex-col items-center gap-0.5 ${
+                      selectedTable.status === "occupied"
+                        ? "bg-red-500 text-white border-red-600 shadow-md ring-2 ring-red-300"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-700"
+                    }`}
                   >
-                    🔴 มีลูกค้า
+                    <span>🔴 มีลูกค้า</span>
+                    <span className="text-[9px] font-medium opacity-80">กำลังนั่งทาน</span>
                   </button>
                 </div>
               </div>
@@ -365,7 +451,7 @@ export function TableManagementView({
                 <button
                   type="button"
                   onClick={() => setIsMoveSelectorOpen(true)}
-                  className="w-full py-3 px-4 rounded-md border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition"
+                  className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition cursor-pointer"
                 >
                   <span className="flex items-center gap-2">🔄 ย้าย / รวมออเดอร์ไปยังโต๊ะอื่น</span>
                   <ChevronRight size={14} className="text-slate-400" />
@@ -375,7 +461,7 @@ export function TableManagementView({
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => { localStorage.setItem("ran-lung-get-selected-table", selectedTable.id); }}
-                  className="w-full py-3 px-4 rounded-md border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition block text-left text-inherit no-underline"
+                  className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition block text-left text-inherit no-underline cursor-pointer"
                 >
                   <span className="flex items-center gap-2">🛍️ สั่งอาหาร Walk-in (ชำระเงินสด/โอนเงิน)</span>
                   <PlusCircle size={14} className="text-slate-400" />
@@ -388,7 +474,7 @@ export function TableManagementView({
                     message: `คุณต้องการเคลียร์โต๊ะและเปลี่ยนสถานะออเดอร์ค้างทั้งหมดของ ${selectedTable.label} ให้เสร็จสิ้นใช่หรือไม่?`,
                     onConfirm: async () => { await clearTableAndOrders(selectedTable.label); }
                   })}
-                  className="w-full py-3 px-4 rounded-md border border-red-200 text-red-700 bg-red-50/30 hover:bg-red-50 font-bold text-xs flex items-center justify-between transition"
+                  className="w-full py-3 px-4 rounded-xl border border-red-200 text-red-700 bg-red-50/30 hover:bg-red-50 font-bold text-xs flex items-center justify-between transition cursor-pointer"
                 >
                   <span className="flex items-center gap-2">🧹 เคลียร์โต๊ะ & อ้างอิงออเดอร์เสร็จสิ้น</span>
                   <Trash2 size={14} className="text-red-400" />
@@ -402,7 +488,7 @@ export function TableManagementView({
                     message: `คุณต้องการลบ ${selectedTable.label} ออกจากระบบใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`,
                     onConfirm: async () => { await deleteTable(selectedTable.id, selectedTable.label); }
                   })}
-                  className="w-full py-3 px-4 rounded-md border border-red-300 text-red-800 bg-red-100/50 hover:bg-red-100 font-bold text-xs flex items-center justify-between transition"
+                  className="w-full py-3 px-4 rounded-xl border border-red-300 text-red-800 bg-red-100/50 hover:bg-red-100 font-bold text-xs flex items-center justify-between transition cursor-pointer"
                 >
                   <span className="flex items-center gap-2">🗑️ ลบโต๊ะนี้ออกจากระบบ</span>
                   <Trash2 size={14} className="text-red-500" />
@@ -417,7 +503,7 @@ export function TableManagementView({
                 <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[280px] no-scrollbar">
                   {getActiveOrdersForTable(selectedTable.label).length > 0 ? (
                     getActiveOrdersForTable(selectedTable.label).map((order) => (
-                      <div key={order.id} className="bg-slate-50/50 border border-[#ece4d6] rounded-md p-3.5 space-y-2">
+                      <div key={order.id} className="bg-slate-50/50 border border-[#ece4d6] rounded-xl p-3.5 space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="font-extrabold text-[11px] text-slate-700">{order.orderNumber}</span>
                           <span className="text-[10px] bg-slate-200/60 font-black px-2 py-0.5 rounded text-slate-600">{order.status}</span>
@@ -447,7 +533,7 @@ export function TableManagementView({
               <div className="text-5xl mb-3">🍽️</div>
               <p className="font-bold text-sm text-[#002e47]">เลือกโต๊ะอาหารเพื่อดำเนินการ</p>
               <p className="text-[11px] text-slate-500 mt-1.5 max-w-[200px] leading-relaxed">
-                กดเลือกโต๊ะจากแผนผังที่นั่งฝั่งซ้าย เพื่อย้ายออเดอร์, ดูรายละเอียดบิลแยก หรือเคลียร์/ลบโต๊ะ
+                กดเลือกโต๊ะจากแผนผังที่นั่งฝั่งซ้าย เพื่อกำหนดสถานะ (ว่าง/มีลูกค้า/จอง), ย้ายออเดอร์ หรือเคลียร์โต๊ะ
               </p>
             </div>
           )}

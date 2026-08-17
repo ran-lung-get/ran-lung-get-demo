@@ -575,7 +575,9 @@ export function HomeScreen({
             className="-mx-5 px-10 overflow-x-auto no-scrollbar"
           >
             <div className="flex gap-4">
-              {menuItems.filter((m) => m.category !== "drinks" && m.category !== "dessert").map((m, i) => (
+              {menuItems
+                .filter((m) => m.isAvailable !== false && m.category !== "drinks" && m.category !== "dessert")
+                .map((m, i) => (
                 <motion.div
                   key={m.id}
                   initial={{ opacity: 0, y: 12 }}
