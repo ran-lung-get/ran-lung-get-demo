@@ -90,6 +90,7 @@ function LiffApp() {
     hasActiveOrder,
     activeOrderNumber,
     saveOrderToHistory,
+    clearOrderHistory,
   } = useCustomerOrders({ dbUser, dbCustomer, profile, setTables });
 
   const {
@@ -399,10 +400,7 @@ function LiffApp() {
               key="history"
               orderHistory={orderHistory}
               onBack={() => setOverlay(null)}
-              onClearHistory={() => {
-                setOrderHistory([]);
-                localStorage.removeItem("ran-lung-get-orders");
-              }}
+              onClearHistory={clearOrderHistory}
             />
           )}
           {overlay === "contact" && (

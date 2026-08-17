@@ -24,9 +24,18 @@ export function StatusScreen({
   const orderType = activeOrder?.orderType || "delivery";
   const currentStatus = activeOrder?.status || "รอรับออเดอร์";
 
-  const isWaiting = currentStatus === "รอรับออเดอร์" || currentStatus === "รอดำเนินการ" || currentStatus === "pending";
-  const isCooking = currentStatus === "กำลังเตรียม" || currentStatus === "กำลังทำ" || currentStatus === "preparing";
-  const isReady = currentStatus === "พร้อมเสิร์ฟ" || currentStatus === "ready" || currentStatus === "พร้อมรับอาหาร";
+  const isCancelled =
+    currentStatus === "ยกเลิกแล้ว" ||
+    currentStatus === "ยกเลิก" ||
+    currentStatus === "cancelled" ||
+    currentStatus === "canceled";
+  const isRefunded = currentStatus === "ขอคืนเงิน" || currentStatus === "refunded";
+  const isWaiting =
+    currentStatus === "รอรับออเดอร์" || currentStatus === "รอดำเนินการ" || currentStatus === "pending";
+  const isCooking =
+    currentStatus === "กำลังเตรียม" || currentStatus === "กำลังทำ" || currentStatus === "preparing";
+  const isReady =
+    currentStatus === "พร้อมเสิร์ฟ" || currentStatus === "ready" || currentStatus === "พร้อมรับอาหาร";
   const isDelivering = currentStatus === "กำลังจัดส่ง" || currentStatus === "delivering";
   const isCompleted = currentStatus === "สำเร็จ" || currentStatus === "completed";
 
@@ -59,7 +68,7 @@ export function StatusScreen({
 
   // Dynamic status text & theme based on order state
   const statusTheme = useMemo(() => {
-    if (currentStatus === "ขอคืนเงิน") {
+    if (isRefunded) {
       return {
         title: t("ยื่นขอคืนเงินแล้ว"),
         subtitle: t("ร้านค้ากำลังตรวจสอบและโอนเงินคืนตามพร้อมเพย์ที่ท่านระบุ"),
@@ -68,7 +77,7 @@ export function StatusScreen({
         iconColor: "#f59e0b"
       };
     }
-    if (currentStatus === "ยกเลิกแล้ว") {
+    if (isCancelled) {
       return {
         title: t("ออเดอร์ถูกยกเลิกแล้ว"),
         subtitle: t("การคืนเงินสำเร็จหรือยกเลิกคำสั่งซื้อเรียบร้อยแล้ว"),
@@ -169,25 +178,19 @@ export function StatusScreen({
   return (
     <div className="min-h-full pb-28 relative w-full" style={{ background: SURFACE }}>
       <div className="max-w-2xl mx-auto w-full">
-        {/* Reassurance Banner */}
-        {currentStatus === "ขอคืนเงิน" && (
+        {isRefunded && (
           <div className="mx-5 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col gap-1.5 shadow-xs">
             <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
               <span className="animate-pulse">●</span>
               <span>{t("กำลังดำเนินการคืนเงิน")}</span>
             </div>
             <p className="text-xs text-amber-700 leading-relaxed font-medium">
-              {t("ทางครัวได้รับคำขอแล้ว และกำลังดำเนินการโอนเงินคืนจำนวน")}
-              <strong className="text-amber-900 mx-1">฿{total.toLocaleString()}</strong>
-              {t("ไปที่พร้อมเพย์:")} <strong className="text-amber-900">{activeOrder?.refundPromptPay}</strong>
-            </p>
-            <p className="text-[10px] text-amber-600">
-              {t("หากต้องการสอบถามเพิ่มเติม โทรหาร้านค้าได้โดยตรงที่ด้านล่าง")}
+              {t("ทางครัวกำลังดำเนินการโอนเงินคืนไปยัง:")} <strong className="text-amber-900">{activeOrder?.refundPromptPay}</strong>
             </p>
           </div>
         )}
 
-        {currentStatus === "ยกเลิกแล้ว" && (
+        {isCancelled && (
           <div className="mx-5 mt-4 p-4 rounded-2xl bg-red-50 border border-red-200 flex flex-col gap-1 shadow-xs">
             <div className="flex items-center gap-2 text-red-800 font-bold text-sm">
               <span>●</span>
@@ -202,7 +205,6 @@ export function StatusScreen({
         <div className="px-5 py-4 bg-white border-b flex items-center gap-3" style={{ borderColor: "#eef2f6" }}>
           <button
             type="button"
-            aria-label={t("เปิดเมนูด้านข้าง")}
             onClick={onOpenSidebar}
             className="grid h-10 w-10 place-items-center rounded-full cursor-pointer hover:bg-slate-100 transition"
             style={{ background: SURFACE, color: BRAND }}
@@ -218,17 +220,17 @@ export function StatusScreen({
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ type: "spring", damping: 12, stiffness: 180 }}
-            className="grid h-24 w-24 place-items-center rounded-full"
-            style={{ background: statusTheme.bg, color: statusTheme.color }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="grid h-20 w-20 place-items-center rounded-full shadow-lg mb-4"
+            style={{ background: statusTheme.bg, color: statusTheme.iconColor }}
           >
-            <CheckCircle size={56} color={statusTheme.iconColor} strokeWidth={2} />
+            <StatusIcon size={38} className="stroke-[2.5]" />
           </motion.div>
-          <h2 className="mt-5 text-2xl font-bold" style={{ color: BRAND }}>
+          <h2 className="text-xl font-bold mb-1" style={{ color: BRAND }}>
             {statusTheme.title}
           </h2>
           {statusTheme.subtitle && (
-            <p className="mt-1 text-sm max-w-xs mx-auto leading-relaxed" style={{ color: INK_MUTED }}>
+            <p className="mt-1 text-xs max-w-xs mx-auto leading-relaxed" style={{ color: INK_MUTED }}>
               {statusTheme.subtitle}
             </p>
           )}

@@ -1,11 +1,10 @@
-import { Shield, LayoutDashboard, ClipboardList, Users, LogOut } from "lucide-react";
+import { Shield, LayoutDashboard, Users } from "lucide-react";
 import type { AdminViewType } from "../types";
 
 export function AdminSidebarContent({
   view,
   setView,
   setSidebarOpen,
-  handleLogout,
 }: {
   view: string;
   setView: (v: AdminViewType) => void;
@@ -62,22 +61,6 @@ export function AdminSidebarContent({
 
         <button
           type="button"
-          onClick={() => selectTab("inventory")}
-          className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
-            view === "inventory"
-              ? "bg-white/10 text-white font-black border-l-4 border-[#fcc14a]"
-              : "text-white/70 hover:text-white hover:bg-white/5 border-l-4 border-transparent"
-          }`}
-        >
-          <ClipboardList
-            size={18}
-            className={view === "inventory" ? "text-[#fcc14a]" : "text-white/60"}
-          />
-          <span className="text-sm">จัดการคลัง & สต็อก</span>
-        </button>
-
-        <button
-          type="button"
           onClick={() => selectTab("staff")}
           className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left transition duration-200 cursor-pointer ${
             view === "staff"
@@ -89,20 +72,6 @@ export function AdminSidebarContent({
           <span className="text-sm">จัดการสิทธิ์พนักงาน</span>
         </button>
       </div>
-
-      {/* Bottom Logout Action */}
-      {handleLogout && (
-        <div className="p-4 border-t border-white/10 shrink-0">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-white/50 hover:text-white hover:bg-white/5 transition duration-200 cursor-pointer text-xs font-bold"
-          >
-            <LogOut size={15} className="shrink-0" />
-            <span>ออกจากระบบ</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

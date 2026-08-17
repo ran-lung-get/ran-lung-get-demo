@@ -1,5 +1,17 @@
-import { motion } from "motion/react";
-import { ChevronLeft, Trash2, Package, Receipt, CheckCircle, Bike, ChefHat, Clock, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  ChevronLeft,
+  Trash2,
+  Package,
+  Receipt,
+  CheckCircle,
+  Bike,
+  ChefHat,
+  Clock,
+  AlertCircle,
+  XCircle,
+} from "lucide-react";
 import type { OrderHistory } from "../types";
 import { BRAND, GOLD, INK_MUTED } from "../constants/colors";
 import { useLanguage } from "../../../lib/i18n";
@@ -14,47 +26,62 @@ export function HistoryOverlay({
   onClearHistory: () => void;
 }) {
   const { t, tMenu } = useLanguage();
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const handleClear = () => {
-    if (window.confirm(t("คุณต้องการล้างประวัติการสั่งซื้อทั้งหมดใช่หรือไม่?"))) {
-      onClearHistory();
-    }
+  const handleConfirmClear = () => {
+    setShowConfirmModal(false);
+    onClearHistory();
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "สำเร็จ" || status === "Completed" || status === "เสร็จสิ้น") {
+    const s = String(status || "").trim().toLowerCase();
+
+    if (s === "สำเร็จ" || s === "completed" || s === "เสร็จสิ้น") {
       return {
         bg: "#dcfce7",
         color: "#15803d",
         icon: <CheckCircle size={12} />,
       };
     }
-    if (status === "กำลังจัดส่ง" || status === "Out for Delivery") {
+    if (s === "กำลังจัดส่ง" || s === "out for delivery" || s === "delivering") {
       return {
         bg: "#dbeafe",
         color: "#1d4ed8",
         icon: <Bike size={12} />,
       };
     }
-    if (status === "กำลังเตรียม" || status === "Preparing") {
+    if (s === "กำลังเตรียม" || s === "preparing" || s === "กำลังทำ") {
       return {
         bg: "#fef9c3",
         color: "#a16207",
         icon: <ChefHat size={12} />,
       };
     }
-    if (status === "ขอคืนเงิน" || status === "Refund Requested") {
+    if (s === "พร้อมเสิร์ฟ" || s === "ready" || s === "พร้อมรับอาหาร") {
+      return {
+        bg: "#e0e7ff",
+        color: "#4338ca",
+        icon: <Package size={12} />,
+      };
+    }
+    if (s === "ขอคืนเงิน" || s === "refund requested" || s === "refunded") {
       return {
         bg: "#fef3c7",
         color: "#d97706",
-        icon: <Clock size={12} />,
+        icon: <AlertCircle size={12} />,
       };
     }
-    if (status === "ยกเลิกแล้ว" || status === "Cancelled") {
+    if (
+      s === "ยกเลิก" ||
+      s === "ยกเลิกแล้ว" ||
+      s === "cancelled" ||
+      s === "canceled" ||
+      s === "cancel"
+    ) {
       return {
         bg: "#fee2e2",
         color: "#dc2626",
-        icon: <AlertCircle size={12} />,
+        icon: <XCircle size={12} />,
       };
     }
     return {
@@ -94,7 +121,7 @@ export function HistoryOverlay({
             {orderHistory.length > 0 && (
               <button
                 type="button"
-                onClick={handleClear}
+                onClick={() => setShowConfirmModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/30 transition active:scale-95 cursor-pointer"
                 title={t("ล้างประวัติการสั่งซื้อ")}
               >
@@ -107,11 +134,16 @@ export function HistoryOverlay({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto no-scrollbar w-full">
-        <div className="max-w-2xl mx-auto px-5 pt-5 pb-8 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="max-w-2xl mx-auto space-y-3">
           {orderHistory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Package size={48} className="mb-4" style={{ color: INK_MUTED }} />
+            <div className="text-center py-16">
+              <div
+                className="grid h-16 w-16 place-items-center rounded-2xl mx-auto mb-3"
+                style={{ background: "rgba(0,46,71,0.05)", color: BRAND }}
+              >
+                <Package size={28} />
+              </div>
               <p className="text-sm font-medium" style={{ color: INK_MUTED }}>
                 {t("ยังไม่มีประวัติการสั่งซื้อ")}
               </p>
@@ -178,7 +210,7 @@ export function HistoryOverlay({
                               {tMenu(item.name)}
                             </p>
                             <p className="text-xs" style={{ color: INK_MUTED }}>
-                              × {item.qty} · ฿{item.price}/{t("ชิ้น")}
+                              {t("จำนวน")}: {item.qty} · ฿{item.price} {t("/ชิ้น")}
                             </p>
                           </div>
                           <p className="text-sm font-bold" style={{ color: BRAND }}>
@@ -188,9 +220,9 @@ export function HistoryOverlay({
                       ))}
                     </div>
 
-                    {/* Order total */}
+                    {/* Order footer */}
                     <div
-                      className="px-4 py-3 flex items-center justify-between"
+                      className="px-4 py-2.5 flex items-center justify-between"
                       style={{ background: "#fafbfc", borderTop: "1px solid #f1ece4" }}
                     >
                       <div className="text-xs" style={{ color: INK_MUTED }}>
@@ -215,7 +247,7 @@ export function HistoryOverlay({
               <div className="pt-4 pb-2 flex justify-center">
                 <button
                   type="button"
-                  onClick={handleClear}
+                  onClick={() => setShowConfirmModal(true)}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition cursor-pointer active:scale-95 shadow-xs"
                 >
                   <Trash2 size={15} />
@@ -226,6 +258,54 @@ export function HistoryOverlay({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl z-10 text-center"
+            >
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-red-600 mx-auto mb-4 border border-red-100">
+                <Trash2 size={28} />
+              </div>
+              <h3 className="text-lg font-black text-[#002e47] mb-2">
+                {t("ล้างประวัติการสั่งซื้อ?")}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed mb-6">
+                {t("คุณต้องการล้างประวัติการสั่งซื้อทั้งหมดใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้")}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                >
+                  {t("ยกเลิก")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmClear}
+                  className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition shadow-md shadow-red-200 cursor-pointer"
+                >
+                  {t("ยืนยันล้างข้อมูล")}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

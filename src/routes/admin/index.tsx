@@ -617,8 +617,6 @@ function AdminDashboard() {
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#002e47] text-white shadow-md">
                 {view === "dashboard" ? (
                   <LayoutDashboard size={18} className="text-[#fcc14a]" />
-                ) : view === "inventory" ? (
-                  <ClipboardList size={18} className="text-[#fcc14a]" />
                 ) : (
                   <Users size={18} className="text-[#fcc14a]" />
                 )}
@@ -627,20 +625,16 @@ function AdminDashboard() {
                 <h1 className="text-lg font-black text-[#002e47] tracking-tight">
                   {view === "dashboard"
                     ? "รายงานยอดขาย & ประวัติ"
-                    : view === "inventory"
-                      ? "จัดการคลังสต็อก & เมนู"
-                      : view === "approvals"
-                        ? "คำขออนุมัติสิทธิ์"
-                        : "จัดการระดับพนักงาน"}
+                    : view === "approvals"
+                      ? "คำขออนุมัติสิทธิ์"
+                      : "จัดการระดับพนักงาน"}
                 </h1>
                 <p className="text-xs text-slate-500 font-semibold">
                   {view === "dashboard"
                     ? "วิเคราะห์ยอดขายสะสม ยอดสั่งซื้อ และรายรับทั้งหมดของร้าน"
-                    : view === "inventory"
-                      ? "เปิดปิดเมนูอาหาร ปรับปรุงจำนวนสต็อกวัตถุดิบหน้าร้าน"
-                      : view === "approvals"
-                        ? "อนุมัติหรือปฏิเสธคำขอสิทธิ์การใช้งานจากพนักงาน"
-                        : "จัดการและเปลี่ยนบทบาทสิทธิ์ (Admin / Staff / Customer) ในระบบ"}
+                    : view === "approvals"
+                      ? "อนุมัติหรือปฏิเสธคำขอสิทธิ์การใช้งานจากพนักงาน"
+                      : "จัดการและเปลี่ยนบทบาทสิทธิ์ (Admin / Staff / Customer) ในระบบ"}
                 </p>
               </div>
             </div>
