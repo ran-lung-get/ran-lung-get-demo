@@ -55,9 +55,9 @@ export function StaffOrderCard({
     <div className={`bg-white border-2 border-l-[6px] border-[#ece4d6] ${borderLeftColor} rounded-2xl p-4 shadow-xs hover:shadow-sm transition relative space-y-3`}>
       <div className="flex items-center justify-between">
         <div>
-          <span className="font-black text-[#002e47] text-sm">{order.orderNumber}</span>
+          <span className="font-black text-[#002e47] text-sm">{order.orderNumber || order.id}</span>
           <span className="text-[10px] text-slate-400 ml-1.5 font-bold">
-            {order.date.includes(" · ") ? order.date.split(" · ")[1] : order.date}
+            {order.date?.includes(" · ") ? order.date.split(" · ")[1] : (order.date || "")}
           </span>
         </div>
         <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${typeColor}`}>
@@ -71,10 +71,10 @@ export function StaffOrderCard({
         </p>
       </div>
       <div className="space-y-1.5">
-        {order.items.map((i, idx) => (
+        {(order.items || []).map((i, idx) => (
           <div key={idx} className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-700">{i.name}</span>
-            <span className="font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">x{i.qty}</span>
+            <span className="font-semibold text-slate-700">{i?.name || "รายการอาหาร"}</span>
+            <span className="font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">x{i?.qty || 1}</span>
           </div>
         ))}
       </div>

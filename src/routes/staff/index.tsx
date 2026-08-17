@@ -124,31 +124,47 @@ function KitchenMonitor() {
           else if (o.status === "cancelled") localStatus = "ยกเลิก";
           else if (o.status) localStatus = o.status;
 
+          let formattedDate = "";
+          try {
+            if (o.created_at) {
+              const d = new Date(o.created_at);
+              formattedDate =
+                d.toLocaleDateString("th-TH", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }) +
+                " · " +
+                d.toLocaleTimeString("th-TH", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+            }
+          } catch {
+            formattedDate = "";
+          }
+
           return {
-            id: o.id,
-            orderNumber: o.order_number,
+            id: String(o.id),
+            orderNumber: o.order_number || String(o.id),
             date:
-              new Date(o.created_at).toLocaleDateString("th-TH", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }) +
-              " · " +
-              new Date(o.created_at).toLocaleTimeString("th-TH", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            items: (o.order_items || []).map((item: any) => ({
-              name: item.name,
-              qty: item.quantity,
-              price: Number(item.unit_price),
-              image: item.image || "",
-            })),
-            subtotal: Number(o.subtotal),
-            delivery: Number(o.delivery_fee),
-            total: Number(o.total),
+              formattedDate ||
+              new Date().toLocaleDateString("th-TH") +
+                " · " +
+                new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+            items: Array.isArray(o.order_items)
+              ? o.order_items.map((item: any) => ({
+                  name: item.name || "รายการอาหาร",
+                  qty: Number(item.quantity) || 1,
+                  price: Number(item.unit_price) || 0,
+                  image: item.image || "",
+                }))
+              : [],
+            subtotal: Number(o.subtotal) || 0,
+            delivery: Number(o.delivery_fee) || 0,
+            total: Number(o.total) || 0,
             status: localStatus,
-            orderType: o.order_type,
+            orderType: o.order_type || "dine-in",
             customerName: o.customers?.display_name || "คุณลูกค้า",
             tableNumber: o.table_number || "",
             queueNumber: o.queue_number || "",
@@ -441,9 +457,10 @@ function KitchenMonitor() {
     const activeCookingOrders = orders.filter((o) => isCooking(o.status) || isWaiting(o.status));
     const counts: Record<string, number> = {};
     activeCookingOrders.forEach((o) => {
-      o.items.forEach((item) => {
+      (o.items || []).forEach((item) => {
+        if (!item || !item.name) return;
         const cleanName = item.name.split(" (")[0];
-        counts[cleanName] = (counts[cleanName] || 0) + item.qty;
+        counts[cleanName] = (counts[cleanName] || 0) + (item.qty || 1);
       });
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);

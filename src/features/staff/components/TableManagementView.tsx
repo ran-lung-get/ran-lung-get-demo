@@ -93,11 +93,49 @@ export function TableManagementView({
     };
   }, []);
 
-  const getActiveOrdersForTable = (tableLabel: string) => {
+  const extractTableNumber = (val?: string): string => {
+    if (!val) return "";
+    const digits = String(val).match(/\d+/);
+    return digits ? digits[0] : "";
+  };
+
+  const matchTable = (orderTable?: string, tableLabel?: string, tableId?: string): boolean => {
+    if (!orderTable) return false;
+    const orderNum = extractTableNumber(orderTable);
+    if (!orderNum) return false;
+    const labelNum = extractTableNumber(tableLabel);
+    const idNum = extractTableNumber(tableId);
+    return (!!labelNum && orderNum === labelNum) || (!!idNum && orderNum === idNum);
+  };
+
+  const getActiveOrdersForTable = (tableLabel: string, tableId?: string) => {
     return orders.filter(
       (o) =>
-        (o.status === "รอดำเนินการ" || o.status === "กำลังทำ" || o.status === "พร้อมเสิร์ฟ" || o.status === "รอรับออเดอร์") &&
-        (o.tableNumber === tableLabel || o.tableNumber === tableLabel.replace("โต๊ะ ", ""))
+        (o.status === "รอดำเนินการ" ||
+          o.status === "กำลังทำ" ||
+          o.status === "พร้อมเสิร์ฟ" ||
+          o.status === "รอรับออเดอร์" ||
+          o.status === "pending" ||
+          o.status === "preparing" ||
+          o.status === "ready") &&
+        matchTable(o.tableNumber, tableLabel, tableId)
+    );
+  };
+
+  const getCompletedOrdersForTable = (tableLabel: string, tableId?: string) => {
+    return orders.filter(
+      (o) =>
+        (o.status === "สำเร็จ" || o.status === "completed") &&
+        matchTable(o.tableNumber, tableLabel, tableId)
+    );
+  };
+
+  const getTableOrders = (tableLabel: string, tableId?: string) => {
+    return orders.filter(
+      (o) =>
+        o.status !== "ยกเลิก" &&
+        o.status !== "cancelled" &&
+        matchTable(o.tableNumber, tableLabel, tableId)
     );
   };
 
@@ -221,10 +259,12 @@ export function TableManagementView({
     }
   };
 
-  // Only auto-occupy if an active order arrives on an available table
+  // Only auto-occupy if an active cooking/waiting order arrives for an available table
   useEffect(() => {
     if (tables.length === 0) return;
-    const toOccupy = tables.filter((t) => getActiveOrdersForTable(t.label).length > 0 && t.status === "available");
+    const toOccupy = tables.filter(
+      (t) => getActiveOrdersForTable(t.label, t.id).length > 0 && t.status === "available"
+    );
     if (toOccupy.length > 0) {
       toOccupy.forEach((t) => {
         void updateTableStatus(t.id, "occupied");
@@ -326,7 +366,8 @@ export function TableManagementView({
               {[...filteredTables]
                 .sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10))
                 .map((table) => {
-                  const activeOrders = getActiveOrdersForTable(table.label);
+                  const activeOrders = getActiveOrdersForTable(table.label, table.id);
+                  const completedOrders = getCompletedOrdersForTable(table.label, table.id);
                   const isOccupied = table.status === "occupied";
                   const isAvailable = !isOccupied;
                   const isWalkIn = table.table_type === "walkin" || table.label.toLowerCase().includes("walk-in");
@@ -339,7 +380,7 @@ export function TableManagementView({
                     ? "bg-slate-600 text-white border-slate-700"
                     : "bg-emerald-500 text-white border-emerald-600";
                   let cardBg = isOccupied
-                    ? "bg-red-50/30 border-red-200 hover:bg-red-50/60"
+                    ? "bg-red-50/40 border-red-300 hover:bg-red-50/70"
                     : isWalkIn
                     ? "bg-slate-50/40 border-slate-300 hover:bg-slate-50/70"
                     : "bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50/60";
@@ -364,22 +405,30 @@ export function TableManagementView({
                         </p>
                       </div>
 
-                      {/* Active Order Summary */}
+                      {/* Order Summary on Table */}
                       <div className="mt-3">
                         {isOccupied && activeOrders.length > 0 ? (
-                          <div className="bg-red-100/80 border border-red-200 rounded-xl px-2.5 py-1.5 text-xs text-red-800 font-bold flex items-center justify-between">
-                            <span>ออเดอร์ค้าง</span>
-                            <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-md font-black">
+                          <div className="bg-amber-100/90 border border-amber-300 rounded-xl px-2.5 py-1.5 text-xs text-amber-950 font-bold flex items-center justify-between">
+                            <span>กำลังปรุง/รอเสิร์ฟ</span>
+                            <span className="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded-md font-black">
                               {activeOrders.length} บิล
                             </span>
                           </div>
+                        ) : isOccupied && completedOrders.length > 0 ? (
+                          <div className="bg-red-100/90 border border-red-200 rounded-xl px-2.5 py-1.5 text-xs text-red-900 font-bold flex items-center justify-between">
+                            <span>🍽️ เสิร์ฟแล้ว (กำลังทาน)</span>
+                            <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-md font-black">
+                              {completedOrders.length} บิล
+                            </span>
+                          </div>
                         ) : isOccupied ? (
-                          <div className="bg-slate-100/70 rounded-xl px-2.5 py-1.5 text-[11px] text-slate-500 font-semibold italic">
-                            เปิดโต๊ะแล้ว (ยังไม่มีบิล)
+                          <div className="bg-red-50 border border-red-200 rounded-xl px-2.5 py-1.5 text-[11px] text-red-800 font-bold flex items-center gap-1.5">
+                            <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                            <span>มีลูกค้านั่งที่โต๊ะ</span>
                           </div>
                         ) : (
                           <div className="text-[11px] text-emerald-700 font-bold py-0.5">
-                            พร้อมรับลูกค้าทันที
+                            🟢 พร้อมรับลูกค้าทันที
                           </div>
                         )}
                       </div>
@@ -495,35 +544,64 @@ export function TableManagementView({
                 </button>
               </div>
 
-              {/* Active Orders */}
+              {/* Table Orders List */}
               <div className="flex-1 flex flex-col border-t border-slate-100 pt-4 overflow-hidden">
-                <span className="text-xs font-bold text-slate-500 block mb-3">
-                  บิลแยกและรายละเอียดอาหาร ({getActiveOrdersForTable(selectedTable.label).length} ออเดอร์)
-                </span>
-                <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 max-h-[280px] no-scrollbar">
-                  {getActiveOrdersForTable(selectedTable.label).length > 0 ? (
-                    getActiveOrdersForTable(selectedTable.label).map((order) => (
-                      <div key={order.id} className="bg-slate-50/50 border border-[#ece4d6] rounded-xl p-3.5 space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="font-extrabold text-[11px] text-slate-700">{order.orderNumber}</span>
-                          <span className="text-[10px] bg-slate-200/60 font-black px-2 py-0.5 rounded text-slate-600">{order.status}</span>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-700">
+                    รายการอาหารบนโต๊ะ ({getTableOrders(selectedTable.label, selectedTable.id).length} บิล)
+                  </span>
+                  {getTableOrders(selectedTable.label, selectedTable.id).length > 0 && (
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      รวมทั้งหมด: ฿{getTableOrders(selectedTable.label, selectedTable.id).reduce((sum, o) => sum + o.total, 0)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[280px] no-scrollbar">
+                  {getTableOrders(selectedTable.label, selectedTable.id).length > 0 ? (
+                    getTableOrders(selectedTable.label, selectedTable.id).map((order) => {
+                      const isOrderDone = order.status === "สำเร็จ" || order.status === "completed";
+                      return (
+                        <div
+                          key={order.id}
+                          className={`rounded-xl p-3.5 space-y-2 border transition ${
+                            isOrderDone
+                              ? "bg-slate-50/80 border-slate-200"
+                              : "bg-amber-50/60 border-amber-200"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-extrabold text-[11px] text-[#002e47]">
+                              {order.orderNumber}
+                            </span>
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                                isOrderDone
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-amber-500 text-white"
+                              }`}
+                            >
+                              {isOrderDone ? "🍽️ เสิร์ฟแล้ว (กำลังทาน)" : order.status}
+                            </span>
+                          </div>
+                          <div className="space-y-1 text-xs text-slate-600 font-bold">
+                            {(order.items || []).map((it, idx) => (
+                              <div key={idx} className="flex justify-between">
+                                <span>{it?.name || "รายการ"} x{it?.qty || 1}</span>
+                                <span>฿{(it?.price || 0) * (it?.qty || 1)}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 text-xs">
+                            <span className="font-black text-[#002e47]">ยอดรวม: ฿{order.total || 0}</span>
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.5 rounded">ชำระแล้ว</span>
+                          </div>
                         </div>
-                        <div className="space-y-1 text-xs text-slate-600 font-bold">
-                          {order.items.map((it, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span>{it.name} x{it.qty}</span>
-                              <span>฿{it.price * it.qty}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 text-xs">
-                          <span className="font-black text-[#002e47]">ยอดรวม: ฿{order.total}</span>
-                          <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.5 rounded">จ่ายแล้ว</span>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <div className="text-center text-slate-400 py-8 text-xs italic font-bold">ไม่มีออเดอร์ค้างอยู่บนโต๊ะนี้</div>
+                    <div className="text-center text-slate-400 py-8 text-xs italic font-bold">
+                      ไม่มีประวัติออเดอร์บนโต๊ะนี้
+                    </div>
                   )}
                 </div>
               </div>

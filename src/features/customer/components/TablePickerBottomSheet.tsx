@@ -101,7 +101,10 @@ export function TablePickerBottomSheet({
               ) : (
                 displayTables.map((table) => {
                   const available = table.status === "available";
-                  const isSelected = selectedTable === table.id;
+                  const isSelected =
+                    selectedTable === table.id ||
+                    selectedTable === table.label ||
+                    selectedTable === table.label.replace("โต๊ะ ", "");
                   const isWalkIn = table.label.toLowerCase().includes("walk-in") || table.label.includes("หน้าร้าน");
                   const localizedLabel = formatTableLabel(table.label, language);
 

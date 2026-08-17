@@ -1,6 +1,18 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, CheckCircle, Check, ChefHat, PartyPopper, ShoppingBag, Bike, Ticket } from "lucide-react";
+import {
+  Menu,
+  CheckCircle,
+  Check,
+  ChefHat,
+  PartyPopper,
+  ShoppingBag,
+  Bike,
+  Ticket,
+  AlertCircle,
+  XCircle,
+  Clock,
+} from "lucide-react";
 import type { OrderHistory } from "../types";
 import { BRAND, GOLD, INK_MUTED, SURFACE } from "../constants/colors";
 import { useLanguage } from "../../../lib/i18n";
@@ -38,6 +50,16 @@ export function StatusScreen({
     currentStatus === "พร้อมเสิร์ฟ" || currentStatus === "ready" || currentStatus === "พร้อมรับอาหาร";
   const isDelivering = currentStatus === "กำลังจัดส่ง" || currentStatus === "delivering";
   const isCompleted = currentStatus === "สำเร็จ" || currentStatus === "completed";
+
+  const StatusIcon = useMemo(() => {
+    if (isRefunded) return AlertCircle;
+    if (isCancelled) return XCircle;
+    if (isWaiting) return ChefHat;
+    if (isDelivering) return Bike;
+    if (isReady) return ShoppingBag;
+    if (isCompleted) return CheckCircle;
+    return CheckCircle;
+  }, [isRefunded, isCancelled, isWaiting, isDelivering, isReady, isCompleted]);
 
   const steps = orderType === "dine-in"
     ? [

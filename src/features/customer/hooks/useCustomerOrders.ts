@@ -179,13 +179,22 @@ export function useCustomerOrders({
     tables: any[]
   ): boolean => {
     if (!cart || cart.length === 0) return false;
+    const finalOrderType = orderType || (selectedTable ? "dine-in" : "delivery");
     const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
-    const selectedTableObj = tables.find((t) => t.id === selectedTable);
+    const selectedTableObj = tables.find(
+      (t) => String(t.id) === String(selectedTable) || t.label === selectedTable
+    );
     const tableNumStr =
-      orderType === "dine-in" && selectedTableObj ? selectedTableObj.label : undefined;
+      finalOrderType === "dine-in" && selectedTable
+        ? selectedTableObj
+          ? selectedTableObj.label
+          : selectedTable.includes("โต๊ะ")
+          ? selectedTable
+          : `โต๊ะ ${selectedTable}`
+        : undefined;
 
     let takeawayQueueNum: string | undefined = undefined;
-    if (orderType === "takeaway") {
+    if (finalOrderType === "takeaway") {
       const currentQueueCounter = localStorage.getItem("ran-lung-get-takeaway-queue-counter");
       let nextQueue = 1;
       if (currentQueueCounter) {
@@ -199,7 +208,7 @@ export function useCustomerOrders({
     }
 
     const activeSubtotal = cart.reduce((s, l) => s + l.price * l.qty, 0);
-    const activeDeliveryFee = orderType === "delivery" ? 40 : 0;
+    const activeDeliveryFee = finalOrderType === "delivery" ? 40 : 0;
 
     const newOrder: OrderHistory = {
       id: `hist_${Date.now()}`,
@@ -217,7 +226,7 @@ export function useCustomerOrders({
       delivery: activeDeliveryFee,
       total: activeSubtotal + activeDeliveryFee,
       status: "รอรับออเดอร์",
-      orderType: orderType || "delivery",
+      orderType: finalOrderType,
       tableNumber: tableNumStr,
       queueNumber: takeawayQueueNum,
     };
@@ -227,19 +236,32 @@ export function useCustomerOrders({
     setActiveOrderNumber(orderNum);
     setHasActiveOrder(true);
 
-    if (orderType === "dine-in" && selectedTable) {
-      setTables((prev) =>
-        prev.map((t) => (String(t.id) === String(selectedTable) ? { ...t, status: "occupied" } : t))
-      );
+    if (finalOrderType === "dine-in" && selectedTable) {
+      setTables((prev) => {
+        const next = prev.map((t) =>
+          String(t.id) === String(selectedTable) || t.label === selectedTable || t.label === tableNumStr
+            ? { ...t, status: "occupied" }
+            : t
+        );
+        localStorage.setItem("ran-lung-get-tables", JSON.stringify(next));
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "ran-lung-get-tables",
+            newValue: JSON.stringify(next),
+          })
+        );
+        return next;
+      });
     }
 
     const insertOrder = async () => {
-      if (orderType === "dine-in" && selectedTable) {
+      if (finalOrderType === "dine-in" && selectedTable) {
         try {
+          const rawId = String(selectedTable).replace("โต๊ะ", "").trim();
           await (supabase as any)
             .from("restaurant_tables")
             .update({ status: "occupied" })
-            .eq("id", selectedTable);
+            .eq("id", rawId);
         } catch {}
       }
       let finalUserId = dbUser?.id;
