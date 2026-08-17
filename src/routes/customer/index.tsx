@@ -54,10 +54,10 @@ export { MENU };
 export const Route = createFileRoute("/customer/")({
   head: () => ({
     meta: [
-      { title: "LINE LIFF · Epicurean Delivery" },
-      { name: "description", content: "สั่งอาหารพรีเมียมผ่าน LINE LIFF" },
-      { property: "og:title", content: "Epicurean Delivery" },
-      { property: "og:description", content: "Premium food delivery on LINE" },
+      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { name: "description", content: "สั่งอาหารจานด่วน สด สะอาด อร่อย ส่งไว จากร้านลุงเก็ต" },
+      { property: "og:title", content: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { property: "og:description", content: "สั่งอาหารจานด่วน สด สะอาด อร่อย ส่งไว จากร้านลุงเก็ต" },
     ],
   }),
   component: LiffApp,

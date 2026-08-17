@@ -27,6 +27,12 @@ import {
 } from "../../features/admin";
 
 export const Route = createFileRoute("/admin/")({
+  head: () => ({
+    meta: [
+      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { name: "description", content: "ระบบจัดการคลัง สต็อก เมนู และบัญชีผู้ใช้ ร้านลุงเก็ต" },
+    ],
+  }),
   component: AdminDashboard,
 });
 

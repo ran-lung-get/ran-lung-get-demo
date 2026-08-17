@@ -40,6 +40,12 @@ import {
 } from "../features/kitchen";
 
 export const Route = createFileRoute("/kitchen")({
+  head: () => ({
+    meta: [
+      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
+      { name: "description", content: "หน้าจอแสดงผลและจัดการคิวอาหารในห้องครัว ร้านลุงเก็ต" },
+    ],
+  }),
   component: KitchenMonitor,
 });
 
