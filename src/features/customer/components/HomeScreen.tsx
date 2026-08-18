@@ -15,6 +15,7 @@ import {
   Sparkles,
   Gift,
   ThumbsUp,
+  Gamepad2,
 } from "lucide-react";
 import { useLanguage, type Language } from "../../../lib/i18n";
 import type { MenuItem, OrderType } from "../types";
@@ -36,6 +37,7 @@ export function HomeScreen({
   onOpenMenu,
   onOpenRandomModal,
   onOpenGacha,
+  onOpenMiniGames,
   hasActiveOrder,
   activeOrderNumber,
   onGoToStatus,
@@ -69,6 +71,7 @@ export function HomeScreen({
   onOpenMenu: () => void;
   onOpenRandomModal?: () => void;
   onOpenGacha?: () => void;
+  onOpenMiniGames?: () => void;
   hasActiveOrder: boolean;
   activeOrderNumber: string;
   onGoToStatus: () => void;
@@ -472,49 +475,69 @@ export function HomeScreen({
         </div>
       )}
 
-      {/* Gacha & Cards Lucky Banner */}
-      {onOpenGacha && (
+      {/* Unified Gacha & Mini-Games Arcade Banner */}
+      {(onOpenGacha || onOpenMiniGames) && (
         <div className="px-5 md:px-12 mt-6 max-w-7xl mx-auto w-full">
-          <button
-            type="button"
-            onClick={onOpenGacha}
-            className="w-full text-left group relative rounded-3xl p-4 sm:p-5 text-white shadow-xl cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] overflow-hidden border border-amber-400/30 hover:border-amber-400/60 block"
+          <div
+            className="w-full relative rounded-3xl p-5 sm:p-6 text-white shadow-2xl overflow-hidden border border-amber-400/35"
             style={{
-              background: "linear-gradient(135deg, #001f30 0%, #002e47 50%, #1e1035 100%)",
+              background: "linear-gradient(135deg, #001a29 0%, #002e47 40%, #1e1035 75%, #052e16 100%)",
             }}
           >
-            {/* Glow ambient background */}
-            <div className="absolute top-0 right-0 h-40 w-40 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
+            {/* Ambient background glows */}
+            <div className="absolute top-0 right-0 h-48 w-48 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/3 h-40 w-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-linear-to-tr from-amber-500 to-yellow-300 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/25 shrink-0 group-hover:scale-105 transition-transform duration-300">
-                  <ThumbsUp size={24} />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              {/* Left Info Area */}
+              <div className="flex items-start sm:items-center gap-4">
+                <div className="h-14 w-14 rounded-2xl bg-linear-to-tr from-amber-400 via-orange-400 to-yellow-300 text-slate-950 flex items-center justify-center font-black shadow-xl shadow-amber-500/25 shrink-0 text-2xl">
+                  <ThumbsUp size={28} className="stroke-[2.5] text-slate-950 fill-slate-950/15" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider">
-                      {t("ตู้คำอธิษฐาน & สะสมการ์ด (Gacha)")}
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span className="px-2.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider">
+                      {t("ตู้คำอธิษฐาน & มินิเกมลุงเกตุ")}
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      {t("สุ่มฟรีประจำวัน!")}
+                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                      {t("สุ่มฟรีประจำวัน & เล่นเกมได้ตั๋ว!")} 🎫
                     </span>
                   </div>
-                  <h3 className="text-base sm:text-lg font-black text-white leading-tight">
-                    {t("ตู้คำอธิษฐาน & สมุดสะสมการ์ดลุงเกตุ")}
+                  <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
+                    {t("ตู้คำอธิษฐาน, สมุดสะสมการ์ด & 3 มินิเกมลุงเกตุ")}
                   </h3>
-                  <p className="text-xs text-slate-300 font-light mt-0.5 line-clamp-1 sm:line-clamp-none">
-                    {t("ลุ้นรับส่วนลด 50%, ฟรีอาหารจานเด็ด และสะสมการ์ดระดับ UR/SSR ครบเซ็ตรับรางวัลใหญ่!")}
+                  <p className="text-xs text-slate-300 font-light mt-1 max-w-2xl leading-relaxed">
+                    {t("ลุ้นรับคูปองส่วนลด 50%, การ์ดระดับตำนาน UR และเล่นเกมศึก 8-Bit Dragon Quest, ลุงเกตุควงกระทะ & วงล้อเสี่ยงทายดวงชะตา")}
                   </p>
                 </div>
               </div>
 
-              <div className="self-start sm:self-auto px-4 py-2.5 rounded-2xl bg-linear-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 flex items-center gap-1.5 shrink-0 group-hover:from-amber-400 group-hover:to-yellow-300 transition-all">
-                <span>{t("หมุนกาชาเลย")}</span>
-                <ChevronRight size={14} strokeWidth={3} />
+              {/* Right Action Buttons */}
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 self-stretch sm:self-auto">
+                {onOpenGacha && (
+                  <button
+                    type="button"
+                    onClick={onOpenGacha}
+                    className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-linear-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Sparkles size={15} />
+                    <span>{t("หมุนกาชา (Wish)")}</span>
+                  </button>
+                )}
+
+                {onOpenMiniGames && (
+                  <button
+                    type="button"
+                    onClick={onOpenMiniGames}
+                    className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-black text-xs border border-white/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 backdrop-blur-xs"
+                  >
+                    <Gamepad2 size={15} />
+                    <span>{t("เล่นมินิเกม (Games)")}</span>
+                  </button>
+                )}
               </div>
             </div>
-          </button>
+          </div>
         </div>
       )}
 

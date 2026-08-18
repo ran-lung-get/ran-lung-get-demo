@@ -466,21 +466,21 @@ export function MenuManagementView() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-black text-[#002e47] text-sm truncate">{item.name}</span>
+                      <span className="font-black text-[#002e47] text-sm truncate">{tMenu(item.name, "name")}</span>
                       {item.is_spicy && <Flame size={11} className="text-red-500 shrink-0" />}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-[10px] bg-[#002e47]/5 text-[#002e47] px-1.5 py-0.5 rounded font-bold">
-                        {getCatEmoji(item.category)} {getCatLabel(item.category)}
+                        {getCatEmoji(item.category)} {t(getCatLabel(item.category))}
                       </span>
                       <span className="font-black text-[#002e47] text-xs">฿{item.price}</span>
-                      {!item.is_available && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-black">หมดชั่วคราว</span>}
+                      {!item.is_available && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-black">{t("สินค้าหมด")}</span>}
                     </div>
                     {Array.isArray(item.tags) && item.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {item.tags.map((t) => (
-                          <span key={t} className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.2 rounded-md font-medium">
-                            #{t}
+                        {item.tags.map((tagItem) => (
+                          <span key={tagItem} className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.2 rounded-md font-medium">
+                            #{t(tagItem)}
                           </span>
                         ))}
                       </div>
@@ -493,7 +493,7 @@ export function MenuManagementView() {
                     <button
                       type="button"
                       onClick={() => toggleAvailability(item)}
-                      title={item.is_available ? "ซ่อนชั่วคราว" : "เปิดจำหน่าย"}
+                      title={item.is_available ? t("ซ่อนชั่วคราว") : t("พร้อมจำหน่าย")}
                       className={`p-1.5 rounded-lg border transition cursor-pointer ${
                         item.is_available ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100" : "bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200"
                       }`}

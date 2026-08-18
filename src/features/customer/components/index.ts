@@ -20,3 +20,4 @@ export { CustomerSidebar } from "./CustomerSidebar";
 export { HomeScreen } from "./HomeScreen";
 export { RandomDishModal } from "./RandomDishModal";
 export { GachaModal } from "./gacha/GachaModal";
+export { MiniGamesModal } from "./minigames/MiniGamesModal";

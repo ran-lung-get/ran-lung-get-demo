@@ -8,6 +8,7 @@ interface LanguageContextType {
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
   tMenu: (text: string, field?: "name" | "desc") => string;
+  tTable: (tableLabel?: string | null) => string;
   loadingLanguages: Record<string, boolean>;
 }
 
@@ -449,6 +450,16 @@ const uiDictionary: Record<string, Record<Language, string>> = {
     th: "ตู้คำอธิษฐาน & สะสมการ์ด",
     en: "Wish & Card Album",
     zh: "祈愿与卡牌图鉴",
+  },
+  "ตู้คำอธิษฐาน & มินิเกมลุงเกตุ": {
+    th: "ตู้คำอธิษฐาน & มินิเกมลุงเกตุ",
+    en: "Prayer Cabinet & Uncle Get's Mini Games",
+    zh: "祈愿阁与龙葛特小游戏",
+  },
+  "ตู้คำอธิษฐาน, สมุดสะสมการ์ด & 3 มินิเกมลุงเกตุ": {
+    th: "ตู้คำอธิษฐาน, สมุดสะสมการ์ด & 3 มินิเกมลุงเกตุ",
+    en: "Prayer Cabinet, Card Book & 3 Uncle Ket Mini Games",
+    zh: "祈愿阁、卡牌图鉴与3款龙葛特小游戏",
   },
   "สุ่มฟรีประจำวัน!": {
     th: "สุ่มฟรีประจำวัน!",
@@ -1176,8 +1187,16 @@ const uiDictionary: Record<string, Record<Language, string>> = {
   "จำนวนที่นั่ง": { th: "จำนวนที่นั่ง", en: "Seats Capacity", zh: "座位数量" },
   "ประเภทโต๊ะ": { th: "ประเภทโต๊ะ", en: "Table Type", zh: "桌位类型" },
   "ปกติ": { th: "ปกติ", en: "Normal", zh: "普通" },
+  "ยอดรวมเมนูเตาอาหาร": { th: "ยอดรวมเมนูเตาอาหาร", en: "Kitchen Order Summary", zh: "炉台制作汇总" },
   "ยืนยันการเคลียร์โต๊ะ": { th: "ยืนยันการเคลียร์โต๊ะ", en: "Confirm Clear Table", zh: "确认清台" },
   "ยืนยันการลบโต๊ะ": { th: "ยืนยันการลบโต๊ะ", en: "Confirm Delete Table", zh: "确认删除桌位" },
+  "ยืนยันการรวมออเดอร์": { th: "ยืนยันการรวมออเดอร์", en: "Confirm Merge Orders", zh: "确认合并订单" },
+  "ยืนยันการย้ายโต๊ะ": { th: "ยืนยันการย้ายโต๊ะ", en: "Confirm Move Table", zh: "确认更换桌位" },
+  "รวมออเดอร์กับ": { th: "รวมออเดอร์กับ", en: "merge orders with", zh: "与此桌合并订单" },
+  "ย้ายออเดอร์ทั้งหมดไปที่": { th: "ย้ายออเดอร์ทั้งหมดไปที่", en: "move all orders to", zh: "转移全部订单至" },
+  "คุณต้องการ": { th: "คุณต้องการ", en: "Do you want to ", zh: "您确定要" },
+  "ใช่หรือไม่": { th: "ใช่หรือไม่", en: "?", zh: "吗？" },
+  "ค้างอยู่": { th: "ค้างอยู่", en: "Pending", zh: "待处理" },
   "รูปภาพเมนู": { th: "รูปภาพเมนู", en: "Dish Image", zh: "菜品图片" },
   "คลิกเพื่ออัปโหลดรูปอาหาร": { th: "คลิกเพื่ออัปโหลดรูปอาหาร", en: "Click to upload food photo", zh: "点击上传菜品图片" },
   "คำอธิบาย": { th: "คำอธิบาย", en: "Description", zh: "描述" },
@@ -1209,6 +1228,105 @@ const uiDictionary: Record<string, Record<Language, string>> = {
   "รายงานการเงิน": { th: "รายงานการเงิน", en: "Financial Reports", zh: "财务报表" },
   "การตั้งค่าร้าน": { th: "การตั้งค่าร้าน", en: "Store Settings", zh: "店铺设置" },
   "ระบบคูปอง & กาชา": { th: "ระบบคูปอง & กาชา", en: "Gacha & Coupon Config", zh: "祈愿与卡券配置" },
+  // Mini-Games Arcade
+  "ศูนย์มินิเกมลุงเกตุ": { th: "ศูนย์มินิเกมลุงเกตุ", en: "Uncle Get's Arcade", zh: "龙葛特街机小游戏" },
+  "ศูนย์มินิเกมลุงเกตุ (Mini Games)": { th: "ศูนย์มินิเกมลุงเกตุ (Mini Games)", en: "Uncle Get's Mini-Games", zh: "龙葛特小游戏中心" },
+  "ศูนย์มินิเกมลุงเกตุ (Mini-Games)": { th: "ศูนย์มินิเกมลุงเกตุ (Mini-Games)", en: "Uncle Get's Mini-Games", zh: "龙葛特小游戏中心" },
+  "เล่นเกมสะสมแต้ม แลกตั๋วสุ่มกาชา & ดูดวงเมนูมงคล": { th: "เล่นเกมสะสมแต้ม แลกตั๋วสุ่มกาชา & ดูดวงเมนูมงคล", en: "Play games, earn gacha tickets & discover lucky daily dishes!", zh: "畅玩小游戏积累积分，赢取抽卡券并探索每日开运吉利菜！" },
+  "ควงกระทะ, จานบินรับของ & วงล้อดวงชะตา": { th: "ควงกระทะ, จานบินรับของ & ดวล 8-Bit ยิงโจร", en: "Wok Master, Catch Dishes & 8-Bit Bandit Shootout", zh: "大厨翻锅、飞盘接食材与8位像素神枪手捉强盗" },
+  "เล่นมินิเกมสนุกๆ สะสมคะแนนรับตั๋วกาชาฟรี และหมุนดูดวงเมนูมงคลประจำวัน": { th: "เล่นมินิเกมสนุกๆ สะสมคะแนนรับตั๋วกาชาฟรี และปราบโจรรับคูปองส่วนลด", en: "Enjoy fun mini-games, earn free gacha tickets, and bust bandits for discount coupons!", zh: "体验趣味小游戏赚取抽卡券，缉拿强盗赢取优惠折扣券" },
+  "เล่นฟรีได้ตั๋ว!": { th: "เล่นฟรีได้ตั๋ว!", en: "Free Tickets!", zh: "畅玩得抽卡券！" },
+  "เล่นเกมเลย": { th: "เล่นเกมเลย", en: "Play Games", zh: "立即畅玩" },
+  "ลุ้นรับคูปองส่วนลด 50%, การ์ดระดับตำนาน UR และเล่นเกมศึก 8-Bit Dragon Quest, ลุงเกตุควงกระทะ & วงล้อเสี่ยงทายดวงชะตา": {
+    th: "ลุ้นรับคูปองส่วนลด 50%, การ์ดระดับตำนาน UR และเล่นเกมศึก 8-Bit Dragon Quest, ลุงเกตุควงกระทะ & ดวล 8-Bit ยิงโจร",
+    en: "Win 50% discount coupons, UR cards, and enjoy 8-Bit Dragon Quest, Wok Master & 8-Bit Bandit Shootout!",
+    zh: "赢取五折优惠券、UR传说神卡，畅玩8位勇者斗恶龙、大厨翻锅与8位像素神枪手捉强盗！",
+  },
+  // 8-Bit Bandit Shooter Translations
+  "ดวล 8-Bit ยิงโจร": { th: "ดวล 8-Bit ยิงโจร", en: "8-Bit Bandit Shootout", zh: "8位像素神枪手捉强盗" },
+  "ดวลเดือด 8-BIT ยิงจับโจร": { th: "ดวลเดือด 8-BIT ยิงจับโจร", en: "8-Bit Bandit Shootout", zh: "8位像素神枪手捉强盗" },
+  "โจรบุกปล้นร้านลุงเกตุ! เล็งยิงโจรให้ไว อย่าให้โดนตัวประกัน!": { th: "โจรบุกปล้นร้านลุงเกตุ! เล็งยิงโจรให้ไว อย่าให้โดนตัวประกัน!", en: "Bandits are raiding Uncle Get's restaurant! Shoot fast and rescue hostages!", zh: "强盗闯入龙葛特餐厅！迅速瞄准射击，千万别伤到人质！" },
+  "เริ่มดวลปืนล่าโจร! (START GAME)": { th: "เริ่มดวลปืนล่าโจร! (START GAME)", en: "Start Bandit Shootout!", zh: "开启神枪手捉贼！" },
+  "🏆 มือปราบระดับตำนาน!": { th: "🏆 มือปราบระดับตำนาน!", en: "🏆 Legendary Bounty Hunter!", zh: "🏆 传奇赏金猎人！" },
+  "ปราบโจรสำเร็จ!": { th: "ปราบโจรสำเร็จ!", en: "Bandits Busted!", zh: "强盗全部缉拿归案！" },
+  "โจรที่จัดการ": { th: "โจรที่จัดการ", en: "Bandits Busted", zh: "击退强盗数" },
+  "ช่วยตัวประกัน": { th: "ช่วยตัวประกัน", en: "Hostages Rescued", zh: "成功解救人质" },
+  "ความแม่นยำ": { th: "ความแม่นยำ", en: "Accuracy", zh: "命中精度" },
+  "ความเร็วสูงสุด": { th: "ความเร็วสูงสุด", en: "Max Speed", zh: "极限反应速度" },
+  "รางวัลที่ได้รับ": { th: "รางวัลที่ได้รับ", en: "Rewards Earned", zh: "获得奖励" },
+  "เมนูเสริมพลังมือปราบ": { th: "เมนูเสริมพลังมือปราบ", en: "Bounty Hunter Power Meal", zh: "神枪手能量补给餐" },
+  "เล่นใหม่อีกครั้ง (Play Again)": { th: "เล่นใหม่อีกครั้ง (Play Again)", en: "Play Again", zh: "再玩一次" },
+  "กด Space หรือ R เพื่อรีโหลดกระสุน": { th: "กด Space หรือ R เพื่อรีโหลดกระสุน", en: "Press Space or R to reload bullets", zh: "按空格键或R装填弹药" },
+  "ศึก 8-Bit Dragon Quest": { th: "ศึก 8-Bit Dragon Quest", en: "8-Bit Dragon Quest Battle", zh: "8位勇者斗恶龙之战" },
+  "DRAGON QUEST: ศึกจอมมารวัตถุดิบ": { th: "DRAGON QUEST: ศึกจอมมารวัตถุดิบ", en: "DRAGON QUEST: Food Monsters Battle", zh: "勇者斗恶龙：终极食材大魔王之战" },
+  "DRAGON QUEST: ลุงเกตุ 8-BIT BATTLE": { th: "DRAGON QUEST: ลุงเกตุ 8-BIT BATTLE", en: "DRAGON QUEST: UNCLE GET 8-BIT BATTLE", zh: "勇者斗恶龙：龙葛特8位像素大乱斗" },
+  "ผู้กล้าลุงเกตุ ชักตะหลิวเหล็กกล้าก้าวเข้าสู่สนามรบ!": { th: "ผู้กล้าลุงเกตุ ชักตะหลิวเหล็กกล้าก้าวเข้าสู่สนามรบ!", en: "Hero Uncle Get draws his iron spatula and enters battle!", zh: "勇者龙葛特拔出铁铲踏入战场！" },
+  "ปรากฏตัวแล้ว!": { th: "ปรากฏตัวแล้ว!", en: "A wild monster appears!", zh: "出现了！" },
+  "โจมตี": { th: "โจมตี", en: "Attack", zh: "攻击" },
+  "คาถา/สกิล": { th: "คาถา/สกิล", en: "Spells/Skills", zh: "咒文/技能" },
+  "ไอเทม": { th: "ไอเทม", en: "Items", zh: "道具" },
+  "ป้องกัน": { th: "ป้องกัน", en: "Defend", zh: "防御" },
+  "เลือกคาถา": { th: "เลือกคาถา", en: "Choose Spell", zh: "选择咒文" },
+  "กระเป๋าเสบียง": { th: "กระเป๋าเสบียง", en: "Item Bag", zh: "补给行囊" },
+  "เพลิงผัดกระเพรา": { th: "เพลิงผัดกระเพรา", en: "Krapao Flame Blast", zh: "罗勒爆炒烈焰" },
+  "พริกแกงสายฟ้า": { th: "พริกแกงสายฟ้า", en: "Thunder Curry Bolt", zh: "红咖喱狂暴雷电" },
+  "ซดต้มยำกุ้ง": { th: "ซดต้มยำกุ้ง", en: "Tom Yum Healing Soup", zh: "冬阴功治愈热汤" },
+  "ไข่ดาวกรอบ (+140 HP)": { th: "ไข่ดาวกรอบ (+140 HP)", en: "Crispy Fried Egg (+140 HP)", zh: "酥脆荷包蛋 (+140 HP)" },
+  "กระเทียมทองคำ (+50% ATK)": { th: "กระเทียมทองคำ (+50% ATK)", en: "Golden Garlic (+50% ATK)", zh: "黄金大蒜 (+50% ATK)" },
+  "เริ่มการผจญภัย (Start Quest)": { th: "เริ่มการผจญภัย (Start Quest)", en: "Start Quest", zh: "开启冒险旅程" },
+  "🏆 ปราบจอมมารหมูกรอบสำเร็จ!": { th: "🏆 ปราบจอมมารหมูกรอบสำเร็จ!", en: "🏆 Lord Crispy Pork Defeated!", zh: "🏆 成功讨伐黄金脆皮肉大魔王！" },
+  "💀 พ่ายแพ้ในการต่อสู้!": { th: "💀 พ่ายแพ้ในการต่อสู้!", en: "💀 Defeated in Battle!", zh: "💀 战斗失败倒下！" },
+  "ความสงบสุขแห่งกระทะทองคำกลับคืนมาอีกครั้ง!": { th: "ความสงบสุขแห่งกระทะทองคำกลับคืนมาอีกครั้ง!", en: "Peace has returned to the Golden Wok realm!", zh: "黄金铁锅王国的和平再度降临！" },
+  "ลุงเกตุหมดสติลง กลับไปฝึกวิชาผัดกระทะแล้วมาสู้ใหม่!": { th: "ลุงเกตุหมดสติลง กลับไปฝึกวิชาผัดกระทะแล้วมาสู้ใหม่!", en: "Uncle Get fainted! Train your wok skills and challenge again!", zh: "龙葛特体力不支倒下！回厨房磨练厨艺再来挑战！" },
+  "ด่านที่ผ่าน": { th: "ด่านที่ผ่าน", en: "Cleared Stages", zh: "通关关卡" },
+  "ลุงเกตุ": { th: "ลุงเกตุ", en: "Uncle Get", zh: "龙葛特" },
+  "สวมบทบาทเป็น ": { th: "สวมบทบาทเป็น ", en: "Play as ", zh: "化身为 " },
+  "ผู้กล้าลุงเกตุ": { th: "ผู้กล้าลุงเกตุ", en: "Hero Uncle Get", zh: "勇者龙葛特" },
+  " ถือตะหลิวคู่ใจประลองยุทธสไตล์ Turn-based RPG 8-Bit ปราบ 3 จอมมารวัตถุดิบ!": { th: " ถือตะหลิวคู่ใจประลองยุทธสไตล์ Turn-based RPG 8-Bit ปราบ 3 จอมมารวัตถุดิบ!", en: " with his mighty spatula in an 8-bit turn-based RPG quest to conquer 3 legendary food bosses!", zh: " 手持神级铁铲，体验经典8位回合制RPG，讨伐3位食材大魔王！" },
+  "ลุงเกตุควงกระทะ": { th: "ลุงเกตุควงกระทะ", en: "Wok Master", zh: "龙葛特大厨翻锅" },
+  "จานบินรับวัตถุดิบ": { th: "จานบินรับวัตถุดิบ", en: "Catch the Ingredients", zh: "飞盘接食材" },
+  "วงล้อเสี่ยงทายดวง": { th: "วงล้อเสี่ยงทายดวง", en: "Fortune Wheel", zh: "开运命运轮盘" },
+  "วงล้อเสี่ยงทายดวงชะตา": { th: "วงล้อเสี่ยงทายดวงชะตา", en: "Daily Fortune Wheel", zh: "每日运势大轮盘" },
+  "เมนูมงคลประจำวัน": { th: "เมนูมงคลประจำวัน", en: "Lucky Daily Dish", zh: "今日开运吉利菜" },
+  "หมุนเสี่ยงทายดวง & รับรางวัลมงคล": { th: "หมุนเสี่ยงทายดวง & รับรางวัลมงคล", en: "Spin for your fortune & lucky dish rewards", zh: "转动轮盘测运势并赢取吉利奖励" },
+  "หมุนฟรี 1 ครั้ง": { th: "หมุนฟรี 1 ครั้ง", en: "1 Free Spin", zh: "免费旋转1次" },
+  "เสี่ยงทายแล้ว": { th: "เสี่ยงทายแล้ว", en: "Fortune Drawn", zh: "今日已测" },
+  "ใบทำนายดวงชะตาประจำวัน": { th: "ใบทำนายดวงชะตาประจำวัน", en: "Daily Fortune Reading", zh: "今日运势神签" },
+  "เมนูมงคลเสริมดวง": { th: "เมนูมงคลเสริมดวง", en: "Lucky Dish Recommendation", zh: "开运助运菜品" },
+  "รางวัลเสริมดวง": { th: "รางวัลเสริมดวง", en: "Fortune Reward", zh: "开运专属奖励" },
+  "หมุนวงล้อเสี่ยงดวงเลย! (Spin)": { th: "หมุนวงล้อเสี่ยงดวงเลย! (Spin)", en: "Spin Fortune Wheel!", zh: "立即旋转开运轮盘！" },
+  "กำลังเสี่ยงทายดวงชะตา...": { th: "กำลังเสี่ยงทายดวงชะตา...", en: "Revealing your fortune...", zh: "正在为您揭晓今日运势..." },
+  "หมุนเสี่ยงทายใหม่อีกครั้ง": { th: "หมุนเสี่ยงทายใหม่อีกครั้ง", en: "Spin Again", zh: "再次旋转" },
+  "สั่งเลย": { th: "สั่งเลย", en: "Order Now", zh: "立即点餐" },
+  "ผัดจับจังหวะ": { th: "ผัดจับจังหวะ", en: "Rhythm Cooking", zh: "节奏翻炒" },
+  "หลบระเบิด": { th: "หลบระเบิด", en: "Dodge Hazards", zh: "躲避障碍" },
+  "จานที่": { th: "จานที่", en: "Dish", zh: "第几道" },
+  "เร็วไป": { th: "เร็วไป", en: "Too Early", zh: "太快" },
+  "ช้าไป": { th: "ช้าไป", en: "Too Late", zh: "太慢" },
+  "เมนูปัจจุบัน": { th: "เมนูปัจจุบัน", en: "Current Dish", zh: "当前菜品" },
+  "สะบัดกระทะเลย! (FLIP)": { th: "สะบัดกระทะเลย! (FLIP)", en: "FLIP WOK NOW!", zh: "立即翻锅！" },
+  "เกมลุงเกตุควงกระทะ": { th: "เกมลุงเกตุควงกระทะ", en: "Uncle Get's Wok Master", zh: "龙葛特大厨翻锅游戏" },
+  "เกมจานบินรับวัตถุดิบ": { th: "เกมจานบินรับวัตถุดิบ", en: "Catch the Ingredients Game", zh: "飞盘接食材小游戏" },
+  "🎉 ยอดเชฟกระทะเหล็ก!": { th: "🎉 ยอดเชฟกระทะเหล็ก!", en: "🎉 Iron Wok Master!", zh: "🎉 铁锅大厨封神！" },
+  "🍲 จบการผัดกระทะ!": { th: "🍲 จบการผัดกระทะ!", en: "🍲 Cooking Finished!", zh: "🍲 翻炒结束！" },
+  "🎉 จานบินระดับตำนาน!": { th: "🎉 จานบินระดับตำนาน!", en: "🎉 Legendary Catch!", zh: "🎉 传奇飞盘接料王！" },
+  "💥 จบเกม!": { th: "💥 จบเกม!", en: "💥 Game Over!", zh: "💥 游戏结束！" },
+  "ฝีมือระดับปรมาจารย์แห่งร้านลุงเกตุ!": { th: "ฝีมือระดับปรมาจารย์แห่งร้านลุงเกตุ!", en: "Master chef skills approved by Uncle Get!", zh: "龙葛特亲传宗师级厨艺！" },
+  "พยายามได้ดีมาก ฝึกฝนอีกนิดจะเก่งขึ้นแน่นอน!": { th: "พยายามได้ดีมาก ฝึกฝนอีกนิดจะเก่งขึ้นแน่นอน!", en: "Great attempt! A bit more practice makes perfect!", zh: "表现很棒！多加练习一定成为大厨！" },
+  "รับวัตถุดิบได้คล่องแคล่วว่องไวมาก!": { th: "รับวัตถุดิบได้คล่องแคล่วว่องไวมาก!", en: "Incredible agility and hand-eye coordination!", zh: "身手敏捷，反应神速！" },
+  "เล่นเพลินๆ ฝึกความไวสายตาและมือ!": { th: "เล่นเพลินๆ ฝึกความไวสายตาและมือ!", en: "Fun casual play for sharp eyes and quick hands!", zh: "趣味益智，锻炼眼疾手快！" },
+  "เริ่มเล่นเกม (Start)": { th: "เริ่มเล่นเกม (Start)", en: "Start Game", zh: "开始游戏" },
+  "เล่นใหม่อีกครั้ง (Play Again)": { th: "เล่นใหม่อีกครั้ง (Play Again)", en: "Play Again", zh: "再玩一次" },
+  "ซ้าย": { th: "ซ้าย", en: "Left", zh: "左" },
+  "ขวา": { th: "ขวา", en: "Right", zh: "右" },
+  "ดวงมหาเศรษฐี มั่งมีศรีสุข": { th: "ดวงมหาเศรษฐี มั่งมีศรีสุข", en: "Wealth & Prosperity Fortune", zh: "财运亨通·富贵满堂" },
+  "ดวงความรักหวานฉ่ำ เสน่ห์แรง": { th: "ดวงความรักหวานฉ่ำ เสน่ห์แรง", en: "Sweet Love & Charm Fortune", zh: "桃花盛开·甜美姻缘" },
+  "ดวงการงานพุ่ง การเรียนเลิศ": { th: "ดวงการงานพุ่ง การเรียนเลิศ", en: "Career & Academic Success", zh: "学业精进·事业腾飞" },
+  "ดวงแคล้วคลาด สุขภาพแข็งแรง": { th: "ดวงแคล้วคลาด สุขภาพแข็งแรง", en: "Health & Vitality Fortune", zh: "身体康健·百病不侵" },
+  "👑 ดวงจักรพรรดิ มหาเฮงแจ็คพอต!": { th: "👑 ดวงจักรพรรดิ มหาเฮงแจ็คพอต!", en: "👑 Imperial Jackpot Fortune!", zh: "👑 帝王大吉·至尊大奖！" },
+  "ดวงลาภปาก มีคนพาไปเลี้ยง": { th: "ดวงลาภปาก มีคนพาไปเลี้ยง", en: "Gourmet Feast Fortune", zh: "大饱口福·贵人宴请" },
+  "ดวงคิดสิ่งใดสมปรารถนา": { th: "ดวงคิดสิ่งใดสมปรารถนา", en: "Wish Granted Fortune", zh: "心想事成·万事胜意" },
+  "ดวงพลังไฟลุก สู้ไม่ถอย": { th: "ดวงพลังไฟลุก สู้ไม่ถอย", en: "Unstoppable Energy Fortune", zh: "斗志昂扬·所向披靡" },
   "ระบบจัดการหลังบ้าน": { th: "ระบบจัดการหลังบ้าน", en: "Admin Dashboard", zh: "后台管理系统" },
   "เพิ่มเมนูใหม่": { th: "เพิ่มเมนูใหม่", en: "Add New Menu", zh: "新增菜品" },
   "แก้ไขเมนู": { th: "แก้ไขเมนู", en: "Edit Menu", zh: "编辑菜品" },
@@ -1598,6 +1716,158 @@ const menuDictionary: Record<string, Record<Language, { name: string; desc: stri
     en: { name: "Khao Soi (Northern Curry Noodles)", desc: "Soft egg noodles in rich yellow curry broth, topped with crispy noodles" },
     zh: { name: "泰北金面", desc: "浓郁黄咖喱椰奶汤底配以软面条，上覆香脆炸面" },
   },
+  // Short dish names without suffixes
+  "กระเพราหมูสับ": {
+    th: { name: "กระเพราหมูสับ", desc: "กระเพราหมูสับผัดกับพริกและกระเทียม เสิร์ฟราดข้าวไทยร้อนๆ" },
+    en: { name: "Minced Pork Basil", desc: "Stir-fried minced pork with chili and holy basil" },
+    zh: { name: "泰式罗勒猪肉碎", desc: "猪肉碎与新鲜辣椒和罗勒叶大火翻炒" },
+  },
+  "กระเพราหมูกรอบ": {
+    th: { name: "กระเพราหมูกรอบ", desc: "กระเพราหมูกรอบหนังสามชั้นกรอบนอกนุ่มใน ผัดใบกระเพราแท้รสจัดจ้าน" },
+    en: { name: "Crispy Pork Basil", desc: "Crispy pork belly stir-fried with authentic spicy basil leaves" },
+    zh: { name: "罗勒脆皮猪肉", desc: "金黄酥脆的五花肉与辣椒和罗勒叶爆炒" },
+  },
+  "ผัดพริกเผา": {
+    th: { name: "ผัดพริกเผา", desc: "ผัดเครื่องพริกเผาเข้มข้น เคล้ากับเนื้อหรือไก่ตามสั่ง" },
+    en: { name: "Stir-fried Sweet Chili Paste", desc: "Stir-fried rich sweet chili paste" },
+    zh: { name: "泰式辣椒膏炒肉", desc: "浓郁的泰式辣椒膏翻炒" },
+  },
+  "ผัดน้ำมันหอย": {
+    th: { name: "ผัดน้ำมันหอย", desc: "ผัดด้วยน้ำมันหอยหอมหวาน เลือกเนื้อสัตว์ได้ตามต้องการ" },
+    en: { name: "Stir-fried with Oyster Sauce", desc: "Stir-fried with sweet and savory oyster sauce" },
+    zh: { name: "蚝油炒肉", desc: "蚝油配以大蒜翻炒" },
+  },
+  "ผัดซีอิ๊ว": {
+    th: { name: "ผัดซีอิ๊ว", desc: "เส้นใหญ่ผัดซีอิ๊วแบบร้านตามสั่ง ปรุงรสกลมกล่อม เสิร์ฟร้อน" },
+    en: { name: "Pad See Ew (Stir-fried Noodles)", desc: "Stir-fried noodles with dark soy sauce" },
+    zh: { name: "泰式炒宽粉", desc: "经典泰式炒宽粉" },
+  },
+  "ข้าวผัดกระเทียม": {
+    th: { name: "ข้าวผัดกระเทียม", desc: "ข้าวผัดกลิ่นกระเทียม เจียวจนหอม พร้อมผักและเนื้อสัตว์เลือกได้" },
+    en: { name: "Garlic Fried Rice", desc: "Aromatic garlic fried rice" },
+    zh: { name: "蒜香炒饭", desc: "浓郁蒜香炒饭" },
+  },
+  "ผัดผงกะหรี่": {
+    th: { name: "ผัดผงกะหรี่", desc: "ผัดผงกะหรี่รสกลมกล่อม เสิร์ฟพร้อมข้าวร้อนๆ" },
+    en: { name: "Stir-fried Yellow Curry", desc: "Stir-fried curry powder with egg" },
+    zh: { name: "咖喱粉炒肉", desc: "滑蛋咖喱粉翻炒" },
+  },
+  "ผัดผักรวม": {
+    th: { name: "ผัดผักรวม", desc: "ผัดผักสดหลากหลาย ปรุงรสอ่อนๆ" },
+    en: { name: "Stir-fried Mixed Vegetables", desc: "Stir-fried fresh mixed vegetables" },
+    zh: { name: "清炒什锦蔬菜", desc: "新鲜什锦蔬菜快炒" },
+  },
+  "ผัดพริกแกง": {
+    th: { name: "ผัดพริกแกง", desc: "ผัดพริกแกงกลมกล่อม สามารถเลือกเป็นหมู ไก่ หรือทะเลได้" },
+    en: { name: "Stir-fried Red Curry", desc: "Stir-fried aromatic Thai red curry" },
+    zh: { name: "红咖喱炒肉", desc: "浓香红咖喱爆炒" },
+  },
+  "ผัดคะน้าหมูกรอบ": {
+    th: { name: "ผัดคะน้าหมูกรอบ", desc: "ผัดคะน้าใบเขียวสดกรอบกับหมูกรอบสามชั้น ปรุงรสกลมกล่อม" },
+    en: { name: "Stir-fried Chinese Broccoli with Crispy Pork", desc: "Crispy pork belly stir-fried with Chinese broccoli" },
+    zh: { name: "芥兰炒脆皮猪肉", desc: "爽脆芥兰与脆皮五花肉大火翻炒" },
+  },
+  "ผัดพริกแกงหมูกรอบ": {
+    th: { name: "ผัดพริกแกงหมูกรอบ", desc: "พริกแกงรสเข้มข้นผัดคลุกเคล้ากับหมูกรอบและถั่วฝักยาว" },
+    en: { name: "Stir-fried Red Curry Crispy Pork", desc: "Red curry paste stir-fried with crispy pork belly" },
+    zh: { name: "红咖喱脆皮猪肉", desc: "红咖喱爆炒脆皮猪肉与豇豆" },
+  },
+  "กระเทียมพริกไทยหมูชิ้น": {
+    th: { name: "กระเทียมพริกไทยหมูชิ้น", desc: "หมูชิ้นนุ่มๆ ผัดซอสกระเทียมพริกไทยรสเข้มข้น หอมกระเทียมเจียว" },
+    en: { name: "Garlic Pepper Sliced Pork", desc: "Tender sliced pork with garlic pepper sauce" },
+    zh: { name: "蒜香胡椒猪肉片", desc: "滑嫩猪肉片融入浓郁蒜香胡椒酱" },
+  },
+  "ผัดผงกะหรี่ทะเล": {
+    th: { name: "ผัดผงกะหรี่ทะเล", desc: "เนื้อกุ้งและปลาหมึกสดผัดผงกะหรี่เข้มข้น ไข่นุ่มละมุนลิ้น" },
+    en: { name: "Stir-fried Curry Powder Seafood", desc: "Shrimp and squid stir-fried in rich curry powder with egg" },
+    zh: { name: "咖喱粉炒海鲜", desc: "鲜虾鱿鱼滑蛋黄咖喱" },
+  },
+  "คั่วพริกแกงเนื้อ": {
+    th: { name: "คั่วพริกแกงเนื้อ", desc: "เนื้อวัวเกรดดีผัดคั่วพริกแกงตำมือ รสจัดจ้านถึงใจ สมุนไพรไทยครบเครื่อง" },
+    en: { name: "Stir-fried Beef Red Curry", desc: "Beef stir-fried with red curry paste and herbs" },
+    zh: { name: "干炒红咖喱牛肉", desc: "精选牛肉片与红咖喱干煸" },
+  },
+  "ผัดพริกเผาหอยลาย": {
+    th: { name: "ผัดพริกเผาหอยลาย", desc: "หอยลายสดผัดน้ำพริกเผาสูตรเด็ด รสชาติหวานเค็มเผ็ดลงตัว หอมใบโหระพา" },
+    en: { name: "Stir-fried Chili Paste Clams", desc: "Fresh clams stir-fried with sweet chili paste and basil" },
+    zh: { name: "辣椒膏炒蛤蜊", desc: "鲜活蛤蜊搭配甜辣酱快炒" },
+  },
+  "ผัดผักรวมมิตร": {
+    th: { name: "ผัดผักรวมมิตร", desc: "ผัดผักสดรวมมิตรรสชาติเบาๆ สุขภาพดี" },
+    en: { name: "Stir-fried Mixed Vegetables", desc: "Fresh mixed vegetables stir-fried" },
+    zh: { name: "清炒什锦蔬菜", desc: "清脆蔬菜快炒" },
+  },
+  "โค้ก": {
+    th: { name: "โค้ก", desc: "น้ำอัดลม ซีโร่/ปกติ" },
+    en: { name: "Coke", desc: "Coca-Cola" },
+    zh: { name: "可口可乐", desc: "冰镇可乐" },
+  },
+  // Ingredient names
+  "หมูสับ": {
+    th: { name: "หมูสับ", desc: "หมูสับสด" },
+    en: { name: "Minced Pork", desc: "Fresh minced pork" },
+    zh: { name: "猪肉碎", desc: "新鲜猪肉碎" },
+  },
+  "หมูกรอบ": {
+    th: { name: "หมูกรอบ", desc: "หมูกรอบสามชั้น" },
+    en: { name: "Crispy Pork", desc: "Crispy pork belly" },
+    zh: { name: "脆皮五花肉", desc: "香脆五花肉" },
+  },
+  "หมูชิ้น": {
+    th: { name: "หมูชิ้น", desc: "หมูชิ้นสด" },
+    en: { name: "Sliced Pork", desc: "Sliced pork" },
+    zh: { name: "猪肉片", desc: "新鲜猪肉片" },
+  },
+  "ไก่สับ": {
+    th: { name: "ไก่สับ", desc: "ไก่สับสด" },
+    en: { name: "Minced Chicken", desc: "Minced chicken" },
+    zh: { name: "鸡肉碎", desc: "新鲜鸡肉碎" },
+  },
+  "ไก่ต้ม": {
+    th: { name: "ไก่ต้ม", desc: "ไก่ต้มเนื้อนุ่ม" },
+    en: { name: "Boiled Chicken", desc: "Boiled chicken" },
+    zh: { name: "白斩鸡", desc: "鲜嫩白切鸡" },
+  },
+  "เนื้อ": {
+    th: { name: "เนื้อ", desc: "เนื้อวัวสด" },
+    en: { name: "Beef", desc: "Beef" },
+    zh: { name: "牛肉", desc: "鲜牛肉" },
+  },
+  "หมึก": {
+    th: { name: "หมึก", desc: "ปลาหมึกสด" },
+    en: { name: "Squid", desc: "Fresh squid" },
+    zh: { name: "鱿鱼", desc: "新鲜鱿鱼" },
+  },
+  "กุ้ง": {
+    th: { name: "กุ้ง", desc: "กุ้งสด" },
+    en: { name: "Shrimp", desc: "Fresh shrimp" },
+    zh: { name: "鲜虾", desc: "新鲜大虾" },
+  },
+  "หอยลาย": {
+    th: { name: "หอยลาย", desc: "หอยลายสด" },
+    en: { name: "Clams", desc: "Fresh clams" },
+    zh: { name: "花蛤", desc: "新鲜花蛤" },
+  },
+  "ไข่ไก่": {
+    th: { name: "ไข่ไก่", desc: "ไข่ไก่สด" },
+    en: { name: "Egg", desc: "Fresh egg" },
+    zh: { name: "鸡蛋", desc: "新鲜鸡蛋" },
+  },
+  "ไส้กรอก": {
+    th: { name: "ไส้กรอก", desc: "ไส้กรอก" },
+    en: { name: "Sausage", desc: "Sausage" },
+    zh: { name: "香肠", desc: "香肠" },
+  },
+  "กุนเชียง": {
+    th: { name: "กุนเชียง", desc: "กุนเชียงทอด" },
+    en: { name: "Chinese Sausage", desc: "Chinese sweet sausage" },
+    zh: { name: "腊肠", desc: "广式甜腊肠" },
+  },
+  "ไข่ดาว": {
+    th: { name: "ไข่ดาว", desc: "ไข่ดาวทอดกรอบ" },
+    en: { name: "Fried Egg", desc: "Crispy fried egg" },
+    zh: { name: "荷包蛋", desc: "香煎荷包蛋" },
+  },
 };
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -1646,7 +1916,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Base translation helper for general UI elements
   const t = (key: string): string => {
-    if (language === "th") return key;
+    if (language === "th" || !key) return key;
     const entry = uiDictionary[key];
     if (entry && entry[language]) {
       return entry[language];
@@ -1666,35 +1936,95 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Translation helper for Menus (returns name or description)
   // Uses field-qualified cache keys: "<lang>:name:<text>" and "<lang>:desc:<text>"
-  // so that name and description for new items never collide in the cache.
   const tMenu = (text: string, field: "name" | "desc" = "name"): string => {
-    if (language === "th") return text;
+    if (language === "th" || !text) return text;
+    const cleanText = text.trim();
 
     // 1. Look up by exact Thai name key in the static dictionary
-    let foundEntry = menuDictionary[text];
+    let foundEntry = menuDictionary[cleanText];
 
-    // 2. For "desc" lookups, find the entry whose Thai desc matches
+    // 2. Look up by normalized name (without parentheses, e.g. "กระเพราหมูกรอบ")
+    if (!foundEntry) {
+      const normalizedQuery = cleanText.replace(/\s*\(.*?\)\s*/g, "").trim();
+      const matchedKey = Object.keys(menuDictionary).find((k) => {
+        const normKey = k.replace(/\s*\(.*?\)\s*/g, "").trim();
+        return normKey === normalizedQuery || normKey === cleanText || k === normalizedQuery;
+      });
+      if (matchedKey) {
+        foundEntry = menuDictionary[matchedKey];
+      }
+    }
+
+    // 3. For "desc" lookups, find the entry whose Thai desc matches
     if (!foundEntry && field === "desc") {
       const matchedName = Object.keys(menuDictionary).find(
-        (k) => menuDictionary[k].th.desc === text
+        (k) => menuDictionary[k].th.desc === cleanText
       );
       if (matchedName) foundEntry = menuDictionary[matchedName];
     }
 
     if (foundEntry && foundEntry[language]) {
-      return foundEntry[language][field];
+      return foundEntry[language][field] || foundEntry[language].name || cleanText;
     }
 
-    // 3. Not in static dictionary — use field-qualified dynamic cache
-    const cacheKey = `${language}:${field}:${text}`;
+    // 4. Check UI dictionary if applicable
+    if (uiDictionary[cleanText] && uiDictionary[cleanText][language]) {
+      return uiDictionary[cleanText][language];
+    }
+
+    // 5. Check dynamic cache
+    const cacheKey = `${language}:${field}:${cleanText}`;
     if (localCache[cacheKey]) {
       return localCache[cacheKey];
     }
 
-    // 4. Fire async translation (returns original text until done, then re-renders)
-    triggerAsyncTranslation(text, field);
+    // 6. Fire async translation (returns original text until done, then re-renders)
+    triggerAsyncTranslation(cleanText, field);
 
-    return text;
+    return cleanText;
+  };
+
+  // Smart translation helper for table names (handles "โต๊ะ 1", "Walk-in 1", "1", "VIP")
+  const tTable = (tableStr?: string | null): string => {
+    if (!tableStr) return "";
+    const raw = tableStr.trim();
+    if (!raw) return "";
+
+    if (language === "th") {
+      if (/^\d+$/.test(raw)) return `โต๊ะ ${raw}`;
+      return raw;
+    }
+
+    // Match table numbers like "โต๊ะ 1", "โต๊ะ1", "1", "Table 1"
+    const matchNum = raw.match(/^(?:โต๊ะ\s*|Table\s*|桌\s*)?(\d+)$/i);
+    if (matchNum) {
+      const num = matchNum[1];
+      if (language === "en") return `Table ${num}`;
+      if (language === "zh") return `${num}号桌`;
+    }
+
+    // Walk-in tables like "Walk-in 1", "Walk-in 2", "walkin 1"
+    const matchWalkin = raw.match(/^(?:Walk-in\s*|walkin\s*|散客\s*)(\d+)$/i);
+    if (matchWalkin) {
+      const num = matchWalkin[1];
+      if (language === "en") return `Walk-in ${num}`;
+      if (language === "zh") return `散客 ${num}号`;
+    }
+
+    // VIP tables
+    if (/vip/i.test(raw)) {
+      if (language === "en") return "Table VIP";
+      if (language === "zh") return "VIP包厢桌";
+    }
+
+    // General prefix "โต๊ะ"
+    if (raw.startsWith("โต๊ะ")) {
+      const suffix = raw.replace(/^โต๊ะ\s*/, "");
+      if (language === "en") return `Table ${suffix}`;
+      if (language === "zh") return `${suffix}号桌`;
+    }
+
+    return t(raw);
   };
 
   // Triggers API translation in background and stores result in state (causing re-render)
@@ -1707,7 +2037,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLoadingLanguages((prev) => ({ ...prev, [cacheKey]: true }));
 
     try {
-      console.log(`[i18n] Translating (${field}) to ${language}:`, text);
       const res = await translateApi({
         data: {
           text,
@@ -1732,7 +2061,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, tMenu, loadingLanguages }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, tMenu, tTable, loadingLanguages }}>
       {children}
     </LanguageContext.Provider>
   );

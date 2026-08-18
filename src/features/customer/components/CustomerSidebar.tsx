@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Home as HomeIcon, ClipboardList, History, MessageCircle, User, LogOut, Sparkles } from "lucide-react";
+import { Home as HomeIcon, ClipboardList, History, MessageCircle, User, Sparkles, Gamepad2 } from "lucide-react";
 import { useLanguage } from "../../../lib/i18n";
 import type { LiffProfile } from "../../../lib/liff";
 import type { OrderHistory } from "../types";
@@ -12,7 +12,6 @@ export function CustomerSidebar({
   simulateClosed,
   setSimulateClosed,
   profile,
-  onLogout,
 }: {
   onClose: () => void;
   onNavigate: (t: string) => void;
@@ -20,12 +19,12 @@ export function CustomerSidebar({
   simulateClosed: boolean;
   setSimulateClosed: (s: boolean) => void;
   profile: LiffProfile | null;
-  onLogout: () => void;
 }) {
   const { t } = useLanguage();
   const items = [
     { id: "home", label: t("หน้าแรก"), icon: HomeIcon },
     { id: "gacha", label: t("ตู้คำอธิษฐาน & สะสมการ์ด"), icon: Sparkles, badge: "NEW!" },
+    { id: "minigames", label: t("ศูนย์มินิเกมลุงเกตุ"), icon: Gamepad2, badge: "HOT" },
     { id: "status", label: t("สถานะการสั่งซื้อ"), icon: ClipboardList },
     { id: "history", label: t("ประวัติการสั่งซื้อ"), icon: History },
     { id: "contact", label: t("ติดต่อเรา"), icon: MessageCircle },
@@ -119,15 +118,6 @@ export function CustomerSidebar({
               </button>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium cursor-pointer transition active:scale-95"
-            style={{ background: "rgba(255,255,255,0.08)", color: "white" }}
-          >
-            <LogOut size={16} /> {t("ออกจากระบบ")}
-          </button>
         </div>
       </motion.aside>
     </>
