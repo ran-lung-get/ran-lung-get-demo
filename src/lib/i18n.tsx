@@ -1085,11 +1085,179 @@ const uiDictionary: Record<string, Record<Language, string>> = {
     en: "Use Gacha Coupon",
     zh: "使用祈愿优惠券",
   },
+  "ใส่โค้ด / เลือกคูปองส่วนลด": {
+    th: "ใส่โค้ด / เลือกคูปองส่วนลด",
+    en: "Enter Code / Select Coupon",
+    zh: "输入优惠码 / 选择优惠券",
+  },
+  "กำลังใช้": {
+    th: "กำลังใช้",
+    en: "In Use",
+    zh: "使用中",
+  },
+  "ลดทันที": {
+    th: "ลดทันที",
+    en: "Instant discount",
+    zh: "立减",
+  },
+  "บาท": {
+    th: "บาท",
+    en: "THB",
+    zh: "泰铢",
+  },
+  "เปลี่ยน": {
+    th: "เปลี่ยน",
+    en: "Change",
+    zh: "更换",
+  },
   "ใช้คูปอง": {
     th: "ใช้คูปอง",
     en: "Use Coupon",
     zh: "使用券",
   },
+  // Staff & Kitchen Management
+  "ระบบจัดการออเดอร์": { th: "ระบบจัดการออเดอร์", en: "Kitchen Order Monitor", zh: "厨房订单管理系统" },
+  "กระดานครัว (KDS)": { th: "กระดานครัว (KDS)", en: "Kitchen Display (KDS)", zh: "厨房看板 (KDS)" },
+  "จัดการโต๊ะ": { th: "จัดการโต๊ะ", en: "Table Management", zh: "桌位管理" },
+  "จัดการเมนู": { th: "จัดการเมนู", en: "Menu Management", zh: "菜单管理" },
+  "สต็อกวัตถุดิบ": { th: "สต็อกวัตถุดิบ", en: "Stock & Inventory", zh: "库存管理" },
+  "รอดำเนินการ": { th: "รอดำเนินการ", en: "Pending", zh: "待处理" },
+  "รอรับออเดอร์": { th: "รอรับออเดอร์", en: "Pending Orders", zh: "待接单" },
+  "กำลังทำ": { th: "กำลังทำ", en: "Cooking", zh: "制作中" },
+  "กำลังเตรียม": { th: "กำลังเตรียม", en: "Preparing", zh: "准备中" },
+  "พร้อมเสิร์ฟ": { th: "พร้อมเสิร์ฟ", en: "Ready to Serve", zh: "待上菜" },
+  "กำลังจัดส่ง": { th: "กำลังจัดส่ง", en: "Delivering", zh: "配送中" },
+  "สำเร็จ": { th: "สำเร็จ", en: "Completed", zh: "已完成" },
+  "ออเดอร์ทั้งหมด": { th: "ออเดอร์ทั้งหมด", en: "All Orders", zh: "全部订单" },
+  "ทานที่ร้าน": { th: "ทานที่ร้าน", en: "Dine-in", zh: "堂食" },
+  "จัดส่ง": { th: "จัดส่ง", en: "Delivery", zh: "外送" },
+  "กลับบ้าน": { th: "กลับบ้าน", en: "Takeaway", zh: "外带" },
+  "เปิดเสียง": { th: "เปิดเสียง", en: "Sound On", zh: "开启提示音" },
+  "ปิดเสียง": { th: "ปิดเสียง", en: "Sound Off", zh: "静音" },
+  "ออกจากระบบ": { th: "ออกจากระบบ", en: "Logout", zh: "退出登录" },
+  "เริ่มทำอาหาร": { th: "เริ่มทำอาหาร", en: "Start Cooking", zh: "开始制作" },
+  "ทำเสร็จแล้ว": { th: "ทำเสร็จแล้ว", en: "Mark as Ready", zh: "制作完成" },
+  "รอไรเดอร์มารับ": { th: "รอไรเดอร์มารับ", en: "Waiting for Rider", zh: "等待骑手取餐" },
+  "ส่งมอบสำเร็จ": { th: "ส่งมอบสำเร็จ", en: "Mark as Served", zh: "完成送达" },
+  "เริ่มจัดส่ง": { th: "เริ่มจัดส่ง", en: "Start Delivery", zh: "开始配送" },
+  "ยกเลิกออเดอร์": { th: "ยกเลิกออเดอร์", en: "Cancel Order", zh: "取消订单" },
+  "พิมพ์ใบเสร็จ": { th: "พิมพ์ใบเสร็จ", en: "Print Slip", zh: "打印小票" },
+  "ประวัติคำสั่งซื้อ": { th: "ประวัติคำสั่งซื้อ", en: "Order History", zh: "历史订单" },
+  "หมายเหตุ": { th: "หมายเหตุ", en: "Note", zh: "备注" },
+  "ไม่มีหมายเหตุ": { th: "ไม่มีหมายเหตุ", en: "No note", zh: "无备注" },
+  "โต๊ะ": { th: "โต๊ะ", en: "Table", zh: "桌号" },
+  "กล่อง": { th: "กล่อง", en: "Box", zh: "盒" },
+  "ไม่มีออเดอร์ในสถานะนี้": { th: "ไม่มีออเดอร์ในสถานะนี้", en: "No orders in this status", zh: "暂无此状态的订单" },
+  "ออเดอร์ใหม่": { th: "ออเดอร์ใหม่", en: "New Order", zh: "新订单" },
+  "เวลาสั่ง": { th: "เวลาสั่ง", en: "Order Time", zh: "下单时间" },
+  "รายการอาหาร": { th: "รายการอาหาร", en: "Food Items", zh: "点餐明细" },
+  "ยอดรวม": { th: "ยอดรวม", en: "Total", zh: "总计" },
+  "ตัวกรองประเภท": { th: "ตัวกรองประเภท", en: "Filter by type", zh: "类型筛选" },
+  "ทั้งหมด": { th: "ทั้งหมด", en: "All", zh: "全部" },
+  "เปิด/ปิดเสียงเตือน": { th: "เปิด/ปิดเสียงเตือน", en: "Toggle sound alert", zh: "切换提示音" },
+  "มีลูกค้า": { th: "มีลูกค้า", en: "Occupied", zh: "就餐中" },
+  "ว่าง": { th: "ว่าง", en: "Available", zh: "空闲" },
+  "รองรับ": { th: "รองรับ", en: "Capacity", zh: "容纳" },
+  "ท่าน": { th: "ท่าน", en: "guests", zh: "人" },
+  "กำลังปรุง": { th: "กำลังปรุง", en: "Cooking", zh: "制作中" },
+  "กำหนดสถานะโต๊ะ": { th: "กำหนดสถานะโต๊ะ", en: "Table Status", zh: "设置桌位状态" },
+  "พร้อมรับลูกค้า": { th: "พร้อมรับลูกค้า", en: "Ready for guests", zh: "可入座" },
+  "ย้าย / รวมออเดอร์ไปยังโต๊ะอื่น": { th: "ย้าย / รวมออเดอร์ไปยังโต๊ะอื่น", en: "Move / Merge Orders to Table", zh: "转桌 / 合并订单" },
+  "ย้าย / รวมออเดอร์": { th: "ย้าย / รวมออเดอร์", en: "Move / Merge Orders", zh: "转桌 / 合并" },
+  "เลือกโต๊ะปลายทาง": { th: "เลือกโต๊ะปลายทาง", en: "Select destination table for", zh: "选择目标桌位" },
+  "เคลียร์โต๊ะ & อ้างอิงออเดอร์เสร็จสิ้น": { th: "เคลียร์โต๊ะ & อ้างอิงออเดอร์เสร็จสิ้น", en: "Clear Table & Complete Order", zh: "清台并完成订单" },
+  "ลบโต๊ะนี้ออกจากระบบ": { th: "ลบโต๊ะนี้ออกจากระบบ", en: "Delete This Table", zh: "删除此桌位" },
+  "รายการอาหารบนโต๊ะ": { th: "รายการอาหารบนโต๊ะ", en: "Table Orders", zh: "当前桌位账单" },
+  "ไม่มีประวัติออเดอร์บนโต๊ะนี้": { th: "ไม่มีประวัติออเดอร์บนโต๊ะนี้", en: "No orders for this table", zh: "此桌暂无订单" },
+  "เลือกโต๊ะอาหารเพื่อดำเนินการ": { th: "เลือกโต๊ะอาหารเพื่อดำเนินการ", en: "Select a table to manage", zh: "请选择桌位进行操作" },
+  "กดเลือกโต๊ะจากแผนผังที่นั่งฝั่งซ้าย เพื่อกำหนดสถานะ (ว่าง/มีลูกค้า/จอง), ย้ายออเดอร์ หรือเคลียร์โต๊ะ": { th: "กดเลือกโต๊ะจากแผนผังที่นั่งฝั่งซ้าย เพื่อกำหนดสถานะ (ว่าง/มีลูกค้า/จอง), ย้ายออเดอร์ หรือเคลียร์โต๊ะ", en: "Click any table on the left layout to update status, move orders, or clear table.", zh: "点击左侧平面图中的桌位以设置状态、转桌或清台。" },
+  "เพิ่มโต๊ะ": { th: "เพิ่มโต๊ะ", en: "Add Table", zh: "新增桌位" },
+  "ชื่อโต๊ะ / หมายเลขโต๊ะ": { th: "ชื่อโต๊ะ / หมายเลขโต๊ะ", en: "Table Name / Number", zh: "桌位名称 / 编号" },
+  "จำนวนที่นั่ง": { th: "จำนวนที่นั่ง", en: "Seats Capacity", zh: "座位数量" },
+  "ประเภทโต๊ะ": { th: "ประเภทโต๊ะ", en: "Table Type", zh: "桌位类型" },
+  "ปกติ": { th: "ปกติ", en: "Normal", zh: "普通" },
+  "ยืนยันการเคลียร์โต๊ะ": { th: "ยืนยันการเคลียร์โต๊ะ", en: "Confirm Clear Table", zh: "确认清台" },
+  "ยืนยันการลบโต๊ะ": { th: "ยืนยันการลบโต๊ะ", en: "Confirm Delete Table", zh: "确认删除桌位" },
+  "รูปภาพเมนู": { th: "รูปภาพเมนู", en: "Dish Image", zh: "菜品图片" },
+  "คลิกเพื่ออัปโหลดรูปอาหาร": { th: "คลิกเพื่ออัปโหลดรูปอาหาร", en: "Click to upload food photo", zh: "点击上传菜品图片" },
+  "คำอธิบาย": { th: "คำอธิบาย", en: "Description", zh: "描述" },
+  "เมนูนี้มีรสเผ็ด": { th: "เมนูนี้มีรสเผ็ด", en: "Spicy Dish", zh: "此菜品含辣" },
+  "ตัวเลือก (Options)": { th: "ตัวเลือก (Options)", en: "Option Groups", zh: "规格选项" },
+  "เพิ่มกลุ่ม": { th: "เพิ่มกลุ่ม", en: "Add Option Group", zh: "添加选项组" },
+  "ยังไม่มีตัวเลือก": { th: "ยังไม่มีตัวเลือก", en: "No options yet", zh: "暂无选项" },
+  "ท็อปปิ้ง": { th: "ท็อปปิ้ง", en: "Addons / Toppings", zh: "加料配料" },
+  "เลือกเมนูจากรายการด้านซ้ายเพื่อแก้ไข หรือกด \"+ เพิ่มเมนู\" เพื่อสร้างเมนูใหม่": { th: "เลือกเมนูจากรายการด้านซ้ายเพื่อแก้ไข หรือกด \"+ เพิ่มเมนู\" เพื่อสร้างเมนูใหม่", en: "Select a dish from the left list to edit, or click '+ Add Menu' to create a new dish.", zh: "从左侧列表选择菜品进行编辑，或点击“+ 新增菜品”。" },
+  "ไม่มีวัตถุดิบใดที่ต่ำกว่าเกณฑ์แจ้งเตือน": { th: "ไม่มีวัตถุดิบใดที่ต่ำกว่าเกณฑ์แจ้งเตือน", en: "All ingredients are in healthy stock!", zh: "太棒了！暂无低库存原料" },
+  "ไม่พบรายการวัตถุดิบ": { th: "ไม่พบรายการวัตถุดิบ", en: "No ingredients found", zh: "未找到原料记录" },
+  "ของใกล้หมด / ต่ำกว่าเกณฑ์": { th: "ของใกล้หมด / ต่ำกว่าเกณฑ์", en: "Low Stock", zh: "低库存告警" },
+  "เกณฑ์เตือน": { th: "เกณฑ์เตือน", en: "Min Threshold", zh: "预警阈值" },
+  "เติมด่วน": { th: "เติมด่วน", en: "Quick Restock", zh: "快捷补货" },
+  "เพิ่มวัตถุดิบ": { th: "เพิ่มวัตถุดิบ", en: "Add Ingredient", zh: "新增原料" },
+  "ชื่อวัตถุดิบ": { th: "ชื่อวัตถุดิบ", en: "Ingredient Name", zh: "原料名称" },
+  "ปริมาณสต็อก": { th: "ปริมาณสต็อก", en: "Stock Quantity", zh: "库存数量" },
+  "หน่วยนับ": { th: "หน่วยนับ", en: "Unit", zh: "计量单位" },
+  "จัดการคลังสินค้า": { th: "จัดการคลังสินค้า", en: "Inventory Management", zh: "库存管理" },
+  "เนื้อสัตว์": { th: "เนื้อสัตว์", en: "Meat", zh: "肉类" },
+  "ซีฟู้ด": { th: "ซีฟู้ด", en: "Seafood", zh: "海鲜" },
+
+  // Admin Management
+  "ภาพรวม": { th: "ภาพรวม", en: "Overview", zh: "概览" },
+  "ยอดขายรวม": { th: "ยอดขายรวม", en: "Total Sales", zh: "总销售额" },
+  "คำสั่งซื้อวันนี้": { th: "คำสั่งซื้อวันนี้", en: "Today's Orders", zh: "今日订单" },
+  "เมนูขายดี": { th: "เมนูขายดี", en: "Best Sellers", zh: "畅销菜品" },
+  "จัดการพนักงาน": { th: "จัดการพนักงาน", en: "Staff Management", zh: "员工管理" },
+  "รายงานการเงิน": { th: "รายงานการเงิน", en: "Financial Reports", zh: "财务报表" },
+  "การตั้งค่าร้าน": { th: "การตั้งค่าร้าน", en: "Store Settings", zh: "店铺设置" },
+  "ระบบคูปอง & กาชา": { th: "ระบบคูปอง & กาชา", en: "Gacha & Coupon Config", zh: "祈愿与卡券配置" },
+  "ระบบจัดการหลังบ้าน": { th: "ระบบจัดการหลังบ้าน", en: "Admin Dashboard", zh: "后台管理系统" },
+  "เพิ่มเมนูใหม่": { th: "เพิ่มเมนูใหม่", en: "Add New Menu", zh: "新增菜品" },
+  "แก้ไขเมนู": { th: "แก้ไขเมนู", en: "Edit Menu", zh: "编辑菜品" },
+  "ลบเมนู": { th: "ลบเมนู", en: "Delete Menu", zh: "删除菜品" },
+  "ชื่อเมนู": { th: "ชื่อเมนู", en: "Dish Name", zh: "菜品名称" },
+  "ราคา (บาท)": { th: "ราคา (บาท)", en: "Price (THB)", zh: "价格 (泰铢)" },
+  "หมวดหมู่": { th: "หมวดหมู่", en: "Category", zh: "类别" },
+  "พร้อมจำหน่าย": { th: "พร้อมจำหน่าย", en: "Available", zh: "有货" },
+  "สินค้าหมด": { th: "สินค้าหมด", en: "Out of Stock", zh: "售罄" },
+  "แท็ก": { th: "แท็ก", en: "Tags", zh: "标签" },
+  "แท็กแนะนำ": { th: "แท็กแนะนำ", en: "Preset Tags", zh: "常用标签" },
+  "บันทึกข้อมูล": { th: "บันทึกข้อมูล", en: "Save", zh: "保存" },
+  "ล้างข้อมูลออเดอร์": { th: "ล้างข้อมูลออเดอร์", en: "Clear All Orders", zh: "清空所有订单" },
+  "รีเซ็ตข้อมูลคำสั่งซื้อเพื่อเริ่มต้นใหม่": { th: "รีเซ็ตข้อมูลคำสั่งซื้อเพื่อเริ่มต้นใหม่", en: "Reset orders and table states", zh: "重置订单数据与桌位" },
+  "เกิดข้อผิดพลาดในการล้างข้อมูล": { th: "เกิดข้อผิดพลาดในการล้างข้อมูล", en: "Error clearing data", zh: "清空数据失败" },
+  "เกิดข้อผิดพลาดไม่ทราบสาเหตุ": { th: "เกิดข้อผิดพลาดไม่ทราบสาเหตุ", en: "Unknown error", zh: "未知错误" },
+  "ล้างข้อมูลออเดอร์สำเร็จเรียบร้อย!": { th: "ล้างข้อมูลออเดอร์สำเร็จเรียบร้อย!", en: "All orders cleared successfully!", zh: "订单数据清空成功！" },
+  "ระบบได้ล้างประวัติออเดอร์และคืนสถานะโต๊ะว่างทั้งหมดแล้ว": { th: "ระบบได้ล้างประวัติออเดอร์และคืนสถานะโต๊ะว่างทั้งหมดแล้ว", en: "All order histories deleted and tables reset to available.", zh: "所有订单记录已清空，所有桌位已重置为空闲。" },
+  "คำเตือน: การกระทำนี้ไม่สามารถย้อนกลับได้": { th: "คำเตือน: การกระทำนี้ไม่สามารถย้อนกลับได้", en: "Warning: This action cannot be undone", zh: "警告：此操作不可撤销" },
+  "ข้อมูลออเดอร์ทั้งหมดจะถูกลบถาวร เหมาะสำหรับการรีเซ็ตระบบก่อนเปิดร้านจริง หรือเคลียร์ข้อมูลหลังการทดสอบ": { th: "ข้อมูลออเดอร์ทั้งหมดจะถูกลบถาวร เหมาะสำหรับการรีเซ็ตระบบก่อนเปิดร้านจริง หรือเคลียร์ข้อมูลหลังการทดสอบ", en: "All order records will be permanently deleted. Recommended before opening or after testing.", zh: "所有订单数据将被永久删除，适用于正式营业前的测试数据清理。" },
+  "รายการที่ระบบจะดำเนินการ": { th: "รายการที่ระบบจะดำเนินการ", en: "Actions to be performed", zh: "系统执行项" },
+  "ลบประวัติออเดอร์และรายการอาหารทั้งหมดในฐานข้อมูล": { th: "ลบประวัติออเดอร์และรายการอาหารทั้งหมดในฐานข้อมูล", en: "Delete all order history and line items in database", zh: "删除数据库中的所有订单历史与点餐记录" },
+  "ปรับสถานะโต๊ะทุกโต๊ะในร้านให้กลับเป็น \"ว่าง\"": { th: "ปรับสถานะโต๊ะทุกโต๊ะในร้านให้กลับเป็น \"ว่าง\"", en: "Reset all tables back to 'Available'", zh: "将店内所有桌位重置为“空闲”" },
+  "รีเซ็ตลำดับคิวและสถิติยอดขายบนแดชบอร์ดกลับเป็น 0": { th: "รีเซ็ตลำดับคิวและสถิติยอดขายบนแดชบอร์ดกลับเป็น 0", en: "Reset queue sequence and dashboard sales stats to 0", zh: "重置排队序号与仪表板销售统计为0" },
+  "ยืนยันล้างข้อมูลออเดอร์": { th: "ยืนยันล้างข้อมูลออเดอร์", en: "Confirm Clear All Orders", zh: "确认清空订单数据" },
+  "ออเดอร์ล่าสุด": { th: "ออเดอร์ล่าสุด", en: "Recent Orders", zh: "最新订单" },
+  "เวลา": { th: "เวลา", en: "Time", zh: "时间" },
+  "ประเภท": { th: "ประเภท", en: "Type", zh: "类型" },
+  "ไม่มีข้อมูลออเดอร์ในช่วงเวลานี้": { th: "ไม่มีข้อมูลออเดอร์ในช่วงเวลานี้", en: "No orders in this period", zh: "此期间暂无订单数据" },
+  "รายชื่อลูกค้าล่าสุด": { th: "รายชื่อลูกค้าล่าสุด", en: "Recent Customers", zh: "最新顾客列表" },
+  "ชื่อลูกค้า": { th: "ชื่อลูกค้า", en: "Customer Name", zh: "顾客姓名" },
+  "ช่องทาง/โต๊ะ": { th: "ช่องทาง/โต๊ะ", en: "Channel/Table", zh: "渠道/桌号" },
+  "เวลาเข้าใช้งาน": { th: "เวลาเข้าใช้งาน", en: "Time", zh: "进入时间" },
+  "ไม่มีรายชื่อลูกค้าใหม่": { th: "ไม่มีรายชื่อลูกค้าใหม่", en: "No new customers", zh: "暂无新顾客" },
+  "อันดับเมนูขายดีที่สุด": { th: "อันดับเมนูขายดีที่สุด", en: "Top Best Sellers", zh: "热销菜品排行榜" },
+  "ไม่มีข้อมูลยอดขายเมนู": { th: "ไม่มีข้อมูลยอดขายเมนู", en: "No menu sales data", zh: "暂无菜品销售数据" },
+  "จาน": { th: "จาน", en: "dishes", zh: "份" },
+  "คำขออนุมัติสิทธิ์ (รอตรวจสอบ)": { th: "คำขออนุมัติสิทธิ์ (รอตรวจสอบ)", en: "Pending Role Approvals", zh: "待审核权限申请" },
+  "รายชื่อผู้ใช้ระบบและสิทธิ์การเข้าถึง": { th: "รายชื่อผู้ใช้ระบบและสิทธิ์การเข้าถึง", en: "User Access & Role Management", zh: "系统用户与权限管理" },
+  "ค้นหาชื่อ, อีเมล, สิทธิ์...": { th: "ค้นหาชื่อ, อีเมล, สิทธิ์...", en: "Search name, email, role...", zh: "搜索姓名、邮箱、权限..." },
+  "ชื่อผู้ใช้ / อีเมล": { th: "ชื่อผู้ใช้ / อีเมล", en: "User / Email", zh: "用户名 / 邮箱" },
+  "ระดับสิทธิ์ (Role)": { th: "ระดับสิทธิ์ (Role)", en: "Role", zh: "权限角色" },
+  "สถานะบัญชี": { th: "สถานะบัญชี", en: "Account Status", zh: "账户状态" },
+  "ปรับบทบาทสิทธิ์พนักงาน": { th: "ปรับบทบาทสิทธิ์พนักงาน", en: "Change Role", zh: "修改角色" },
+  "ไม่พบข้อมูลรายชื่อในระบบ": { th: "ไม่พบข้อมูลรายชื่อในระบบ", en: "No users found", zh: "未找到用户记录" },
+  "เปิดใช้งาน": { th: "เปิดใช้งาน", en: "Active", zh: "正常使用" },
+  "ระงับการใช้งาน": { th: "ระงับการใช้งาน", en: "Suspended", zh: "已停用" },
+  "รอการอนุมัติ": { th: "รอการอนุมัติ", en: "Pending Approval", zh: "待审核" },
+  "ค้นหาเมนู...": { th: "ค้นหาเมนู...", en: "Search menu...", zh: "搜索菜品..." },
   "สุ่มเมนูมื้อนี้": {
     th: "สุ่มเมนูมื้อนี้",
     en: "Random Dish",
@@ -1443,6 +1611,28 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (savedLang === "th" || savedLang === "en" || savedLang === "zh") {
         setLangState(savedLang);
       }
+
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === "ran-lung-get-lang" && e.newValue) {
+          if (e.newValue === "th" || e.newValue === "en" || e.newValue === "zh") {
+            setLangState(e.newValue);
+          }
+        }
+      };
+
+      const handleCustomLang = (e: Event) => {
+        const customEvent = e as CustomEvent<Language>;
+        if (customEvent.detail && (customEvent.detail === "th" || customEvent.detail === "en" || customEvent.detail === "zh")) {
+          setLangState(customEvent.detail);
+        }
+      };
+
+      window.addEventListener("storage", handleStorage);
+      window.addEventListener("ran-lung-get-lang-change", handleCustomLang);
+      return () => {
+        window.removeEventListener("storage", handleStorage);
+        window.removeEventListener("ran-lung-get-lang-change", handleCustomLang);
+      };
     }
   }, []);
 
@@ -1450,6 +1640,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLangState(lang);
     if (typeof window !== "undefined") {
       localStorage.setItem("ran-lung-get-lang", lang);
+      window.dispatchEvent(new CustomEvent("ran-lung-get-lang-change", { detail: lang }));
     }
   };
 

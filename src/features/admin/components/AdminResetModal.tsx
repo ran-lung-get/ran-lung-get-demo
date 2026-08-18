@@ -11,6 +11,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { clearAllOrdersData } from "../../../lib/supabase.service";
+import { useLanguage } from "../../../lib/i18n";
 
 interface AdminResetModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface AdminResetModalProps {
 }
 
 export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalProps) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -37,10 +39,10 @@ export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalP
           onClose();
         }, 1200);
       } else {
-        setErrorMessage(result.error || "เกิดข้อผิดพลาดในการล้างข้อมูล");
+        setErrorMessage(result.error || t("เกิดข้อผิดพลาดในการล้างข้อมูล"));
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || "เกิดข้อผิดพลาดไม่ทราบสาเหตุ");
+      setErrorMessage(err?.message || t("เกิดข้อผิดพลาดไม่ทราบสาเหตุ"));
     } finally {
       setLoading(false);
     }
@@ -83,10 +85,10 @@ export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalP
               </div>
               <div>
                 <h3 className="font-black text-base tracking-tight">
-                  ล้างข้อมูลออเดอร์ (Danger Zone)
+                  {t("ล้างข้อมูลออเดอร์")} (Danger Zone)
                 </h3>
                 <p className="text-[11px] text-red-100 font-semibold">
-                  รีเซ็ตข้อมูลคำสั่งซื้อเพื่อเริ่มต้นใหม่
+                  {t("รีเซ็ตข้อมูลคำสั่งซื้อเพื่อเริ่มต้นใหม่")}
                 </p>
               </div>
             </div>
@@ -113,10 +115,10 @@ export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalP
                   <CheckCircle2 size={36} className="stroke-[2.5]" />
                 </div>
                 <h4 className="text-lg font-black text-emerald-800">
-                  ล้างข้อมูลออเดอร์สำเร็จเรียบร้อย!
+                  {t("ล้างข้อมูลออเดอร์สำเร็จเรียบร้อย!")}
                 </h4>
                 <p className="text-xs text-slate-500 font-semibold">
-                  ระบบได้ล้างประวัติออเดอร์และคืนสถานะโต๊ะว่างทั้งหมดแล้ว
+                  {t("ระบบได้ล้างประวัติออเดอร์และคืนสถานะโต๊ะว่างทั้งหมดแล้ว")}
                 </p>
               </motion.div>
             ) : (
@@ -124,10 +126,9 @@ export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalP
                 <div className="p-3.5 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3">
                   <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
                   <div className="text-xs text-red-800 space-y-1">
-                    <p className="font-black">คำเตือน: การกระทำนี้ไม่สามารถย้อนกลับได้</p>
+                    <p className="font-black">{t("คำเตือน: การกระทำนี้ไม่สามารถย้อนกลับได้")}</p>
                     <p className="text-red-700 leading-relaxed">
-                      ข้อมูลออเดอร์ทั้งหมดจะถูกลบถาวร เหมาะสำหรับการรีเซ็ตระบบก่อนเปิดร้านจริง
-                      หรือเคลียร์ข้อมูลหลังการทดสอบ
+                      {t("ข้อมูลออเดอร์ทั้งหมดจะถูกลบถาวร เหมาะสำหรับการรีเซ็ตระบบก่อนเปิดร้านจริง หรือเคลียร์ข้อมูลหลังการทดสอบ")}
                     </p>
                   </div>
                 </div>
@@ -135,21 +136,21 @@ export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalP
                 {/* Details Checklist */}
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3">
                   <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">
-                    รายการที่ระบบจะดำเนินการ:
+                    {t("รายการที่ระบบจะดำเนินการ")}:
                   </span>
 
                   <div className="space-y-2 text-xs font-bold text-slate-700">
                     <div className="flex items-center gap-2.5">
                       <Trash2 size={15} className="text-red-500 shrink-0" />
-                      <span>ลบประวัติออเดอร์และรายการอาหารทั้งหมดในฐานข้อมูล</span>
+                      <span>{t("ลบประวัติออเดอร์และรายการอาหารทั้งหมดในฐานข้อมูล")}</span>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <Utensils size={15} className="text-emerald-500 shrink-0" />
-                      <span>ปรับสถานะโต๊ะทุกโต๊ะในร้านให้กลับเป็น "ว่าง" (Available)</span>
+                      <span>{t("ปรับสถานะโต๊ะทุกโต๊ะในร้านให้กลับเป็น \"ว่าง\"")}</span>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <RotateCcw size={15} className="text-blue-500 shrink-0" />
-                      <span>รีเซ็ตลำดับคิวและสถิติยอดขายบนแดชบอร์ดกลับเป็น 0</span>
+                      <span>{t("รีเซ็ตลำดับคิวและสถิติยอดขายบนแดชบอร์ดกลับเป็น 0")}</span>
                     </div>
                   </div>
                 </div>
@@ -172,7 +173,7 @@ export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalP
                 onClick={handleClose}
                 className="px-4 py-2.5 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-200 transition cursor-pointer disabled:opacity-50"
               >
-                ยกเลิก
+                {t("ยกเลิก")}
               </button>
 
               <button
@@ -184,12 +185,12 @@ export function AdminResetModal({ isOpen, onClose, onSuccess }: AdminResetModalP
                 {loading ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    <span>กำลังล้างข้อมูล...</span>
+                    <span>{t("กำลังดำเนินการ...")}</span>
                   </>
                 ) : (
                   <>
                     <Trash2 size={16} />
-                    <span>ยืนยันล้างข้อมูลออเดอร์</span>
+                    <span>{t("ยืนยันล้างข้อมูลออเดอร์")}</span>
                   </>
                 )}
               </button>

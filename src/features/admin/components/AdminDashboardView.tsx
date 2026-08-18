@@ -16,6 +16,7 @@ import {
   Flame,
   Trash2,
 } from "lucide-react";
+import { useLanguage } from "../../../lib/i18n";
 
 export function AdminDashboardView({
   orders,
@@ -26,6 +27,7 @@ export function AdminDashboardView({
   loading: boolean;
   onOpenResetModal?: () => void;
 }) {
+  const { t, tMenu } = useLanguage();
   const [timeRange, setTimeRange] = useState<"today" | "7days" | "30days" | "all">("all");
 
   const filteredOrders = useMemo(() => {
@@ -139,10 +141,10 @@ export function AdminDashboardView({
   }
 
   const rangeOptions: { id: typeof timeRange; label: string }[] = [
-    { id: "all", label: "ทั้งหมด" },
-    { id: "today", label: "วันนี้" },
-    { id: "7days", label: "7 วันล่าสุด" },
-    { id: "30days", label: "30 วันล่าสุด (1 เดือน)" },
+    { id: "all", label: t("ทั้งหมด") },
+    { id: "today", label: t("วันนี้") },
+    { id: "7days", label: "7 " + t("วันล่าสุด") },
+    { id: "30days", label: "30 " + t("วันล่าสุด (1 เดือน)") },
   ];
 
   return (
@@ -150,7 +152,7 @@ export function AdminDashboardView({
       {/* Time Range Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white border border-[#ece4d6] p-3.5 rounded-[22px] gap-3 shadow-xs">
         <span className="text-xs font-black text-[#002e47]">
-          📅 เลือกช่วงเวลาสรุปข้อมูลแดชบอร์ด:
+          📅 {t("เลือกช่วงเวลาสรุปข้อมูลแดชบอร์ด")}:
         </span>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-1">
@@ -174,11 +176,11 @@ export function AdminDashboardView({
             <button
               type="button"
               onClick={onOpenResetModal}
-              title="ล้างข้อมูลออเดอร์ทั้งหมดเพื่อเริ่มต้นใหม่"
+              title={t("ล้างข้อมูลออเดอร์")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition cursor-pointer ml-auto sm:ml-2"
             >
               <Trash2 size={13} />
-              <span>ล้างข้อมูลออเดอร์</span>
+              <span>{t("ล้างข้อมูลออเดอร์")}</span>
             </button>
           )}
         </div>
@@ -197,7 +199,7 @@ export function AdminDashboardView({
             </div>
           </div>
           <span className="text-[11px] font-black text-slate-400 mt-4">
-            ยอดสั่งซื้อสะสม (ออเดอร์)
+            {t("คำสั่งซื้อวันนี้")} / {t("ยอดรวม")}
           </span>
         </div>
 
@@ -212,7 +214,7 @@ export function AdminDashboardView({
             </div>
           </div>
           <span className="text-[11px] font-black text-slate-400 mt-4">
-            รายได้สะสมทั้งหมด (บาท)
+            {t("ยอดขายรวม")} ({t("บาท")})
           </span>
         </div>
 
@@ -226,20 +228,20 @@ export function AdminDashboardView({
               <Users size={22} className="stroke-[2.5]" />
             </div>
           </div>
-          <span className="text-[11px] font-black text-slate-400 mt-4">ลูกค้าสะสมทั้งหมด (คน)</span>
+          <span className="text-[11px] font-black text-slate-400 mt-4">{t("ลูกค้าสะสมทั้งหมด (คน)")}</span>
         </div>
 
         {/* Top Dish Name Card */}
         <div className="bg-white border border-[#ece4d6] rounded-[28px] p-5 shadow-xs flex flex-col justify-between min-h-[120px] transition hover:shadow-md">
           <div className="flex items-start justify-between gap-2">
             <span className="text-sm font-black text-[#002e47] tracking-tight line-clamp-2 max-w-[80%] leading-tight pt-1">
-              {stats.sortedProducts[0]?.name || "ไม่มีข้อมูล"}
+              {stats.sortedProducts[0]?.name ? tMenu(stats.sortedProducts[0].name, "name") : t("ไม่มีข้อมูล")}
             </span>
             <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-500 shrink-0">
               <TrendingUp size={22} className="stroke-[2.5]" />
             </div>
           </div>
-          <span className="text-[11px] font-black text-slate-400 mt-4">เมนูยอดนิยมอันดับ 1</span>
+          <span className="text-[11px] font-black text-slate-400 mt-4">{t("เมนูขายดี")} #1</span>
         </div>
 
         {/* Avg Bill Card */}
@@ -252,7 +254,7 @@ export function AdminDashboardView({
               <Flame size={22} className="stroke-[2.5]" />
             </div>
           </div>
-          <span className="text-[11px] font-black text-slate-400 mt-4">ยอดเฉลี่ยต่อบิล (บาท)</span>
+          <span className="text-[11px] font-black text-slate-400 mt-4">{t("ยอดเฉลี่ยต่อบิล (บาท)")}</span>
         </div>
       </div>
 
@@ -317,22 +319,22 @@ export function AdminDashboardView({
 
           {/* 5 Recent Orders */}
           <div className="bg-white border border-[#ece4d6] rounded-[28px] p-5 shadow-xs">
-            <h3 className="font-black text-sm text-[#002e47] mb-4">🧾 5 ออเดอร์ล่าสุด</h3>
+            <h3 className="font-black text-sm text-[#002e47] mb-4">🧾 5 {t("ออเดอร์ล่าสุด")}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-semibold">
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-400 font-black uppercase text-[10px] tracking-wider">
-                    <th className="py-2.5 pb-3">ออเดอร์</th>
-                    <th className="py-2.5 pb-3">เวลา</th>
-                    <th className="py-2.5 pb-3">ประเภท</th>
-                    <th className="py-2.5 pb-3 text-right">ยอดรวม</th>
+                    <th className="py-2.5 pb-3">{t("ออเดอร์")}</th>
+                    <th className="py-2.5 pb-3">{t("เวลา")}</th>
+                    <th className="py-2.5 pb-3">{t("ประเภท")}</th>
+                    <th className="py-2.5 pb-3 text-right">{t("ยอดรวม")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredOrders.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="py-8 text-center text-slate-400 italic">
-                        ไม่มีข้อมูลออเดอร์ในช่วงเวลานี้
+                        {t("ไม่มีข้อมูลออเดอร์ในช่วงเวลานี้")}
                       </td>
                     </tr>
                   ) : (
@@ -340,13 +342,13 @@ export function AdminDashboardView({
                       const isDineIn = o.orderType === "dine-in";
                       const isTakeaway = o.orderType === "takeaway";
 
-                      let badgeLabel = "เดลิเวอรี่";
+                      let badgeLabel = t("จัดส่ง");
                       let badgeColor = "bg-blue-50 text-blue-800 border-blue-100";
                       if (isDineIn) {
-                        badgeLabel = o.tableNumber ? `โต๊ะ ${o.tableNumber}` : "ทานที่ร้าน";
+                        badgeLabel = o.tableNumber ? `${t("โต๊ะ")} ${o.tableNumber}` : t("ทานที่ร้าน");
                         badgeColor = "bg-amber-50 text-amber-800 border-amber-100";
                       } else if (isTakeaway) {
-                        badgeLabel = "กลับบ้าน";
+                        badgeLabel = t("กลับบ้าน");
                         badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-100";
                       }
 
@@ -377,21 +379,21 @@ export function AdminDashboardView({
 
           {/* 5 Recent Customers */}
           <div className="bg-white border border-[#ece4d6] rounded-[28px] p-5 shadow-xs">
-            <h3 className="font-black text-sm text-[#002e47] mb-4">👥 5 รายชื่อลูกค้าล่าสุด</h3>
+            <h3 className="font-black text-sm text-[#002e47] mb-4">👥 5 {t("รายชื่อลูกค้าล่าสุด")}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-semibold">
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-400 font-black uppercase text-[10px] tracking-wider">
-                    <th className="py-2.5 pb-3">ชื่อลูกค้า</th>
-                    <th className="py-2.5 pb-3">ช่องทาง/โต๊ะ</th>
-                    <th className="py-2.5 pb-3 text-right">เวลาเข้าใช้งาน</th>
+                    <th className="py-2.5 pb-3">{t("ชื่อลูกค้า")}</th>
+                    <th className="py-2.5 pb-3">{t("ช่องทาง/โต๊ะ")}</th>
+                    <th className="py-2.5 pb-3 text-right">{t("เวลาเข้าใช้งาน")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredOrders.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="py-8 text-center text-slate-400 italic">
-                        ไม่มีรายชื่อลูกค้าใหม่
+                        {t("ไม่มีรายชื่อลูกค้าใหม่")}
                       </td>
                     </tr>
                   ) : (
@@ -400,14 +402,14 @@ export function AdminDashboardView({
                       return (
                         <tr key={idx} className="hover:bg-slate-50/40 transition">
                           <td className="py-3.5 font-black text-[#002e47]">
-                            {o.customerName || "คุณลูกค้า"}
+                            {o.customerName || t("คุณลูกค้า")}
                           </td>
                           <td className="py-3.5 text-slate-500 font-bold">
                             {isDineIn
-                              ? `ทานที่ร้าน (โต๊ะ ${o.tableNumber || "-"})`
+                              ? `${t("ทานที่ร้าน")} (${t("โต๊ะ")} ${o.tableNumber || "-"})`
                               : o.orderType === "takeaway"
-                                ? "กลับบ้าน (Takeaway)"
-                                : "จัดส่ง (Delivery)"}
+                                ? t("กลับบ้าน")
+                                : t("จัดส่ง")}
                           </td>
                           <td className="py-3.5 text-right text-slate-400">
                             {o.date?.includes(" · ") ? o.date.split(" · ")[1] : o.date}
@@ -426,13 +428,13 @@ export function AdminDashboardView({
         <div className="lg:col-span-1">
           <div className="bg-white border border-[#ece4d6] rounded-[28px] p-5 shadow-xs flex flex-col h-full">
             <h3 className="font-black text-sm text-[#002e47] mb-4 flex items-center gap-1.5">
-              <span>📊 5 อันดับเมนูขายดีที่สุด</span>
+              <span>📊 5 {t("อันดับเมนูขายดีที่สุด")}</span>
             </h3>
 
             <div className="space-y-6 flex-1">
               {stats.sortedProducts.length === 0 ? (
                 <p className="text-xs text-gray-400 italic py-16 text-center">
-                  ไม่มีข้อมูลยอดขายเมนู
+                  {t("ไม่มีข้อมูลยอดขายเมนู")}
                 </p>
               ) : (
                 stats.sortedProducts.slice(0, 5).map((p, idx) => {
@@ -446,9 +448,9 @@ export function AdminDashboardView({
                           <span className="w-5 h-5 rounded-full bg-amber-400 text-white flex items-center justify-center font-black text-[10px]">
                             {idx + 1}
                           </span>
-                          <span className="truncate max-w-[140px]">{p.name}</span>
+                          <span className="truncate max-w-[140px]">{tMenu(p.name, "name")}</span>
                         </div>
-                        <span className="text-[#002e47]">{p.count} จาน</span>
+                        <span className="text-[#002e47]">{p.count} {t("จาน")}</span>
                       </div>
 
                       <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">

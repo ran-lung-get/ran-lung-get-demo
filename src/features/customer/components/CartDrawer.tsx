@@ -15,6 +15,8 @@ import { useLanguage } from "../../../lib/i18n";
 import type { CartLine, ActiveCoupon } from "../types";
 import { BRAND, GOLD, INK_MUTED } from "../constants/colors";
 
+import { GACHA_COUPONS } from "../constants/gachaData";
+
 export function CartDrawer({
   cart,
   subtotal,
@@ -36,9 +38,11 @@ export function CartDrawer({
   onEdit: (line: CartLine) => void;
   onCheckout: () => void;
 }) {
-  const { t, tMenu } = useLanguage();
+  const { t, tMenu, language } = useLanguage();
   const [showCouponPicker, setShowCouponPicker] = useState(false);
   const [myCoupons, setMyCoupons] = useState<ActiveCoupon[]>([]);
+  const [manualCode, setManualCode] = useState("");
+  const [codeError, setCodeError] = useState("");
 
   // Load saved coupons from user's wallet
   useEffect(() => {
@@ -46,9 +50,40 @@ export function CartDrawer({
       const saved = localStorage.getItem("ran-lung-get-my-coupons");
       if (saved) {
         setMyCoupons(JSON.parse(saved));
+      } else {
+        const gachaSaved = localStorage.getItem("ran-lung-get-gacha-state");
+        if (gachaSaved) {
+          const parsed = JSON.parse(gachaSaved);
+          if (Array.isArray(parsed.coupons)) {
+            setMyCoupons(parsed.coupons);
+          }
+        }
       }
     } catch {}
   }, [showCouponPicker]);
+
+  const handleApplyManualCode = () => {
+    if (!manualCode.trim()) return;
+    const found = GACHA_COUPONS.find(
+      (c) => c.code.toLowerCase() === manualCode.trim().toLowerCase()
+    );
+    if (found) {
+      if (onApplyCoupon) {
+        onApplyCoupon(found);
+      }
+      setManualCode("");
+      setCodeError("");
+      setShowCouponPicker(false);
+    } else {
+      setCodeError(
+        language === "th"
+          ? "ไม่พบโค้ดส่วนลดนี้ หรือโค้ดหมดอายุ"
+          : language === "zh"
+          ? "未找到该优惠码或已过期"
+          : "Invalid or expired coupon code"
+      );
+    }
+  };
 
   // Calculate discount from active gacha coupon
   const discountVal = activeCoupon
@@ -168,21 +203,25 @@ export function CartDrawer({
                     <Ticket size={16} className="text-amber-600 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs font-black text-amber-900 truncate">
-                        {activeCoupon.name}
+                        {language === "th"
+                          ? activeCoupon.name
+                          : language === "zh" && activeCoupon.nameZh
+                          ? activeCoupon.nameZh
+                          : activeCoupon.nameEn || activeCoupon.name}
                       </p>
                       <p className="text-[10px] text-amber-700">
-                        ลดทันที {discountVal} บาท ({activeCoupon.code})
+                        {t("ลดทันที")} {discountVal} {t("บาท")} ({activeCoupon.code})
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
-                    {onApplyCoupon && myCoupons.length > 1 && (
+                    {onApplyCoupon && (
                       <button
                         type="button"
                         onClick={() => setShowCouponPicker(true)}
                         className="text-[10px] font-bold text-amber-900 bg-amber-200/60 px-2 py-0.5 rounded-full hover:bg-amber-200 cursor-pointer"
                       >
-                        เปลี่ยน
+                        {t("เปลี่ยน")}
                       </button>
                     )}
                     {onRemoveCoupon && (
@@ -191,7 +230,7 @@ export function CartDrawer({
                         onClick={onRemoveCoupon}
                         className="text-[10px] font-bold text-red-600 hover:underline cursor-pointer"
                       >
-                        ยกเลิก
+                        {t("ยกเลิก")}
                       </button>
                     )}
                   </div>
@@ -206,8 +245,8 @@ export function CartDrawer({
                     <Ticket size={15} className="text-amber-600" />
                     <span>
                       {myCoupons.length > 0
-                        ? `เลือกใช้คูปองส่วนลดกาชา (${myCoupons.length} ใบ)`
-                        : "ใส่โค้ด / เลือกคูปองส่วนลด"}
+                        ? `${t("เลือกใช้คูปองส่วนลดกาชา")} (${myCoupons.length} ${t("ใบ")})`
+                        : t("ใส่โค้ด / เลือกคูปองส่วนลด")}
                     </span>
                   </div>
                   <ChevronRight size={14} className="text-amber-700" />
@@ -268,7 +307,7 @@ export function CartDrawer({
                   <div className="flex items-center gap-2">
                     <Ticket size={18} className="text-amber-500" />
                     <h3 className="font-black text-sm" style={{ color: BRAND }}>
-                      คูปองส่วนลดของฉัน
+                      {t("คูปองส่วนลดของฉัน")}
                     </h3>
                   </div>
                   <button
@@ -280,15 +319,70 @@ export function CartDrawer({
                   </button>
                 </div>
 
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={manualCode}
+                      onChange={(e) => {
+                        setManualCode(e.target.value.toUpperCase());
+                        setCodeError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleApplyManualCode();
+                        }
+                      }}
+                      placeholder={
+                        language === "th"
+                          ? "กรอกโค้ดส่วนลด เช่น LUNGGET50"
+                          : language === "zh"
+                          ? "输入优惠码 如 LUNGGET50"
+                          : "Enter promo code e.g. LUNGGET50"
+                      }
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs uppercase font-mono font-bold focus:outline-none focus:border-amber-400 text-slate-800 placeholder:text-slate-400 placeholder:normal-case placeholder:font-sans"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyManualCode}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shrink-0 transition active:scale-95 cursor-pointer"
+                    >
+                      {t("ใช้คูปอง")}
+                    </button>
+                  </div>
+                  {codeError && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1.5 pl-1">
+                      {codeError}
+                    </p>
+                  )}
+                </div>
+
                 <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
                   {myCoupons.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400 text-xs">
-                      <p>{t("ยังไม่มีคูปองในกระเป๋าของคุณ")}</p>
-                      <p className="mt-1">{t("หมุนตู้คำอธิษฐานกาชาเพื่อลุ้นรับคูปองเด็ดๆ!")}</p>
+                    <div className="text-center py-8 text-slate-400 text-xs">
+                      <p className="font-semibold text-slate-600">
+                        {t("ยังไม่มีคูปองในกระเป๋าของคุณ")}
+                      </p>
+                      <p className="mt-1">
+                        {t("หมุนตู้คำอธิษฐานกาชาเพื่อลุ้นรับคูปองเด็ดๆ!")}
+                      </p>
                     </div>
                   ) : (
                     myCoupons.map((coupon, i) => {
                       const isSelected = activeCoupon?.id === coupon.id;
+                      const couponName =
+                        language === "th"
+                          ? coupon.name
+                          : language === "zh" && coupon.nameZh
+                          ? coupon.nameZh
+                          : coupon.nameEn || coupon.name;
+                      const couponDesc =
+                        language === "th"
+                          ? coupon.description
+                          : language === "zh" && coupon.descriptionZh
+                          ? coupon.descriptionZh
+                          : coupon.descriptionEn || coupon.description;
+
                       return (
                         <div
                           key={coupon.id + i}
@@ -310,11 +404,11 @@ export function CartDrawer({
                                 {coupon.rarity}★
                               </span>
                               <h4 className="font-extrabold text-xs text-slate-900 truncate">
-                                {coupon.name}
+                                {couponName}
                               </h4>
                             </div>
                             <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">
-                              {coupon.description}
+                              {couponDesc}
                             </p>
                           </div>
 
@@ -326,7 +420,7 @@ export function CartDrawer({
                                 : "bg-amber-500 text-white"
                             }`}
                           >
-                            {isSelected ? "กำลังใช้" : "ใช้คูปอง"}
+                            {isSelected ? t("กำลังใช้") : t("ใช้คูปอง")}
                           </button>
                         </div>
                       );

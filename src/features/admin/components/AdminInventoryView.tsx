@@ -3,6 +3,7 @@ import { PlusCircle, ChefHat, Edit2, Trash2 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import { getIngredients } from "../../../lib/supabase.service";
 import { MENU, type MenuItem } from "../../customer";
+import { useLanguage } from "../../../lib/i18n";
 
 export function AdminInventoryView({
   ingredients,
@@ -45,6 +46,7 @@ export function AdminInventoryView({
   groupedIngredients,
   setIngredients,
 }: any) {
+  const { t, tMenu } = useLanguage();
   const handleSeedDefaultData = async () => {
     if (!confirm("คุณต้องการนำเข้าวัตถุดิบตั้งต้นสำหรับสาขาหรือไม่?")) return;
     const defaults = [
@@ -95,14 +97,14 @@ export function AdminInventoryView({
   };
 
   const categories = [
-    { id: "all", label: "ทั้งหมด" },
+    { id: "all", label: t("ทั้งหมด") },
     { id: "signature", label: "Signature" },
-    { id: "main", label: "อาหารจานเดียว" },
-    { id: "noodles", label: "เส้น" },
-    { id: "rice", label: "ข้าวผัด" },
-    { id: "vegetarian", label: "มังสวิรัติ" },
-    { id: "drinks", label: "เครื่องดื่ม" },
-    { id: "dessert", label: "ของหวาน" },
+    { id: "main", label: t("อาหารจานเดียว") },
+    { id: "noodles", label: t("เส้น") },
+    { id: "rice", label: t("ข้าวผัด") },
+    { id: "vegetarian", label: t("มังสวิรัติ") },
+    { id: "drinks", label: t("เครื่องดื่ม") },
+    { id: "dessert", label: t("ของหวาน") },
   ];
 
   const filteredMenuItems = useMemo(() => {
@@ -110,7 +112,8 @@ export function AdminInventoryView({
     return sourceMenuItems.filter((item: MenuItem) => {
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.desc.toLowerCase().includes(searchQuery.toLowerCase());
+        item.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (Array.isArray(item.tags) && item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())));
       const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
@@ -135,10 +138,10 @@ export function AdminInventoryView({
             />
           ) : (
             <span className="flex items-center gap-1.5">
-              <span>{item.name}</span>
+              <span>{tMenu(item.name, "name")}</span>
               {isLowStock && (
                 <span className="bg-red-100 text-red-800 text-[8px] font-extrabold uppercase px-1 rounded">
-                  เหลือน้อย
+                  {t("ของใกล้หมด / ต่ำกว่าเกณฑ์")}
                 </span>
               )}
             </span>
@@ -154,7 +157,7 @@ export function AdminInventoryView({
                 : "bg-slate-100 text-slate-400 border border-slate-200"
             }`}
           >
-            {item.is_active !== false ? "🟢 เปิดใช้งาน" : "⚪ ปิดใช้งาน"}
+            {item.is_active !== false ? `🟢 ${t("เปิดใช้งาน")}` : `⚪ ${t("ระงับการใช้งาน")}`}
           </button>
         </td>
         <td className="py-3 px-4 font-extrabold">
@@ -202,14 +205,14 @@ export function AdminInventoryView({
                 onClick={() => saveIngredientEdit(item.id)}
                 className="px-2 py-1 rounded bg-emerald-600 text-white font-bold text-[10px] cursor-pointer"
               >
-                บันทึก
+                {t("บันทึกการเปลี่ยนแปลง")}
               </button>
               <button
                 type="button"
                 onClick={() => setEditingId(null)}
                 className="px-2 py-1 rounded bg-slate-200 text-[#5a6e7a] font-bold text-[10px] cursor-pointer"
               >
-                ยกเลิก
+                {t("ยกเลิก")}
               </button>
             </div>
           ) : (
@@ -218,7 +221,7 @@ export function AdminInventoryView({
                 type="button"
                 onClick={() => adjustIngredientQty(item.id, 500)}
                 className="bg-slate-100 hover:bg-slate-200 text-[#002e47] border px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer"
-                title="เติมสต็อก +500g"
+                title="+500g"
               >
                 +500
               </button>
@@ -255,14 +258,14 @@ export function AdminInventoryView({
       <div className="bg-white border border-[#ece4d6] rounded-3xl p-5 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-black text-[#002e47]">จัดการคลังร้านค้า:</h2>
+            <h2 className="text-lg font-black text-[#002e47]">{t("จัดการคลังสินค้า")}:</h2>
             <select
               value={activeSubView}
               onChange={(e) => setActiveSubView(e.target.value as any)}
               className="bg-white border border-[#ece4d6] rounded-xl px-3 py-1.5 text-sm font-bold text-[#002e47] focus:outline-none shadow-xs cursor-pointer"
             >
-              <option value="menu">เปิด-ปิด เมนูอาหารขายหน้าร้าน</option>
-              <option value="ingredients">จัดการคลังวัตถุดิบ (Ingredients)</option>
+              <option value="menu">{t("จัดการเมนู")}</option>
+              <option value="ingredients">{t("สต็อกวัตถุดิบ")}</option>
             </select>
           </div>
 
@@ -270,7 +273,7 @@ export function AdminInventoryView({
             <div className="relative max-w-md w-full">
               <input
                 type="text"
-                placeholder="ค้นหาเมนู..."
+                placeholder={t("ค้นหาเมนู...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-[#fcfbf9] border border-[#ece4d6] rounded-2xl px-4 py-2.5 text-sm font-bold text-[#002e47] placeholder-[#5a6e7a]/50 focus:outline-none transition shadow-inner"
@@ -283,7 +286,7 @@ export function AdminInventoryView({
               className="inline-flex items-center gap-2 bg-[#002e47] text-white px-4 py-2.5 rounded-2xl font-bold text-xs tracking-wider transition hover:bg-[#004165] shadow-md cursor-pointer"
             >
               <PlusCircle size={15} />
-              {showAddForm ? "ปิดฟอร์ม" : "เพิ่มวัตถุดิบใหม่"}
+              {showAddForm ? t("ยกเลิก") : t("เพิ่มวัตถุดิบ")}
             </button>
           )}
         </div>
@@ -314,11 +317,11 @@ export function AdminInventoryView({
           onSubmit={handleAddIngredientSubmit}
           className="bg-white border border-[#ece4d6] rounded-3xl p-5 sm:p-6 shadow-xs space-y-4"
         >
-          <h3 className="text-sm font-black text-[#002e47]">นำวัตถุดิบใหม่เข้าคลังสต็อก</h3>
+          <h3 className="text-sm font-black text-[#002e47]">{t("เพิ่มวัตถุดิบ")}</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">
-                ชื่อวัตถุดิบ
+                {t("ชื่อวัตถุดิบ")}
               </label>
               <input
                 type="text"
@@ -330,11 +333,11 @@ export function AdminInventoryView({
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">
-                จำนวนเริ่มต้น
+                {t("ปริมาณสต็อก")}
               </label>
               <input
                 type="number"
-                placeholder="เช่น 1000"
+                placeholder="1000"
                 value={newIngQty}
                 onChange={(e) => setNewIngQty(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47]"
@@ -342,25 +345,25 @@ export function AdminInventoryView({
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">
-                หน่วยนับ
+                {t("หน่วยนับ")}
               </label>
               <select
                 value={newIngUnit}
                 onChange={(e) => setNewIngUnit(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47]"
               >
-                <option value="g">กรัม (g)</option>
-                <option value="pcs">ชิ้น/ฟอง (pcs)</option>
-                <option value="ml">มิลลิลิตร (ml)</option>
+                <option value="g">g</option>
+                <option value="pcs">pcs</option>
+                <option value="ml">ml</option>
               </select>
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#5a6e7a] uppercase mb-1.5">
-                เตือนเมื่อเหลือน้อยกว่า
+                {t("เกณฑ์เตือน")}
               </label>
               <input
                 type="number"
-                placeholder="เช่น 200"
+                placeholder="200"
                 value={newIngThreshold}
                 onChange={(e) => setNewIngThreshold(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47]"
@@ -373,13 +376,13 @@ export function AdminInventoryView({
               onClick={() => setShowAddForm(false)}
               className="bg-slate-100 text-[#5a6e7a] px-4 py-2 rounded-xl font-bold text-xs cursor-pointer hover:bg-slate-200"
             >
-              ยกเลิก
+              {t("ยกเลิก")}
             </button>
             <button
               type="submit"
               className="bg-[#002e47] text-white px-4 py-2 rounded-xl font-bold text-xs cursor-pointer hover:bg-[#004165]"
             >
-              เพิ่มวัตถุดิบ
+              {t("เพิ่มวัตถุดิบ")}
             </button>
           </div>
         </form>
@@ -390,19 +393,19 @@ export function AdminInventoryView({
         <div className="w-full">
           {loading ? (
             <div className="bg-white border border-[#ece4d6] rounded-3xl p-16 text-center text-slate-400 font-bold">
-              กำลังโหลดข้อมูลสต็อกวัตถุดิบ...
+              {t("กำลังดาวน์โหลด...")}
             </div>
           ) : ingredients.length === 0 ? (
             <div className="bg-white border border-[#ece4d6] rounded-3xl p-12 text-center shadow-xs">
               <div className="py-8 text-center max-w-sm mx-auto space-y-4">
                 <ChefHat size={32} className="mx-auto text-slate-400" />
-                <h3 className="font-black text-[#002e47] text-base">ไม่พบวัตถุดิบในฐานข้อมูล</h3>
+                <h3 className="font-black text-[#002e47] text-base">{t("ไม่พบรายการวัตถุดิบ")}</h3>
                 <button
                   type="button"
                   onClick={handleSeedDefaultData}
                   className="bg-[#002e47] text-white px-5 py-2.5 rounded-2xl font-bold text-xs cursor-pointer"
                 >
-                  ⚡ นำเข้าวัตถุดิบเริ่มต้น
+                  ⚡ {t("เพิ่มวัตถุดิบ")}
                 </button>
               </div>
             </div>
@@ -411,29 +414,29 @@ export function AdminInventoryView({
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
                   <tr className="border-b border-[#ece4d6] text-[#5a6e7a] font-bold">
-                    <th className="py-3 px-4">ชื่อวัตถุดิบ</th>
-                    <th className="py-3 px-4">การใช้งาน</th>
-                    <th className="py-3 px-4">ปริมาณคงเหลือ</th>
-                    <th className="py-3 px-4">จุดแจ้งเตือนขั้นต่ำ</th>
-                    <th className="py-3 px-4 text-right">การจัดการ</th>
+                    <th className="py-3 px-4">{t("ชื่อวัตถุดิบ")}</th>
+                    <th className="py-3 px-4">{t("สถานะ")}</th>
+                    <th className="py-3 px-4">{t("ปริมาณสต็อก")}</th>
+                    <th className="py-3 px-4">{t("เกณฑ์เตือน")}</th>
+                    <th className="py-3 px-4 text-right">{t("เมนูพนักงาน")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                   <tr className="bg-slate-50/50">
                     <td colSpan={5} className="py-2 px-4 font-black text-xs text-[#002e47]">
-                      🥩 เนื้อสัตว์
+                      🥩 {t("เนื้อสัตว์")}
                     </td>
                   </tr>
                   {groupedIngredients.meat.map(renderRow)}
                   <tr className="bg-slate-50/50">
                     <td colSpan={5} className="py-2 px-4 font-black text-xs text-[#002e47]">
-                      🐙 อาหารทะเล
+                      🐙 {t("ซีฟู้ด")}
                     </td>
                   </tr>
                   {groupedIngredients.seafood.map(renderRow)}
                   <tr className="bg-slate-50/50">
                     <td colSpan={5} className="py-2 px-4 font-black text-xs text-[#002e47]">
-                      🥚 ไข่ & เครื่องเคียง
+                      🥚 {t("ท็อปปิ้ง")}
                     </td>
                   </tr>
                   {[...groupedIngredients.toppings, ...groupedIngredients.others].map(renderRow)}
@@ -457,7 +460,7 @@ export function AdminInventoryView({
                   <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                   {isOutOfStock && (
                     <span className="absolute inset-0 bg-red-600/10 text-red-600 font-bold text-[9px] flex items-center justify-center">
-                      หมด
+                      {t("สินค้าหมด")}
                     </span>
                   )}
                 </div>
@@ -469,13 +472,13 @@ export function AdminInventoryView({
                       </span>
                       <span className="text-xs font-black text-[#002e47]">฿{item.price}</span>
                     </div>
-                    <h3 className="text-xs font-bold text-[#002e47] truncate">{item.name}</h3>
+                    <h3 className="text-xs font-bold text-[#002e47] truncate">{tMenu(item.name, "name")}</h3>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                     <span
                       className={`text-[10px] font-black ${isOutOfStock ? "text-red-500" : "text-emerald-600"}`}
                     >
-                      {isOutOfStock ? "● ปิดชั่วคราว" : "● ขายปกติ"}
+                      {isOutOfStock ? `● ${t("สินค้าหมด")}` : `● ${t("พร้อมจำหน่าย")}`}
                     </span>
                     <button
                       type="button"

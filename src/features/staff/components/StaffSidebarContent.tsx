@@ -1,4 +1,5 @@
 import { ChefHat, X, Table, BookOpen, Inbox, Home } from "lucide-react";
+import { useLanguage } from "../../../lib/i18n";
 
 export function StaffSidebarContent({
   view,
@@ -11,6 +12,8 @@ export function StaffSidebarContent({
   onClose?: () => void;
   handleLogout?: () => void;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="flex flex-col h-full bg-[#002e47] text-white">
       {/* Brand Header */}
@@ -20,12 +23,12 @@ export function StaffSidebarContent({
             <ChefHat size={22} className="stroke-[2.5]" />
           </div>
           <div>
-            <h2 className="font-black text-sm tracking-tight text-white uppercase">ระบบจัดการครัว</h2>
+            <h2 className="font-black text-sm tracking-tight text-white uppercase">{t("ระบบจัดการครัว")}</h2>
             <p className="text-[9px] font-bold text-[#fcc14a] tracking-wider uppercase">KITCHEN MONITOR (STAFF)</p>
           </div>
         </div>
         {onClose && (
-          <button type="button" onClick={onClose} aria-label="ปิดเมนูด้านข้าง" className="md:hidden text-white/50 hover:text-white p-1">
+          <button type="button" onClick={onClose} aria-label={t("ปิด")} className="md:hidden text-white/50 hover:text-white p-1">
             <X size={18} />
           </button>
         )}
@@ -34,7 +37,7 @@ export function StaffSidebarContent({
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-1">
-          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block px-2 mb-2">เมนูพนักงาน</span>
+          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block px-2 mb-2">{t("เมนูพนักงาน")}</span>
 
           <button
             type="button"
@@ -45,7 +48,7 @@ export function StaffSidebarContent({
               }`}
           >
             <ChefHat size={18} className={view === "kitchen" ? "text-[#fcc14a]" : "text-white/60"} />
-            <span className="text-sm">จอจัดการครัว</span>
+            <span className="text-sm">{t("กระดานครัว (KDS)")}</span>
           </button>
 
           <button
@@ -57,7 +60,7 @@ export function StaffSidebarContent({
               }`}
           >
             <Table size={18} className={view === "tables" ? "text-[#fcc14a]" : "text-white/60"} />
-            <span className="text-sm">ผังโต๊ะอาหาร</span>
+            <span className="text-sm">{t("จัดการโต๊ะ")}</span>
           </button>
 
           <button
@@ -69,7 +72,7 @@ export function StaffSidebarContent({
               }`}
           >
             <BookOpen size={18} className={view === "menu" ? "text-[#fcc14a]" : "text-white/60"} />
-            <span className="text-sm">จัดการเมนูอาหาร</span>
+            <span className="text-sm">{t("จัดการเมนู")}</span>
           </button>
 
           <button
@@ -81,7 +84,7 @@ export function StaffSidebarContent({
               }`}
           >
             <Inbox size={18} className={view === "stock" ? "text-[#fcc14a]" : "text-white/60"} />
-            <span className="text-sm">จัดการสต็อกวัตถุดิบ</span>
+            <span className="text-sm">{t("สต็อกวัตถุดิบ")}</span>
           </button>
 
           <a
@@ -95,7 +98,7 @@ export function StaffSidebarContent({
             className="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left text-white/70 hover:text-white hover:bg-white/5 font-medium transition duration-200 cursor-pointer border-l-4 border-transparent"
           >
             <Home size={18} className="text-white/60" />
-            <span className="text-sm">สั่งอาหาร (หน้าลูกค้า)</span>
+            <span className="text-sm">{t("สั่งอาหาร (หน้าลูกค้า)")}</span>
           </a>
         </div>
       </div>

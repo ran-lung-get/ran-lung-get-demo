@@ -43,8 +43,14 @@ export function GachaHistoryView({ history }: { history: GachaPullResult[] }) {
             const config = getRarityConfig(item.rarity);
             const title =
               item.itemType === "card"
-                ? language === "th" ? item.cardData?.name : item.cardData?.nameEn || item.cardData?.name
-                : language === "th" ? item.couponData?.name : item.couponData?.nameEn || item.couponData?.name;
+                ? language === "th"
+                  ? item.cardData?.name
+                  : item.cardData?.nameEn || item.cardData?.name
+                : language === "th"
+                ? item.couponData?.name
+                : language === "zh" && item.couponData?.nameZh
+                ? item.couponData?.nameZh
+                : item.couponData?.nameEn || item.couponData?.name;
 
             const timeStr = new Date(item.pulledAt).toLocaleTimeString(language === "th" ? "th-TH" : "en-US", {
               hour: "2-digit",

@@ -329,17 +329,23 @@ export function GachaCinematic({
                       <h4 className="text-xl font-black text-white leading-tight">
                         {language === "th"
                           ? results[0].couponData.name
-                          : results[0].couponData.nameEn}
+                          : language === "zh" && results[0].couponData.nameZh
+                          ? results[0].couponData.nameZh
+                          : results[0].couponData.nameEn || results[0].couponData.name}
                       </h4>
                       <p className="text-sm text-amber-300 font-semibold mt-1">
                         {language === "th"
                           ? results[0].couponData.description
-                          : results[0].couponData.descriptionEn}
+                          : language === "zh" && results[0].couponData.descriptionZh
+                          ? results[0].couponData.descriptionZh
+                          : results[0].couponData.descriptionEn || results[0].couponData.description}
                       </p>
                       {results[0].couponData.minSpend && (
                         <p className="text-xs text-slate-300 mt-1">
                           *{language === "th"
                             ? `สั่งซื้อขั้นต่ำ ฿${results[0].couponData.minSpend}`
+                            : language === "zh"
+                            ? `最低消费 ฿${results[0].couponData.minSpend}`
                             : `Min. spend ฿${results[0].couponData.minSpend}`}
                         </p>
                       )}
@@ -443,12 +449,16 @@ export function GachaCinematic({
                               <h5 className="font-bold text-xs truncate">
                                 {language === "th"
                                   ? item.couponData?.name
-                                  : item.couponData?.nameEn}
+                                  : language === "zh" && item.couponData?.nameZh
+                                  ? item.couponData?.nameZh
+                                  : item.couponData?.nameEn || item.couponData?.name}
                               </h5>
                               <p className="text-[10px] text-amber-300 font-medium line-clamp-1 mt-0.5">
                                 {language === "th"
                                   ? item.couponData?.description
-                                  : item.couponData?.descriptionEn}
+                                  : language === "zh" && item.couponData?.descriptionZh
+                                  ? item.couponData?.descriptionZh
+                                  : item.couponData?.descriptionEn || item.couponData?.description}
                               </p>
                             </div>
 

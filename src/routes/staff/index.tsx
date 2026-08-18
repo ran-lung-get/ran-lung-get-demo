@@ -28,6 +28,7 @@ import {
   MenuManagementView,
   StockManagementView,
 } from "../../features/staff";
+import { useLanguage } from "../../lib/i18n";
 
 export const Route = createFileRoute("/staff/")({
   head: () => ({
@@ -44,6 +45,7 @@ const GOLD = "#fcc14a";
 const INK_MUTED = "#5a6e7a";
 
 function KitchenMonitor() {
+  const { t, tMenu, language } = useLanguage();
   const [orders, setOrders] = useState<OrderHistory[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("active");
@@ -467,17 +469,17 @@ function KitchenMonitor() {
   }, [orders]);
 
   const getViewTitle = () => {
-    if (view === "kitchen") return "จอจัดการครัวลุงเกตุ";
-    if (view === "tables") return "ผังที่นั่ง & จัดการโต๊ะ Walk-in";
-    if (view === "menu") return "จัดการเมนูอาหาร";
-    return "จัดการคลังวัตถุดิบ & สต็อก";
+    if (view === "kitchen") return t("กระดานครัว (KDS)");
+    if (view === "tables") return t("จัดการโต๊ะ");
+    if (view === "menu") return t("จัดการเมนู");
+    return t("สต็อกวัตถุดิบ");
   };
 
   const getViewSubtitle = () => {
-    if (view === "kitchen") return "ระบบจัดคิวอาหารและมอนิเตอร์หน้าเตา";
-    if (view === "tables") return "เพิ่ม/ลบโต๊ะ และตรวจสอบสถานะโต๊ะอาหารเรียลไทม์";
-    if (view === "menu") return "เพิ่ม แก้ไข ลบเมนูอาหาร พร้อมตัวเลือกและรูปภาพ";
-    return "ตรวจสอบสต็อกวัตถุดิบ ปรับจำนวน และเกณฑ์แจ้งเตือนสต็อกต่ำ";
+    if (view === "kitchen") return t("ระบบจัดคิวอาหารและมอนิเตอร์หน้าเตา");
+    if (view === "tables") return t("เพิ่ม/ลบโต๊ะ และตรวจสอบสถานะโต๊ะอาหารเรียลไทม์");
+    if (view === "menu") return t("เพิ่ม แก้ไข ลบเมนูอาหาร พร้อมตัวเลือกและรูปภาพ");
+    return t("ตรวจสอบสต็อกวัตถุดิบ ปรับจำนวน และเกณฑ์แจ้งเตือนสต็อกต่ำ");
   };
 
   const getViewIcon = () => {
@@ -542,7 +544,7 @@ function KitchenMonitor() {
             <div className="flex items-center gap-2 text-xs">
               {view === "kitchen" && (
                 <div className="bg-[#fcfbf9] border border-[#ece4d6] px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold">
-                  <span className="text-[10px] text-slate-500">คิวรอดำเนินการ:</span>
+                  <span className="text-[10px] text-slate-500">{t("คิวรอดำเนินการ")}:</span>
                   <span className="text-xs sm:text-sm font-black" style={{ color: BRAND }}>
                     {stats.totalActive}
                   </span>
@@ -566,18 +568,18 @@ function KitchenMonitor() {
                       <button
                         type="button"
                         onClick={clearAllOrders}
-                        title="ล้างออเดอร์ทั้งหมดเพื่อเริ่มทดสอบใหม่"
+                        title={t("ล้างทุกออเดอร์")}
                         className="flex items-center gap-1.5 hover:bg-rose-100 active:scale-95 text-rose-700 bg-rose-50 px-3.5 py-2.5 rounded-xl font-bold text-xs tracking-wider transition shadow-xs cursor-pointer border border-rose-200"
                       >
                         <Trash2 size={13} />
-                        <span>ล้างทุกออเดอร์</span>
+                        <span>{t("ล้างทุกออเดอร์")}</span>
                       </button>
                       <button
                         type="button"
                         onClick={clearMockOrders}
                         className="flex items-center gap-1.5 hover:bg-slate-200 active:scale-95 text-slate-700 bg-slate-100 px-3.5 py-2.5 rounded-xl font-bold text-xs tracking-wider transition shadow-xs cursor-pointer border border-slate-200"
                       >
-                        <span>ลบออเดอร์จำลอง</span>
+                        <span>{t("ลบออเดอร์จำลอง")}</span>
                       </button>
                       <button
                         type="button"
@@ -586,7 +588,7 @@ function KitchenMonitor() {
                         style={{ background: GOLD }}
                       >
                         <PlusCircle size={13} />
-                        <span>จำลองออเดอร์</span>
+                        <span>{t("จำลองออเดอร์")}</span>
                       </button>
                     </div>
                   )}
@@ -651,12 +653,12 @@ function KitchenMonitor() {
               <div className="hidden md:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-[#ece4d6] p-3 rounded-2xl shrink-0 shadow-xs mb-6">
                 <div className="flex flex-row overflow-x-auto no-scrollbar gap-1 w-full sm:w-auto shrink-0">
                   {[
-                    { id: "active", label: "คิวปัจจุบัน (Kanban)", count: stats.totalActive },
-                    { id: "รอดำเนินการ", label: "ออเดอร์ใหม่", count: stats.waiting, dotColor: "bg-amber-500" },
-                    { id: "กำลังทำ", label: "กำลังปรุง", count: stats.cooking, dotColor: "bg-blue-500" },
-                    { id: "พร้อมเสิร์ฟ", label: "พร้อมเสิร์ฟ", count: stats.ready, dotColor: "bg-emerald-500" },
-                    { id: "กำลังจัดส่ง", label: "ไรเดอร์กำลังส่ง", count: stats.delivering, dotColor: "bg-indigo-500" },
-                    { id: "สำเร็จ", label: "เสร็จสิ้น", count: stats.completed },
+                    { id: "active", label: t("คิวปัจจุบัน (Kanban)"), count: stats.totalActive },
+                    { id: "รอดำเนินการ", label: t("ออเดอร์ใหม่"), count: stats.waiting, dotColor: "bg-amber-500" },
+                    { id: "กำลังทำ", label: t("กำลังปรุง"), count: stats.cooking, dotColor: "bg-blue-500" },
+                    { id: "พร้อมเสิร์ฟ", label: t("พร้อมเสิร์ฟ"), count: stats.ready, dotColor: "bg-emerald-500" },
+                    { id: "กำลังจัดส่ง", label: t("ไรเดอร์กำลังส่ง"), count: stats.delivering, dotColor: "bg-indigo-500" },
+                    { id: "สำเร็จ", label: t("เสร็จสิ้น"), count: stats.completed },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -687,17 +689,17 @@ function KitchenMonitor() {
                 <div className="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                   <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: INK_MUTED }}>
                     <Filter size={14} />
-                    <span>ช่องทาง:</span>
+                    <span>{t("ช่องทางการรับอาหาร")}:</span>
                   </div>
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
                     className="bg-white border border-[#ece4d6] rounded-xl px-2.5 py-1.5 text-xs font-bold text-[#002e47] focus:outline-none shadow-xs flex-1 sm:flex-initial max-w-[150px]"
                   >
-                    <option value="all">ทั้งหมด</option>
-                    <option value="dine-in">ทานที่ร้าน</option>
-                    <option value="takeaway">กลับบ้าน</option>
-                    <option value="delivery">เดลิเวอรี่</option>
+                    <option value="all">{t("ทั้งหมด")}</option>
+                    <option value="dine-in">{t("ทานที่ร้าน")}</option>
+                    <option value="takeaway">{t("กลับบ้าน")}</option>
+                    <option value="delivery">{t("จัดส่ง")}</option>
                   </select>
                 </div>
               </div>
@@ -735,14 +737,14 @@ function KitchenMonitor() {
                   }`}>
                     <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
                       <div className="p-4 bg-amber-500/10 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
-                        <span className="font-black text-sm text-[#002e47]">ออเดอร์ใหม่</span>
+                        <span className="font-black text-sm text-[#002e47]">{t("ออเดอร์ใหม่")}</span>
                         <span className="text-white text-xs font-black px-2 py-0.5 rounded-full bg-amber-500">
                           {ordersByStatus.waiting.length}
                         </span>
                       </div>
                       <div className="p-4 space-y-4 bg-[#f8fafc]/50 flex-1 overflow-y-auto max-h-[70vh]">
                         {ordersByStatus.waiting.length === 0 ? (
-                          <EmptyColumnMessage text="ไม่มีออเดอร์ใหม่" />
+                          <EmptyColumnMessage text={t("ไม่มีออเดอร์ใหม่")} />
                         ) : (
                           ordersByStatus.waiting.map((o) => (
                             <StaffOrderCard
@@ -758,14 +760,14 @@ function KitchenMonitor() {
                     </div>
                     <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
                       <div className="p-4 bg-blue-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
-                        <span className="font-black text-sm text-[#002e47]">กำลังปรุง</span>
+                        <span className="font-black text-sm text-[#002e47]">{t("กำลังปรุง")}</span>
                         <span className="text-white text-xs font-black px-2 py-0.5 rounded-full bg-blue-600">
                           {ordersByStatus.cooking.length}
                         </span>
                       </div>
                       <div className="p-4 space-y-4 bg-[#f8fafc]/50 flex-1 overflow-y-auto max-h-[70vh]">
                         {ordersByStatus.cooking.length === 0 ? (
-                          <EmptyColumnMessage text="ไม่มีรายการกำลังปรุง" />
+                          <EmptyColumnMessage text={t("ไม่มีรายการกำลังปรุง")} />
                         ) : (
                           ordersByStatus.cooking.map((o) => (
                             <StaffOrderCard
@@ -782,7 +784,7 @@ function KitchenMonitor() {
                     <div className="flex flex-col bg-white rounded-3xl border border-[#ece4d6] shadow-xs">
                       <div className="p-4 bg-emerald-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
                         <span className="font-black text-sm text-[#002e47]">
-                          {typeFilter === "delivery" ? "รอไรเดอร์มารับ" : "พร้อมเสิร์ฟ / รอรับ"}
+                          {typeFilter === "delivery" ? t("รอไรเดอร์มารับ") : t("พร้อมเสิร์ฟ / รอรับ")}
                         </span>
                         <span className="text-white text-xs font-black px-2 py-0.5 rounded-full bg-emerald-500">
                           {ordersByStatus.ready.length}
@@ -790,7 +792,7 @@ function KitchenMonitor() {
                       </div>
                       <div className="p-4 space-y-4 bg-[#f8fafc]/50 flex-1 overflow-y-auto max-h-[70vh]">
                         {ordersByStatus.ready.length === 0 ? (
-                          <EmptyColumnMessage text="ไม่มีออเดอร์พร้อมเสิร์ฟ" />
+                          <EmptyColumnMessage text={t("ไม่มีออเดอร์พร้อมเสิร์ฟ")} />
                         ) : (
                           ordersByStatus.ready.map((o) => (
                             <StaffOrderCard
@@ -809,7 +811,7 @@ function KitchenMonitor() {
                         <div className="p-4 bg-indigo-50 border-b border-[#ece4d6] flex items-center justify-between shrink-0">
                           <div className="flex items-center gap-2">
                             <Bike size={16} className="text-indigo-600 animate-bounce" />
-                            <span className="font-black text-sm text-[#002e47]">ไรเดอร์กำลังส่ง</span>
+                            <span className="font-black text-sm text-[#002e47]">{t("ไรเดอร์กำลังส่ง")}</span>
                           </div>
                           <span className="text-white text-xs font-black px-2 py-0.5 rounded-full bg-indigo-600">
                             {ordersByStatus.delivering.length}
@@ -817,7 +819,7 @@ function KitchenMonitor() {
                         </div>
                         <div className="p-4 space-y-4 bg-[#f8fafc]/50 flex-1 overflow-y-auto max-h-[70vh]">
                           {ordersByStatus.delivering.length === 0 ? (
-                            <EmptyColumnMessage text="ไม่มีรายการกำลังนำส่ง" />
+                            <EmptyColumnMessage text={t("ไม่มีรายการกำลังนำส่ง")} />
                           ) : (
                             ordersByStatus.delivering.map((o) => (
                               <StaffOrderCard
@@ -835,10 +837,10 @@ function KitchenMonitor() {
                   </div>
                 ) : (
                   <div className="bg-white rounded-3xl border border-[#ece4d6] p-4">
-                    <h2 className="text-sm font-black mb-4">ประวัติออเดอร์ ({statusFilter})</h2>
+                    <h2 className="text-sm font-black mb-4">{t("ประวัติคำสั่งซื้อ")} ({t(statusFilter)})</h2>
                     <div className="space-y-3">
                       {filteredOrders.length === 0 ? (
-                        <p className="text-center text-slate-400 py-12">ไม่มีรายการ</p>
+                        <p className="text-center text-slate-400 py-12">{t("ไม่มีรายการ")}</p>
                       ) : (
                         filteredOrders.map((o) =>
                           statusFilter === "สำเร็จ" ? (

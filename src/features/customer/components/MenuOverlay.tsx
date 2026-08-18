@@ -39,16 +39,37 @@ export function MenuOverlay({
 
   // Filter and sort items dynamically
   const filteredAndSortedItems = useMemo(() => {
+    const categoryAliases: Record<string, string[]> = {
+      signature: ["signature", "แนะนำ", "ยอดนิยม"],
+      main: ["main", "ผัด & กับข้าว", "จานหลัก", "กับข้าว", "ผัด"],
+      rice: ["rice", "ข้าวผัด", "ข้าว"],
+      noodles: ["noodles", "เมนูเส้น", "เส้น", "ก๋วยเตี๋ยว", "มาม่า"],
+      vegetarian: ["vegetarian", "มังสวิรัติ", "เจ"],
+      drinks: ["drinks", "เครื่องดื่ม", "น้ำ"],
+      dessert: ["dessert", "ของหวาน", "ขนม"],
+    };
+
+    const itemBelongsToCategory = (m: MenuItem, catId: string) => {
+      if (catId === "all") return true;
+      if (m.category === catId) return true;
+      if (!Array.isArray(m.tags) || m.tags.length === 0) return false;
+      const aliases = categoryAliases[catId] || [catId];
+      return m.tags.some((tag) =>
+        aliases.some((alias) => alias.toLowerCase() === tag.toLowerCase())
+      );
+    };
+
     let list = activeCat === "all"
       ? menuItems.filter((m) => m.isAvailable !== false)
-      : menuItems.filter((m) => m.category === activeCat && m.isAvailable !== false);
+      : menuItems.filter((m) => itemBelongsToCategory(m, activeCat) && m.isAvailable !== false);
 
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
       list = list.filter(
         (m) =>
           m.name.toLowerCase().includes(q) ||
-          (m.desc && m.desc.toLowerCase().includes(q))
+          (m.desc && m.desc.toLowerCase().includes(q)) ||
+          (Array.isArray(m.tags) && m.tags.some((tag) => tag.toLowerCase().includes(q)))
       );
     }
 
@@ -106,7 +127,7 @@ export function MenuOverlay({
               <Search size={16} className="text-slate-400" />
               <input
                 aria-label="ค้นหาเมนู"
-                placeholder={t("ค้นหาเมนู...")}
+                placeholder={t("ค้นหาเมนู, แท็ก...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
@@ -125,26 +146,17 @@ export function MenuOverlay({
             <button
               type="button"
               onClick={() => setShowSortModal(true)}
-              className="grid h-11 w-11 place-items-center rounded-2xl border shadow-xs transition active:scale-95 cursor-pointer relative"
-              style={{
-                background: sortBy !== "default" ? BRAND : "white",
-                color: sortBy !== "default" ? GOLD : BRAND,
-                borderColor: sortBy !== "default" ? BRAND : "#ece4d6",
-              }}
-              aria-label="เรียงลำดับเมนู"
+              className="px-4 rounded-2xl bg-white shadow-xs border border-slate-200 flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shrink-0"
             >
-              <SlidersHorizontal size={18} />
-              {sortBy !== "default" && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-xs border border-white">
-                  1
-                </span>
-              )}
+              <SlidersHorizontal size={14} style={{ color: BRAND }} />
+              <span>{t("จัดเรียง")}</span>
             </button>
           </div>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-2">
+          {/* Category Pills */}
+          <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {categories.map((cat) => {
-              const active = cat.id === activeCat;
+              const active = activeCat === cat.id;
               return (
                 <button
                   key={cat.id}
@@ -193,6 +205,18 @@ export function MenuOverlay({
                       <div className="min-w-0">
                         <h3 className="font-semibold text-sm truncate" style={{ color: BRAND }}>{tMenu(m.name, "name")}</h3>
                         <p className="text-xs mt-1 text-slate-500 whitespace-normal line-clamp-2">{tMenu(m.desc, "desc")}</p>
+                        {Array.isArray(m.tags) && m.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {m.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-[#002e47]/5 text-[#002e47]"
+                              >
+                                #{tMenu(tag, "tag")}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="mt-3 flex items-center justify-between">
                         <span className="font-bold text-lg" style={{ color: "#a16207" }}>฿{m.price}</span>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, X, ChevronRight, PlusCircle, Trash2, CheckCircle2, Users, Clock, Filter, Sparkles } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import type { OrderHistory } from "../types";
+import { useLanguage } from "../../../lib/i18n";
 
 export function TableManagementView({
   orders,
@@ -10,6 +11,7 @@ export function TableManagementView({
   orders: OrderHistory[];
   onRefreshOrders: () => Promise<void>;
 }) {
+  const { t, tMenu } = useLanguage();
   const [tables, setTables] = useState<any[]>([
     { id: "1", label: "โต๊ะ 1", status: "available", capacity: 4, table_type: "normal" },
     { id: "2", label: "โต๊ะ 2", status: "occupied", capacity: 4, table_type: "normal" },
@@ -286,13 +288,13 @@ export function TableManagementView({
       <div className="bg-white border border-[#ece4d6] rounded-3xl p-5 shadow-xs flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-black text-[#002e47]">ผังที่นั่ง & จัดการสถานะโต๊ะอาหาร</h2>
+            <h2 className="text-base font-black text-[#002e47]">{t("จัดการโต๊ะ")}</h2>
             <span className="bg-[#fcc14a] text-[#002e47] text-[10px] font-black px-2 py-0.5 rounded-full">
-              {tables.length} โต๊ะ
+              {tables.length} {t("โต๊ะ")}
             </span>
           </div>
           <p className="text-xs text-slate-500 font-semibold mt-1">
-            พนักงานสามารถกดกำหนดสถานะ ว่าง / มีลูกค้า ได้ทันทีด้วยตนเอง
+            {t("พนักงานสามารถกดกำหนดสถานะ ว่าง / มีลูกค้า ได้ทันทีด้วยตนเอง")}
           </p>
         </div>
 
@@ -307,7 +309,7 @@ export function TableManagementView({
                 : "text-slate-600 hover:bg-slate-200/60"
             }`}
           >
-            ทั้งหมด ({tables.length})
+            {t("ทั้งหมด")} ({tables.length})
           </button>
           <button
             type="button"
@@ -319,7 +321,7 @@ export function TableManagementView({
             }`}
           >
             <span className="h-2 w-2 rounded-full bg-emerald-400 inline-block" />
-            <span>ว่าง ({availableCount})</span>
+            <span>{t("ว่าง")} ({availableCount})</span>
           </button>
           <button
             type="button"
@@ -331,7 +333,7 @@ export function TableManagementView({
             }`}
           >
             <span className="h-2 w-2 rounded-full bg-red-400 inline-block" />
-            <span>มีลูกค้า ({occupiedCount})</span>
+            <span>{t("มีลูกค้า")} ({occupiedCount})</span>
           </button>
         </div>
 
@@ -341,7 +343,7 @@ export function TableManagementView({
             onClick={fetchTables}
             className="bg-[#002e47]/5 border border-[#002e47]/10 hover:bg-[#002e47]/10 text-[#002e47] text-xs font-black px-3.5 py-2 rounded-xl transition cursor-pointer"
           >
-            🔄 โหลดใหม่
+            🔄 {t("โหลดใหม่")}
           </button>
           <button
             type="button"
@@ -349,7 +351,7 @@ export function TableManagementView({
             className="flex items-center gap-1.5 bg-[#002e47] hover:bg-[#003a5c] text-white text-xs font-black px-4 py-2 rounded-xl transition shadow-xs cursor-pointer"
           >
             <Plus size={14} />
-            <span>เพิ่มโต๊ะ</span>
+            <span>{t("เพิ่มโต๊ะ")}</span>
           </button>
         </div>
       </div>
@@ -359,7 +361,7 @@ export function TableManagementView({
         <div className="flex-1 lg:max-w-[65%]">
           {loading ? (
             <div className="bg-white border border-[#ece4d6] rounded-3xl p-16 text-center text-slate-400 font-bold shadow-xs">
-              กำลังโหลดผังโต๊ะ...
+              {t("กำลังดาวน์โหลด...")}
             </div>
           ) : (
             <div className="grid grid-cols-2 xl:grid-cols-3 gap-5">
@@ -373,7 +375,7 @@ export function TableManagementView({
                   const isWalkIn = table.table_type === "walkin" || table.label.toLowerCase().includes("walk-in");
                   const isSelected = selectedTable?.id === table.id;
 
-                  let statusLabel = isOccupied ? "มีลูกค้า" : isWalkIn ? "Walk-in ว่าง" : "ว่าง";
+                  let statusLabel = isOccupied ? t("มีลูกค้า") : isWalkIn ? `Walk-in ${t("ว่าง")}` : t("ว่าง");
                   let statusBadgeClass = isOccupied
                     ? "bg-red-500 text-white border-red-600"
                     : isWalkIn
@@ -401,7 +403,7 @@ export function TableManagementView({
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">
-                          รองรับ {table.capacity || 4} ท่าน {isWalkIn && <span className="ml-1 text-slate-600 font-extrabold">(Walk-in)</span>}
+                          {t("รองรับ")} {table.capacity || 4} {t("ท่าน")} {isWalkIn && <span className="ml-1 text-slate-600 font-extrabold">(Walk-in)</span>}
                         </p>
                       </div>
 
@@ -409,26 +411,26 @@ export function TableManagementView({
                       <div className="mt-3">
                         {isOccupied && activeOrders.length > 0 ? (
                           <div className="bg-amber-100/90 border border-amber-300 rounded-xl px-2.5 py-1.5 text-xs text-amber-950 font-bold flex items-center justify-between">
-                            <span>กำลังปรุง/รอเสิร์ฟ</span>
+                            <span>{t("กำลังปรุง")}</span>
                             <span className="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded-md font-black">
-                              {activeOrders.length} บิล
+                              {activeOrders.length} {t("ออเดอร์")}
                             </span>
                           </div>
                         ) : isOccupied && completedOrders.length > 0 ? (
                           <div className="bg-red-100/90 border border-red-200 rounded-xl px-2.5 py-1.5 text-xs text-red-900 font-bold flex items-center justify-between">
-                            <span>🍽️ เสิร์ฟแล้ว (กำลังทาน)</span>
+                            <span>🍽️ {t("พร้อมเสิร์ฟ")} ({t("ทานที่ร้าน")})</span>
                             <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-md font-black">
-                              {completedOrders.length} บิล
+                              {completedOrders.length} {t("ออเดอร์")}
                             </span>
                           </div>
                         ) : isOccupied ? (
                           <div className="bg-red-50 border border-red-200 rounded-xl px-2.5 py-1.5 text-[11px] text-red-800 font-bold flex items-center gap-1.5">
                             <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                            <span>มีลูกค้านั่งที่โต๊ะ</span>
+                            <span>{t("มีลูกค้า")}</span>
                           </div>
                         ) : (
                           <div className="text-[11px] text-emerald-700 font-bold py-0.5">
-                            🟢 พร้อมรับลูกค้าทันที
+                            🟢 {t("พร้อมจำหน่าย")}
                           </div>
                         )}
                       </div>
@@ -451,7 +453,7 @@ export function TableManagementView({
                       ? "bg-red-500 text-white border-red-600"
                       : "bg-emerald-500 text-white border-emerald-600"
                   }`}>
-                    {selectedTable.status === "occupied" ? "🔴 มีลูกค้า" : "🟢 ว่าง"}
+                    {selectedTable.status === "occupied" ? `🔴 ${t("มีลูกค้า")}` : `🟢 ${t("ว่าง")}`}
                   </span>
                 </div>
                 <button
@@ -465,7 +467,7 @@ export function TableManagementView({
 
               {/* Status Selector */}
               <div className="mb-5 bg-[#002e47]/5 p-3.5 rounded-2xl border border-[#002e47]/10">
-                <span className="text-xs font-black text-[#002e47] block mb-2">กำหนดสถานะโต๊ะ (คลิกเพื่อเปลี่ยนทันที)</span>
+                <span className="text-xs font-black text-[#002e47] block mb-2">{t("กำหนดสถานะโต๊ะ")}:</span>
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
@@ -476,8 +478,8 @@ export function TableManagementView({
                         : "bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700"
                     }`}
                   >
-                    <span>🟢 ว่าง</span>
-                    <span className="text-[9px] font-medium opacity-80">พร้อมรับลูกค้า</span>
+                    <span>🟢 {t("ว่าง")}</span>
+                    <span className="text-[9px] font-medium opacity-80">{t("พร้อมรับลูกค้า")}</span>
                   </button>
                   <button
                     type="button"
@@ -488,21 +490,21 @@ export function TableManagementView({
                         : "bg-white text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-700"
                     }`}
                   >
-                    <span>🔴 มีลูกค้า</span>
-                    <span className="text-[9px] font-medium opacity-80">กำลังนั่งทาน</span>
+                    <span>🔴 {t("มีลูกค้า")}</span>
+                    <span className="text-[9px] font-medium opacity-80">{t("ทานที่ร้าน")}</span>
                   </button>
                 </div>
               </div>
 
               {/* Actions */}
               <div className="mb-6 space-y-2">
-                <span className="text-xs font-bold text-slate-500 block mb-1">เมนูการจัดการ</span>
+                <span className="text-xs font-bold text-slate-500 block mb-1">{t("เมนูพนักงาน")}</span>
                 <button
                   type="button"
                   onClick={() => setIsMoveSelectorOpen(true)}
                   className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition cursor-pointer"
                 >
-                  <span className="flex items-center gap-2">🔄 ย้าย / รวมออเดอร์ไปยังโต๊ะอื่น</span>
+                  <span className="flex items-center gap-2">🔄 {t("ย้าย / รวมออเดอร์ไปยังโต๊ะอื่น")}</span>
                   <ChevronRight size={14} className="text-slate-400" />
                 </button>
                 <a
@@ -512,20 +514,20 @@ export function TableManagementView({
                   onClick={() => { localStorage.setItem("ran-lung-get-selected-table", selectedTable.id); }}
                   className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-between transition block text-left text-inherit no-underline cursor-pointer"
                 >
-                  <span className="flex items-center gap-2">🛍️ สั่งอาหาร Walk-in (ชำระเงินสด/โอนเงิน)</span>
+                  <span className="flex items-center gap-2">🛍️ {t("สั่งอาหาร (หน้าลูกค้า)")}</span>
                   <PlusCircle size={14} className="text-slate-400" />
                 </a>
                 <button
                   type="button"
                   onClick={() => setConfirmDialog({
                     isOpen: true,
-                    title: "ยืนยันการเคลียร์โต๊ะ",
-                    message: `คุณต้องการเคลียร์โต๊ะและเปลี่ยนสถานะออเดอร์ค้างทั้งหมดของ ${selectedTable.label} ให้เสร็จสิ้นใช่หรือไม่?`,
+                    title: t("ยืนยันการเคลียร์โต๊ะ"),
+                    message: `${t("ยืนยันการเคลียร์โต๊ะ")} ${selectedTable.label}?`,
                     onConfirm: async () => { await clearTableAndOrders(selectedTable.label); }
                   })}
                   className="w-full py-3 px-4 rounded-xl border border-red-200 text-red-700 bg-red-50/30 hover:bg-red-50 font-bold text-xs flex items-center justify-between transition cursor-pointer"
                 >
-                  <span className="flex items-center gap-2">🧹 เคลียร์โต๊ะ & อ้างอิงออเดอร์เสร็จสิ้น</span>
+                  <span className="flex items-center gap-2">🧹 {t("เคลียร์โต๊ะ & อ้างอิงออเดอร์เสร็จสิ้น")}</span>
                   <Trash2 size={14} className="text-red-400" />
                 </button>
 
@@ -533,13 +535,13 @@ export function TableManagementView({
                   type="button"
                   onClick={() => setConfirmDialog({
                     isOpen: true,
-                    title: "⚠️ ยืนยันการลบโต๊ะ",
-                    message: `คุณต้องการลบ ${selectedTable.label} ออกจากระบบใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`,
+                    title: `⚠️ ${t("ยืนยันการลบโต๊ะ")}`,
+                    message: `${t("ยืนยันการลบโต๊ะ")} ${selectedTable.label}?`,
                     onConfirm: async () => { await deleteTable(selectedTable.id, selectedTable.label); }
                   })}
                   className="w-full py-3 px-4 rounded-xl border border-red-300 text-red-800 bg-red-100/50 hover:bg-red-100 font-bold text-xs flex items-center justify-between transition cursor-pointer"
                 >
-                  <span className="flex items-center gap-2">🗑️ ลบโต๊ะนี้ออกจากระบบ</span>
+                  <span className="flex items-center gap-2">🗑️ {t("ลบโต๊ะนี้ออกจากระบบ")}</span>
                   <Trash2 size={14} className="text-red-500" />
                 </button>
               </div>
@@ -548,11 +550,11 @@ export function TableManagementView({
               <div className="flex-1 flex flex-col border-t border-slate-100 pt-4 overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold text-slate-700">
-                    รายการอาหารบนโต๊ะ ({getTableOrders(selectedTable.label, selectedTable.id).length} บิล)
+                    {t("รายการอาหารบนโต๊ะ")} ({getTableOrders(selectedTable.label, selectedTable.id).length} {t("ออเดอร์")})
                   </span>
                   {getTableOrders(selectedTable.label, selectedTable.id).length > 0 && (
                     <span className="text-[10px] text-slate-400 font-medium">
-                      รวมทั้งหมด: ฿{getTableOrders(selectedTable.label, selectedTable.id).reduce((sum, o) => sum + o.total, 0)}
+                      {t("ยอดรวม")}: ฿{getTableOrders(selectedTable.label, selectedTable.id).reduce((sum, o) => sum + o.total, 0)}
                     </span>
                   )}
                 </div>
@@ -580,27 +582,27 @@ export function TableManagementView({
                                   : "bg-amber-500 text-white"
                               }`}
                             >
-                              {isOrderDone ? "🍽️ เสิร์ฟแล้ว (กำลังทาน)" : order.status}
+                              {isOrderDone ? `🍽️ ${t("สำเร็จ")}` : t(order.status)}
                             </span>
                           </div>
                           <div className="space-y-1 text-xs text-slate-600 font-bold">
                             {(order.items || []).map((it, idx) => (
                               <div key={idx} className="flex justify-between">
-                                <span>{it?.name || "รายการ"} x{it?.qty || 1}</span>
+                                <span>{it?.name ? tMenu(it.name, "name") : t("รายการอาหาร")} x{it?.qty || 1}</span>
                                 <span>฿{(it?.price || 0) * (it?.qty || 1)}</span>
                               </div>
                             ))}
                           </div>
                           <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 text-xs">
-                            <span className="font-black text-[#002e47]">ยอดรวม: ฿{order.total || 0}</span>
-                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.5 rounded">ชำระแล้ว</span>
+                            <span className="font-black text-[#002e47]">{t("ยอดรวม")}: ฿{order.total || 0}</span>
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.5 rounded">{t("สำเร็จ")}</span>
                           </div>
                         </div>
                       );
                     })
                   ) : (
                     <div className="text-center text-slate-400 py-8 text-xs italic font-bold">
-                      ไม่มีประวัติออเดอร์บนโต๊ะนี้
+                      {t("ไม่มีประวัติออเดอร์บนโต๊ะนี้")}
                     </div>
                   )}
                 </div>
@@ -609,9 +611,9 @@ export function TableManagementView({
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 py-12 text-center my-auto">
               <div className="text-5xl mb-3">🍽️</div>
-              <p className="font-bold text-sm text-[#002e47]">เลือกโต๊ะอาหารเพื่อดำเนินการ</p>
+              <p className="font-bold text-sm text-[#002e47]">{t("เลือกโต๊ะอาหารเพื่อดำเนินการ")}</p>
               <p className="text-[11px] text-slate-500 mt-1.5 max-w-[200px] leading-relaxed">
-                กดเลือกโต๊ะจากแผนผังที่นั่งฝั่งซ้าย เพื่อกำหนดสถานะ (ว่าง/มีลูกค้า/จอง), ย้ายออเดอร์ หรือเคลียร์โต๊ะ
+                {t("กดเลือกโต๊ะจากแผนผังที่นั่งฝั่งซ้าย เพื่อกำหนดสถานะ (ว่าง/มีลูกค้า/จอง), ย้ายออเดอร์ หรือเคลียร์โต๊ะ")}
               </p>
             </div>
           )}
@@ -624,7 +626,7 @@ export function TableManagementView({
           <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setIsAddTableOpen(false)} />
           <div className="bg-white rounded-[28px] p-6 w-full max-w-sm z-10 border border-[#ece4d6] shadow-2xl relative text-[#002e47]">
             <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-black">➕ เพิ่มโต๊ะใหม่</h3>
+              <h3 className="text-lg font-black">➕ {t("เพิ่มโต๊ะ")}</h3>
               <button
                 type="button"
                 onClick={() => setIsAddTableOpen(false)}
@@ -635,10 +637,10 @@ export function TableManagementView({
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">ชื่อโต๊ะ / หมายเลขโต๊ะ</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">{t("ชื่อโต๊ะ / หมายเลขโต๊ะ")}</label>
                 <input
                   type="text"
-                  placeholder="เช่น 11, VIP, ห้องส่วนตัว"
+                  placeholder="เช่น 11, VIP, Room"
                   value={newTableName}
                   onChange={(e) => setNewTableName(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#002e47]/20"
@@ -647,7 +649,7 @@ export function TableManagementView({
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">จำนวนที่นั่ง</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">{t("จำนวนที่นั่ง")}</label>
                 <select
                   value={newTableCapacity}
                   onChange={(e) => setNewTableCapacity(Number(e.target.value))}
@@ -655,20 +657,20 @@ export function TableManagementView({
                 >
                   {[2, 4, 6, 8, 10, 12].map((n) => (
                     <option key={n} value={n}>
-                      {n} คน
+                      {n} {t("ท่าน")}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">ประเภทโต๊ะ</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">{t("ประเภทโต๊ะ")}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewTableType("normal")}
                     className={`py-2.5 rounded-xl font-bold text-xs border transition ${newTableType === "normal" ? "bg-[#002e47] text-white border-[#002e47]" : "bg-white border-slate-200 hover:bg-slate-50"}`}
                   >
-                    🪑 ปกติ
+                    🪑 {t("ปกติ")}
                   </button>
                   <button
                     type="button"
@@ -686,7 +688,7 @@ export function TableManagementView({
                 onClick={() => setIsAddTableOpen(false)}
                 className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
               >
-                ยกเลิก
+                {t("ยกเลิก")}
               </button>
               <button
                 type="button"
@@ -694,7 +696,7 @@ export function TableManagementView({
                 disabled={!newTableName.trim() || addingTable}
                 className="flex-1 py-2.5 rounded-xl bg-[#002e47] text-white font-black text-xs hover:bg-[#003a5c] transition disabled:opacity-50"
               >
-                {addingTable ? "กำลังเพิ่ม..." : "✅ เพิ่มโต๊ะ"}
+                {addingTable ? t("กำลังดำเนินการ...") : `✅ ${t("เพิ่มโต๊ะ")}`}
               </button>
             </div>
           </div>
@@ -708,9 +710,9 @@ export function TableManagementView({
           <div className="bg-white rounded-[28px] p-6 w-full max-w-lg z-10 border border-[#ece4d6] shadow-2xl relative text-[#002e47] flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-5 shrink-0">
               <div>
-                <h3 className="text-lg font-black flex items-center gap-2">🔄 ย้าย / รวมออเดอร์</h3>
+                <h3 className="text-lg font-black flex items-center gap-2">🔄 {t("ย้าย / รวมออเดอร์")}</h3>
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  เลือกโต๊ะปลายทางสำหรับ <span className="font-extrabold text-[#002e47] underline">{selectedTable.label}</span>
+                  {t("เลือกโต๊ะปลายทาง")} <span className="font-extrabold text-[#002e47] underline">{selectedTable.label}</span>
                 </p>
               </div>
               <button

@@ -18,8 +18,25 @@ import { supabase } from "../../../lib/supabase";
 import { MENU } from "../../customer/constants/menu";
 import type { MenuItemDB, OptionGroup, AddonItem } from "../types";
 import { MENU_CATEGORIES } from "../constants/categories";
+import { useLanguage } from "../../../lib/i18n";
+
+const PRESET_TAGS = [
+  "Signature",
+  "ผัด & กับข้าว",
+  "เมนูเส้น",
+  "ข้าวผัด",
+  "มังสวิรัติ",
+  "แนะนำ",
+  "ขายดี",
+  "เผ็ดจัด",
+  "หมูกรอบ",
+  "ซีฟู้ด",
+  "จานด่วน",
+  "เด็กทานได้",
+];
 
 export function MenuManagementView() {
+  const { t, tMenu } = useLanguage();
   const [menuItems, setMenuItems] = useState<MenuItemDB[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -35,6 +52,8 @@ export function MenuManagementView() {
   const [formDesc, setFormDesc] = useState("");
   const [formPrice, setFormPrice] = useState("");
   const [formCategory, setFormCategory] = useState("signature");
+  const [formTags, setFormTags] = useState<string[]>([]);
+  const [customTagInput, setCustomTagInput] = useState("");
   const [formIsSpicy, setFormIsSpicy] = useState(false);
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formImagePath, setFormImagePath] = useState("");
@@ -60,6 +79,7 @@ export function MenuManagementView() {
           image: m.image,
           image_url: null,
           category: m.category,
+          tags: m.tags || null,
           is_available: true,
           is_spicy: m.spicy || false,
           sort_order: i,
@@ -78,6 +98,7 @@ export function MenuManagementView() {
         image: m.image,
         image_url: null,
         category: m.category,
+        tags: m.tags || null,
         is_available: true,
         is_spicy: m.spicy || false,
         sort_order: i,
@@ -119,6 +140,8 @@ export function MenuManagementView() {
     setFormDesc("");
     setFormPrice("");
     setFormCategory("signature");
+    setFormTags([]);
+    setCustomTagInput("");
     setFormIsSpicy(false);
     setFormImageUrl("");
     setFormImagePath("");
@@ -134,6 +157,8 @@ export function MenuManagementView() {
     setFormDesc(item.description || "");
     setFormPrice(String(item.price));
     setFormCategory(item.category);
+    setFormTags(Array.isArray(item.tags) ? item.tags : []);
+    setCustomTagInput("");
     setFormIsSpicy(Boolean(item.is_spicy));
     setFormImageUrl(item.image_url || item.image || "");
     setFormImagePath(item.image || "");
@@ -192,6 +217,7 @@ export function MenuManagementView() {
       price: Number(item.price),
       image: item.image_url || item.image || "",
       category: item.category,
+      tags: Array.isArray(item.tags) ? item.tags : [],
       isAvailable: item.is_available !== false,
       isSpicy: item.is_spicy ?? false,
       options: item.options || undefined,
@@ -218,6 +244,7 @@ export function MenuManagementView() {
       description: formDesc.trim() || null,
       price,
       category: formCategory,
+      tags: formTags.length > 0 ? formTags : [],
       is_spicy: formIsSpicy,
       is_available: editItem ? editItem.is_available : true,
       image: formImagePath || null,
@@ -322,8 +349,31 @@ export function MenuManagementView() {
   };
 
   const filtered = menuItems.filter((m) => {
-    const matchSearch = search === "" || m.name.toLowerCase().includes(search.toLowerCase());
-    const matchCat = categoryFilter === "all" || m.category === categoryFilter;
+    const matchSearch =
+      search === "" ||
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      (Array.isArray(m.tags) && m.tags.some((t) => t.toLowerCase().includes(search.toLowerCase())));
+
+    const categoryAliases: Record<string, string[]> = {
+      signature: ["signature", "แนะนำ", "ยอดนิยม"],
+      main: ["main", "ผัด & กับข้าว", "จานหลัก", "กับข้าว", "ผัด"],
+      rice: ["rice", "ข้าวผัด", "ข้าว"],
+      noodles: ["noodles", "เมนูเส้น", "เส้น", "ก๋วยเตี๋ยว", "มาม่า"],
+      vegetarian: ["vegetarian", "มังสวิรัติ", "เจ"],
+      drinks: ["drinks", "เครื่องดื่ม", "น้ำ"],
+      dessert: ["dessert", "ของหวาน", "ขนม"],
+    };
+
+    const matchCat =
+      categoryFilter === "all" ||
+      m.category === categoryFilter ||
+      (Array.isArray(m.tags) &&
+        m.tags.some((tag) =>
+          (categoryAliases[categoryFilter] || [categoryFilter]).some(
+            (alias) => alias.toLowerCase() === tag.toLowerCase()
+          )
+        ));
+
     return matchSearch && matchCat;
   });
 
@@ -340,21 +390,21 @@ export function MenuManagementView() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="ค้นหาเมนูอาหาร..."
+              placeholder={t("ค้นหาเมนู...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-[#002e47] focus:outline-none focus:ring-2 focus:ring-[#002e47]/20 bg-slate-50"
+              className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-[#002e47] focus:outline-none focus:ring-2 focus:ring-[#002e47]/20"
             />
           </div>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-[#002e47] focus:outline-none bg-white"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47] focus:outline-none"
           >
-            <option value="all">ทุกหมวดหมู่</option>
+            <option value="all">{t("หมวดหมู่ทั้งหมด")}</option>
             {MENU_CATEGORIES.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.emoji} {c.label}
+                {c.emoji} {t(c.label)}
               </option>
             ))}
           </select>
@@ -364,39 +414,39 @@ export function MenuManagementView() {
             className="flex items-center gap-1.5 bg-[#002e47] hover:bg-[#003a5c] text-white text-xs font-black px-4 py-2.5 rounded-xl transition shadow-xs shrink-0 cursor-pointer"
           >
             <Plus size={14} />
-            <span>เพิ่มเมนู</span>
+            <span>{t("เพิ่มเมนู")}</span>
           </button>
         </div>
 
-        {/* Stats */}
+        {/* Stats bar */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white border border-[#ece4d6] rounded-2xl p-3 shadow-xs text-center">
+          <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs text-center">
             <p className="text-2xl font-black text-[#002e47]">{menuItems.length}</p>
-            <p className="text-[10px] font-bold text-slate-500">รายการทั้งหมด</p>
+            <p className="text-[10px] font-bold text-slate-500">{t("เมนูทั้งหมด")}</p>
           </div>
-          <div className="bg-white border border-emerald-200 rounded-2xl p-3 shadow-xs text-center">
+          <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs text-center">
             <p className="text-2xl font-black text-emerald-600">{menuItems.filter((m) => m.is_available).length}</p>
-            <p className="text-[10px] font-bold text-slate-500">มีจำหน่าย</p>
+            <p className="text-[10px] font-bold text-slate-500">{t("พร้อมจำหน่าย")}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs text-center">
             <p className="text-2xl font-black text-slate-400">{menuItems.filter((m) => !m.is_available).length}</p>
-            <p className="text-[10px] font-bold text-slate-500">หมดชั่วคราว</p>
+            <p className="text-[10px] font-bold text-slate-500">{t("สินค้าหมด")}</p>
           </div>
         </div>
 
         {/* Menu List */}
         <div className="bg-white border border-[#ece4d6] rounded-3xl shadow-xs flex-1 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-[#ece4d6] flex items-center justify-between">
-            <h2 className="font-black text-[#002e47] text-sm">รายการเมนูอาหาร ({filtered.length})</h2>
+            <h2 className="font-black text-[#002e47] text-sm">{t("รายการอาหาร")} ({filtered.length})</h2>
             <button type="button" onClick={fetchMenuItems} className="text-xs font-bold text-slate-500 hover:text-[#002e47] transition cursor-pointer">
-              🔄 รีเฟรช
+              🔄 {t("โหลดใหม่")}
             </button>
           </div>
           <div className="flex-1 overflow-y-auto no-scrollbar divide-y divide-slate-50">
             {loading ? (
-              <div className="p-12 text-center text-slate-400 font-bold">กำลังโหลดเมนู...</div>
+              <div className="p-12 text-center text-slate-400 font-bold">{t("กำลังดาวน์โหลด...")}</div>
             ) : filtered.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 font-bold">ไม่พบเมนูที่ค้นหา</div>
+              <div className="p-12 text-center text-slate-400 font-bold">{t("ไม่พบรายการอาหาร")}</div>
             ) : (
               filtered.map((item) => (
                 <div key={item.id} className={`flex items-center gap-3 p-3 hover:bg-slate-50 transition group ${!item.is_available ? "opacity-60" : ""}`}>
@@ -415,17 +465,26 @@ export function MenuManagementView() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-black text-[#002e47] text-sm truncate">{item.name}</span>
                       {item.is_spicy && <Flame size={11} className="text-red-500 shrink-0" />}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-[10px] bg-[#002e47]/5 text-[#002e47] px-1.5 py-0.5 rounded font-bold">
                         {getCatEmoji(item.category)} {getCatLabel(item.category)}
                       </span>
                       <span className="font-black text-[#002e47] text-xs">฿{item.price}</span>
                       {!item.is_available && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-black">หมดชั่วคราว</span>}
                     </div>
+                    {Array.isArray(item.tags) && item.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {item.tags.map((t) => (
+                          <span key={t} className="text-[9px] bg-amber-50 text-amber-800 border border-amber-200/60 px-1.5 py-0.2 rounded-md font-medium">
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {item.staff_note && (
                       <p className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded mt-0.5 font-semibold truncate">📝 {item.staff_note}</p>
                     )}
@@ -469,7 +528,7 @@ export function MenuManagementView() {
           <div className="bg-white border border-[#ece4d6] rounded-3xl shadow-xs flex flex-col h-full max-h-[calc(100vh-160px)] overflow-hidden">
             <div className="p-5 border-b border-[#ece4d6] flex items-center justify-between shrink-0 bg-[#002e47] rounded-t-3xl">
               <div>
-                <h3 className="font-black text-white text-base">{editItem ? "✏️ แก้ไขเมนู" : "➕ เพิ่มเมนูใหม่"}</h3>
+                <h3 className="font-black text-white text-base">{editItem ? `✏️ ${t("แก้ไขเมนู")}` : `➕ ${t("เพิ่มเมนูใหม่")}`}</h3>
                 {editItem && <p className="text-[10px] text-white/60 font-bold mt-0.5">ID: {editItem.id}</p>}
               </div>
               <button
@@ -484,7 +543,7 @@ export function MenuManagementView() {
             <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
               <div>
                 <label className="text-xs font-black text-slate-600 block mb-2 flex items-center gap-1.5">
-                  <Image size={12} /> รูปภาพเมนู
+                  <Image size={12} /> {t("รูปภาพเมนู")}
                 </label>
                 <div
                   className="relative h-36 rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center cursor-pointer hover:border-[#002e47]/40 transition group"
@@ -494,17 +553,17 @@ export function MenuManagementView() {
                     <>
                       <img src={formImageUrl} alt="preview" className="h-full w-full object-cover" onError={() => setFormImageUrl("")} />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                        <span className="text-white font-black text-xs">เปลี่ยนรูป</span>
+                        <span className="text-white font-black text-xs">{t("เปลี่ยน")}</span>
                       </div>
                     </>
                   ) : (
                     <div className="text-center text-slate-400">
                       {uploadingImage ? (
-                        <p className="text-xs font-bold">กำลังอัปโหลด...</p>
+                        <p className="text-xs font-bold">{t("กำลังดำเนินการ...")}</p>
                       ) : (
                         <>
                           <Image size={28} className="mx-auto mb-2 opacity-30" />
-                          <p className="text-xs font-bold">คลิกเพื่ออัปโหลดรูปอาหาร</p>
+                          <p className="text-xs font-bold">{t("คลิกเพื่ออัปโหลดรูปอาหาร")}</p>
                           <p className="text-[10px] text-slate-400">JPG, PNG, WebP</p>
                         </>
                       )}
@@ -533,7 +592,7 @@ export function MenuManagementView() {
                       className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] font-bold focus:outline-none focus:ring-1 focus:ring-[#002e47]/20"
                     />
                     <button type="button" onClick={() => setFormImageUrl("")} className="text-[10px] text-red-500 font-bold hover:text-red-700 px-2 cursor-pointer">
-                      ลบ
+                      {t("ลบ")}
                     </button>
                   </div>
                 )}
@@ -542,7 +601,7 @@ export function MenuManagementView() {
                     type="text"
                     value={formImageUrl}
                     onChange={(e) => setFormImageUrl(e.target.value)}
-                    placeholder="หรือวาง URL รูปภาพ เช่น https://... หรือ /meal/..."
+                    placeholder="URL: https://... หรือ /meal/..."
                     className="mt-2 w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] font-bold focus:outline-none focus:ring-1 focus:ring-[#002e47]/20"
                   />
                 )}
@@ -550,11 +609,11 @@ export function MenuManagementView() {
 
               <div>
                 <label className="text-xs font-black text-slate-600 block mb-1.5 flex items-center gap-1.5">
-                  <Tag size={12} /> ชื่อเมนู <span className="text-red-500">*</span>
+                  <Tag size={12} /> {t("ชื่อเมนู")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="ชื่อเมนูอาหาร เช่น กระเพราหมูสับ"
+                  placeholder={t("ชื่อเมนู")}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-[#002e47] focus:outline-none focus:ring-2 focus:ring-[#002e47]/20"
@@ -563,10 +622,10 @@ export function MenuManagementView() {
 
               <div>
                 <label className="text-xs font-black text-slate-600 block mb-1.5 flex items-center gap-1.5">
-                  <FileText size={12} /> คำอธิบายเมนู
+                  <FileText size={12} /> {t("คำอธิบาย")}
                 </label>
                 <textarea
-                  placeholder="บรรยายส่วนประกอบ รสชาติ วัตถุดิบหลัก..."
+                  placeholder={t("คำอธิบาย")}
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
                   rows={2}
@@ -577,7 +636,7 @@ export function MenuManagementView() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-black text-slate-600 block mb-1.5 flex items-center gap-1.5">
-                    <DollarSign size={12} /> ราคา (บาท) <span className="text-red-500">*</span>
+                    <DollarSign size={12} /> {t("ราคา (บาท)")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -589,7 +648,7 @@ export function MenuManagementView() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-600 block mb-1.5">หมวดหมู่</label>
+                  <label className="text-xs font-black text-slate-600 block mb-1.5">{t("หมวดหมู่")}</label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
@@ -597,7 +656,7 @@ export function MenuManagementView() {
                   >
                     {MENU_CATEGORIES.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.emoji} {c.label}
+                        {c.emoji} {t(c.label)}
                       </option>
                     ))}
                   </select>
@@ -624,13 +683,13 @@ export function MenuManagementView() {
                     <Flame size={18} className={formIsSpicy ? "fill-red-500 text-red-500" : ""} />
                   </div>
                   <div>
-                    <span className={`text-sm font-bold block ${formIsSpicy ? "text-red-700" : "text-[#002e47]"}`}>เมนูนี้มีรสเผ็ด</span>
-                    <span className="text-[11px] text-slate-500 font-medium">{formIsSpicy ? "เปิดใช้งาน (มีรสเผ็ด)" : "ปิดใช้งาน (เมนูไม่เผ็ด)"}</span>
+                    <span className={`text-sm font-bold block ${formIsSpicy ? "text-red-700" : "text-[#002e47]"}`}>{t("เมนูนี้มีรสเผ็ด")}</span>
+                    <span className="text-[11px] text-slate-500 font-medium">{formIsSpicy ? t("เปิดเสียง") : t("ปิดเสียง")}</span>
                   </div>
                 </div>
                 <button
                   type="button"
-                  aria-label="สลับสถานะเมนูนี้มีรสเผ็ด"
+                  aria-label="สลับสถานะความเผ็ด"
                   onClick={(e) => {
                     e.stopPropagation();
                     setFormIsSpicy((prev) => !prev);
@@ -647,23 +706,111 @@ export function MenuManagementView() {
                 </button>
               </div>
 
+              {/* Tags */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-600 flex items-center gap-1.5">
+                  <Tag size={12} /> {t("แท็ก")} (Tags)
+                </label>
+                {/* Selected tags */}
+                {formTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                    {formTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 bg-[#002e47] text-[#fcc14a] text-xs font-bold px-2.5 py-1 rounded-lg shadow-2xs"
+                      >
+                        #{tag}
+                        <button
+                          type="button"
+                          onClick={() => setFormTags((prev) => prev.filter((t) => t !== tag))}
+                          className="hover:text-red-400 font-bold ml-1 text-xs cursor-pointer"
+                          aria-label={`ลบแท็ก ${tag}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* Add custom tag input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="พิมพ์แท็กใหม่..."
+                    value={customTagInput}
+                    onChange={(e) => setCustomTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const trimmed = customTagInput.trim();
+                        if (trimmed && !formTags.includes(trimmed)) {
+                          setFormTags((prev) => [...prev, trimmed]);
+                          setCustomTagInput("");
+                        }
+                      }
+                    }}
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-[#002e47] focus:outline-none focus:ring-2 focus:ring-[#002e47]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trimmed = customTagInput.trim();
+                      if (trimmed && !formTags.includes(trimmed)) {
+                        setFormTags((prev) => [...prev, trimmed]);
+                        setCustomTagInput("");
+                      }
+                    }}
+                    className="bg-[#002e47] hover:bg-[#002e47]/90 text-white text-xs font-bold px-3 py-2 rounded-xl transition cursor-pointer"
+                  >
+                    + {t("เพิ่ม")}
+                  </button>
+                </div>
+                {/* Suggested quick tags */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 font-bold">{t("แท็กแนะนำ")}:</span>
+                  {PRESET_TAGS.map((pt) => {
+                    const isSelected = formTags.includes(pt);
+                    return (
+                      <button
+                        key={pt}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setFormTags((prev) => prev.filter((t) => t !== pt));
+                          } else {
+                            setFormTags((prev) => [...prev, pt]);
+                          }
+                        }}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition cursor-pointer border ${
+                          isSelected
+                            ? "bg-[#002e47] text-[#fcc14a] border-[#002e47]"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        {isSelected ? "✓ " : "+ "}#{pt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Options */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-black text-slate-600 flex items-center gap-1.5">
-                    <Grip size={12} /> ตัวเลือก (Options) — เช่น ระดับความเผ็ด
+                    <Grip size={12} /> {t("ตัวเลือก (Options)")}
                   </label>
                   <button
                     type="button"
                     onClick={addOptionGroup}
                     className="text-[10px] font-black text-[#002e47] bg-[#002e47]/10 hover:bg-[#002e47]/20 px-2.5 py-1 rounded-lg transition cursor-pointer"
                   >
-                    + เพิ่มกลุ่ม
+                    + {t("เพิ่มกลุ่ม")}
                   </button>
                 </div>
                 {formOptions.length === 0 && (
                   <p className="text-[11px] text-slate-400 italic font-bold text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    ยังไม่มีตัวเลือก กด "+ เพิ่มกลุ่ม" เพื่อเริ่ม
+                    {t("ยังไม่มีตัวเลือก")}
                   </p>
                 )}
                 {formOptions.map((og, ogIdx) => (
@@ -671,7 +818,7 @@ export function MenuManagementView() {
                     <div className="flex items-center gap-2 mb-2">
                       <input
                         type="text"
-                        placeholder="ชื่อกลุ่มตัวเลือก เช่น ระดับความเผ็ด"
+                        placeholder="ชื่อกลุ่มตัวเลือก"
                         value={og.name}
                         onChange={(e) => updateOptionGroupName(ogIdx, e.target.value)}
                         className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#002e47]/20"
@@ -685,7 +832,7 @@ export function MenuManagementView() {
                         <div key={c.id} className="flex items-center gap-1.5">
                           <input
                             type="text"
-                            placeholder="ชื่อตัวเลือก เช่น เผ็ดมาก"
+                            placeholder="ชื่อตัวเลือก"
                             value={c.label}
                             onChange={(e) => updateChoice(ogIdx, cIdx, "label", e.target.value)}
                             className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none"
@@ -708,7 +855,7 @@ export function MenuManagementView() {
                         onClick={() => addChoice(ogIdx)}
                         className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 cursor-pointer"
                       >
-                        <Plus size={10} /> เพิ่ม choice
+                        <Plus size={10} /> {t("เพิ่ม")}
                       </button>
                     </div>
                   </div>
@@ -719,26 +866,26 @@ export function MenuManagementView() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-black text-slate-600 flex items-center gap-1.5">
-                    <Plus size={12} /> วัตถุดิบเพิ่ม (Addons) — เช่น ไข่ดาว, หมูกรอบ
+                    <Plus size={12} /> {t("ท็อปปิ้ง")} (Addons)
                   </label>
                   <button
                     type="button"
                     onClick={addAddon}
                     className="text-[10px] font-black text-[#002e47] bg-[#002e47]/10 hover:bg-[#002e47]/20 px-2.5 py-1 rounded-lg transition cursor-pointer"
                   >
-                    + เพิ่ม
+                    + {t("เพิ่ม")}
                   </button>
                 </div>
                 {formAddons.length === 0 && (
                   <p className="text-[11px] text-slate-400 italic font-bold text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    ยังไม่มี addons
+                    {t("ยังไม่มีตัวเลือก")}
                   </p>
                 )}
                 {formAddons.map((a, idx) => (
                   <div key={a.id} className="flex items-center gap-1.5 mb-1.5">
                     <input
                       type="text"
-                      placeholder="ชื่อ addon เช่น ไข่ดาว"
+                      placeholder="ชื่อ addon"
                       value={a.name}
                       onChange={(e) => updateAddon(idx, "name", e.target.value)}
                       className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none"
@@ -762,16 +909,15 @@ export function MenuManagementView() {
               {/* Staff Note */}
               <div>
                 <label className="text-xs font-black text-slate-600 block mb-1.5 flex items-center gap-1.5">
-                  <FileText size={12} /> หมายเหตุพนักงาน (Staff Note)
+                  <FileText size={12} /> {t("หมายเหตุ")} (Staff Note)
                 </label>
                 <textarea
-                  placeholder="เช่น: วัตถุดิบในสต็อก: หมูสด, กระเพรา / แจ้งครัวแยกเสิร์ฟ..."
+                  placeholder="เช่น: แจ้งครัวแยกเสิร์ฟ..."
                   value={formStaffNote}
                   onChange={(e) => setFormStaffNote(e.target.value)}
                   rows={2}
                   className="w-full border border-amber-200 bg-amber-50 rounded-xl px-3 py-2.5 text-sm font-semibold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-300/40 resize-none placeholder:text-amber-400"
                 />
-                <p className="text-[10px] text-amber-600 font-bold mt-1">📝 ข้อความนี้จะปรากฏบนรายการเมนูให้พนักงานเห็น</p>
               </div>
             </div>
 
@@ -782,7 +928,7 @@ export function MenuManagementView() {
                   onClick={() => deleteMenuItem(editItem)}
                   className="px-4 py-2.5 rounded-xl border border-red-300 text-red-600 bg-red-50 hover:bg-red-100 font-bold text-xs transition cursor-pointer"
                 >
-                  🗑️ ลบเมนูนี้
+                  🗑️ {t("ลบเมนู")}
                 </button>
               )}
               <div className="flex-1" />
@@ -791,7 +937,7 @@ export function MenuManagementView() {
                 onClick={() => setIsFormOpen(false)}
                 className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition cursor-pointer"
               >
-                ยกเลิก
+                {t("ยกเลิก")}
               </button>
               <button
                 type="button"
@@ -799,16 +945,16 @@ export function MenuManagementView() {
                 disabled={!formName.trim() || !formPrice || saving}
                 className="px-6 py-2.5 rounded-xl bg-[#002e47] hover:bg-[#003a5c] text-white font-black text-xs transition shadow-xs disabled:opacity-50 cursor-pointer"
               >
-                {saving ? "กำลังบันทึก..." : editItem ? "💾 บันทึกการแก้ไข" : "✅ เพิ่มเมนู"}
+                {saving ? t("กำลังดำเนินการ...") : editItem ? `💾 ${t("บันทึกการเปลี่ยนแปลง")}` : `✅ ${t("เพิ่มเมนู")}`}
               </button>
             </div>
           </div>
         ) : (
           <div className="bg-white border border-[#ece4d6] rounded-3xl shadow-xs flex-1 flex flex-col items-center justify-center text-center p-12">
             <div className="text-6xl mb-4">📋</div>
-            <h3 className="font-black text-[#002e47] text-base mb-2">จัดการเมนูอาหาร</h3>
+            <h3 className="font-black text-[#002e47] text-base mb-2">{t("จัดการเมนู")}</h3>
             <p className="text-xs text-slate-500 font-semibold max-w-[220px] leading-relaxed mb-6">
-              เลือกเมนูจากรายการด้านซ้ายเพื่อแก้ไข หรือกด "+ เพิ่มเมนู" เพื่อสร้างเมนูใหม่
+              {t("เลือกเมนูจากรายการด้านซ้ายเพื่อแก้ไข หรือกด \"+ เพิ่มเมนู\" เพื่อสร้างเมนูใหม่")}
             </p>
             <button
               type="button"
@@ -816,7 +962,7 @@ export function MenuManagementView() {
               className="flex items-center gap-2 bg-[#002e47] hover:bg-[#003a5c] text-white font-black text-sm px-5 py-3 rounded-2xl transition shadow-md cursor-pointer"
             >
               <Plus size={16} />
-              <span>เพิ่มเมนูใหม่</span>
+              <span>{t("เพิ่มเมนูใหม่")}</span>
             </button>
           </div>
         )}
