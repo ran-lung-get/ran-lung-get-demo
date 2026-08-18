@@ -8,6 +8,7 @@ export const MENU: MenuItem[] = [
     price: 60,
     image: '/meal/krapao.jpg',
     category: "signature",
+    tags: ["ผัด & กับข้าว", "ยอดนิยม", "เผ็ดจัด", "ตามสั่ง"],
     options: [
       { id: "spicy", name: "ระดับความเผ็ด", choices: [{ id: "0", label: "ไม่เผ็ด" }, { id: "1", label: "เผ็ดน้อย" }, { id: "2", label: "เผ็ดกลาง" }, { id: "3", label: "เผ็ดมาก" }] }
     ],
@@ -20,6 +21,7 @@ export const MENU: MenuItem[] = [
     price: 65,
     image: '/meal/pad_tua_sea.jpg',
     category: "signature",
+    tags: ["ผัด & กับข้าว", "แนะนำ", "รสเข้มข้น"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -29,6 +31,7 @@ export const MENU: MenuItem[] = [
     price: 65,
     image: '/meal/khao_moo_garlic.jpg',
     category: "main",
+    tags: ["ผัด & กับข้าว", "เด็กทานได้", "กลมกล่อม"],
   },
   {
     id: "m_pad_see_ew",
@@ -37,6 +40,7 @@ export const MENU: MenuItem[] = [
     price: 70,
     image: '/meal/pad_see_ew.jpg',
     category: "noodles",
+    tags: ["เมนูเส้น", "Signature", "เส้นใหญ่", "หอมกระทะ"],
   },
   {
     id: "m_fried_rice",
@@ -45,6 +49,7 @@ export const MENU: MenuItem[] = [
     price: 70,
     image: '/meal/fried_rice.jpg',
     category: "rice",
+    tags: ["ข้าวผัด", "เด็กทานได้", "กระเทียมเจียว", "จานด่วน"],
   },
   {
     id: "m_pad_phong_kari",
@@ -53,6 +58,7 @@ export const MENU: MenuItem[] = [
     price: 75,
     image: '/meal/pad_pong_gari.jpg',
     category: "main",
+    tags: ["ผัด & กับข้าว", "ผงกะหรี่", "ไข่นุ่ม"],
   },
   {
     id: "m_pad_pak",
@@ -61,6 +67,7 @@ export const MENU: MenuItem[] = [
     price: 55,
     image: '/meal/pad_pak.jpg',
     category: "vegetarian",
+    tags: ["มังสวิรัติ", "ผัด & กับข้าว", "เพื่อสุขภาพ"],
   },
   {
     id: "m_pad_prik_gaeng",
@@ -69,6 +76,7 @@ export const MENU: MenuItem[] = [
     price: 80,
     image: '/meal/pad_tua_sea.jpg',
     category: "signature",
+    tags: ["ผัด & กับข้าว", "เผ็ดจัด", "พริกแกง", "แนะนำ"],
   },
   {
     id: "d_water",
@@ -77,6 +85,7 @@ export const MENU: MenuItem[] = [
     price: 15,
     image: '/meal/water.jpg',
     category: "drinks",
+    tags: ["เครื่องดื่ม", "สดชื่น"],
   },
   {
     id: "d_coke",
@@ -85,6 +94,7 @@ export const MENU: MenuItem[] = [
     price: 35,
     image: '/meal/coke.jpg',
     category: "drinks",
+    tags: ["เครื่องดื่ม", "น้ำอัดลม", "เย็นซ่า"],
   },
   {
     id: "d_luangyai",
@@ -93,6 +103,7 @@ export const MENU: MenuItem[] = [
     price: 45,
     image: '/meal/longan_juice.jpg',
     category: "drinks",
+    tags: ["เครื่องดื่ม", "Signature", "หวานชื่นใจ", "แนะนำ"],
   },
   {
     id: "d_orange",
@@ -101,6 +112,7 @@ export const MENU: MenuItem[] = [
     price: 50,
     image: '/meal/orange_juice.jpg',
     category: "drinks",
+    tags: ["เครื่องดื่ม", "วิตามินซี", "สดชื่น"],
   },
   {
     id: "dess_grass_jelly",
@@ -109,6 +121,7 @@ export const MENU: MenuItem[] = [
     price: 40,
     image: '/meal/grass_jelly.webp',
     category: "dessert",
+    tags: ["ของหวาน", "ดับร้อน", "เย็นสดชื่น"],
   },
   {
     id: "dess_shaved_ice",
@@ -117,6 +130,7 @@ export const MENU: MenuItem[] = [
     price: 55,
     image: '/meal/shaved_ice.jpg',
     category: "dessert",
+    tags: ["ของหวาน", "Signature", "ท็อปปิ้งแน่น", "แนะนำ"],
   },
   {
     id: "m_krapao_crispy_pork",
@@ -125,6 +139,7 @@ export const MENU: MenuItem[] = [
     price: 70,
     image: '/meal/krapao.jpg',
     category: "signature",
+    tags: ["ผัด & กับข้าว", "หมูกรอบ", "ยอดนิยม", "เผ็ดจัด"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -134,6 +149,7 @@ export const MENU: MenuItem[] = [
     price: 70,
     image: '/meal/pad_pak.jpg',
     category: "main",
+    tags: ["ผัด & กับข้าว", "Signature", "หมูกรอบ", "คะน้ากรอบ", "ยอดนิยม"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -143,6 +159,7 @@ export const MENU: MenuItem[] = [
     price: 70,
     image: '/meal/pad_tua_sea.jpg',
     category: "main",
+    tags: ["ผัด & กับข้าว", "หมูกรอบ", "เผ็ดจัด", "พริกแกง"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -152,6 +169,7 @@ export const MENU: MenuItem[] = [
     price: 60,
     image: '/meal/khao_moo_garlic.jpg',
     category: "main",
+    tags: ["ผัด & กับข้าว", "กระเทียมเจียว", "หมูนุ่ม", "เด็กทานได้"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -161,6 +179,7 @@ export const MENU: MenuItem[] = [
     price: 70,
     image: '/meal/pad_pong_gari.jpg',
     category: "signature",
+    tags: ["ผัด & กับข้าว", "ซีฟู้ด", "ผงกะหรี่", "แนะนำ"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -170,6 +189,7 @@ export const MENU: MenuItem[] = [
     price: 60,
     image: '/meal/pad_tua_sea.jpg',
     category: "main",
+    tags: ["ผัด & กับข้าว", "เนื้อวัว", "เผ็ดจัด", "สมุนไพร"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -179,6 +199,7 @@ export const MENU: MenuItem[] = [
     price: 75,
     image: '/meal/pad_see_ew.jpg',
     category: "noodles",
+    tags: ["เมนูเส้น", "Signature", "หมูกรอบ", "หอมกระทะ"],
   },
   {
     id: "m_mama_prik_gaeng_shrimp",
@@ -187,6 +208,7 @@ export const MENU: MenuItem[] = [
     price: 65,
     image: '/meal/pad_tua_sea.jpg',
     category: "noodles",
+    tags: ["เมนูเส้น", "Signature", "ซีฟู้ด", "กุ้งสด", "เผ็ดจัด"],
   },
   {
     id: "m_prik_pao_clam",
@@ -195,6 +217,7 @@ export const MENU: MenuItem[] = [
     price: 60,
     image: '/meal/pad_tua_sea.jpg',
     category: "main",
+    tags: ["ผัด & กับข้าว", "ซีฟู้ด", "หอยลาย", "แนะนำ"],
     addons: [{ id: "egg", name: "ไข่ดาว", price: 10 }],
   },
   {
@@ -204,5 +227,6 @@ export const MENU: MenuItem[] = [
     price: 50,
     image: '/meal/pad_pak.jpg',
     category: "vegetarian",
+    tags: ["มังสวิรัติ", "ผัด & กับข้าว", "เพื่อสุขภาพ", "เจ"],
   },
 ];

@@ -23,8 +23,10 @@ export type CouponReward = {
   id: string;
   name: string;
   nameEn: string;
+  nameZh?: string;
   description: string;
   descriptionEn: string;
+  descriptionZh?: string;
   rarity: GachaRarity;
   type: "discount_fixed" | "discount_percent" | "free_dish" | "free_addon";
   discountAmount?: number;

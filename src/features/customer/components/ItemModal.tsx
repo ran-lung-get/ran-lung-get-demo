@@ -212,6 +212,18 @@ export function ItemModal({
               <h2 className="text-2xl font-bold truncate" style={{ color: BRAND }}>
                 {formattedName}
               </h2>
+              {Array.isArray(item.tags) && item.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {item.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#002e47]/10 text-[#002e47]"
+                    >
+                      #{tMenu(tag, "tag")}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="mt-2 text-sm text-slate-600">{tMenu(item.desc, "desc")}</p>
               <p className="mt-3 text-xl font-bold" style={{ color: BRAND }}>
                 ฿{unitPrice}

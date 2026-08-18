@@ -1,5 +1,6 @@
 import { Shield, LayoutDashboard, Users } from "lucide-react";
 import type { AdminViewType } from "../types";
+import { useLanguage } from "../../../lib/i18n";
 
 export function AdminSidebarContent({
   view,
@@ -13,6 +14,8 @@ export function AdminSidebarContent({
   pendingCount?: number;
   onOpenResetModal?: () => void;
 }) {
+  const { t } = useLanguage();
+
   const selectTab = (v: AdminViewType) => {
     setView(v);
     if (setSidebarOpen) setSidebarOpen(false);
@@ -28,7 +31,7 @@ export function AdminSidebarContent({
           </div>
           <div>
             <h2 className="font-black text-sm tracking-tight text-white uppercase">
-              แผงผู้ดูแลระบบ
+              {t("ระบบจัดการหลังบ้าน")}
             </h2>
             <p className="text-[9px] font-bold text-[#fcc14a] tracking-wider uppercase">
               ADMIN PANEL
@@ -40,7 +43,7 @@ export function AdminSidebarContent({
       {/* Nav */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block px-2 mb-2">
-          เมนูเจ้าของร้าน
+          {t("เมนูเจ้าของร้าน")}
         </span>
 
         <button
@@ -56,7 +59,7 @@ export function AdminSidebarContent({
             size={18}
             className={view === "dashboard" ? "text-[#fcc14a]" : "text-white/60"}
           />
-          <span className="text-sm">แดชบอร์ดรายได้</span>
+          <span className="text-sm">{t("ภาพรวม")}</span>
         </button>
 
         <button
@@ -69,7 +72,7 @@ export function AdminSidebarContent({
           }`}
         >
           <Users size={18} className={view === "staff" ? "text-[#fcc14a]" : "text-white/60"} />
-          <span className="text-sm">จัดการสิทธิ์พนักงาน</span>
+          <span className="text-sm">{t("จัดการพนักงาน")}</span>
         </button>
       </div>
     </div>

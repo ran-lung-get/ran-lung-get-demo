@@ -25,6 +25,7 @@ import {
   AdminStaffView,
   AdminResetModal,
 } from "../../features/admin";
+import { useLanguage } from "../../lib/i18n";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminDashboard() {
+  const { t, tMenu } = useLanguage();
   const navigate = useNavigate();
   const [view, setView] = useState<AdminViewType>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -547,7 +549,7 @@ function AdminDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
         <div className="text-center space-y-3">
           <div className="h-10 w-10 border-4 border-[#002e47] border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-bold text-gray-500">กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ...</p>
+          <p className="text-sm font-bold text-gray-500">{t("กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ...")}</p>
         </div>
       </div>
     );
@@ -560,13 +562,13 @@ function AdminDashboard() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            aria-label="เปิดเมนูนำทาง"
+            aria-label={t("เปิดเมนูนำทาง")}
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 transition cursor-pointer"
           >
             <Menu size={20} />
           </button>
-          <span className="font-black text-sm tracking-wide">หลังบ้านผู้ดูแลระบบ (Admin)</span>
+          <span className="font-black text-sm tracking-wide">{t("ระบบจัดการหลังบ้าน")} (Admin)</span>
         </div>
       </header>
 
@@ -624,17 +626,17 @@ function AdminDashboard() {
               <div>
                 <h1 className="text-lg font-black text-[#002e47] tracking-tight">
                   {view === "dashboard"
-                    ? "รายงานยอดขาย & ประวัติ"
+                    ? t("ภาพรวม")
                     : view === "approvals"
-                      ? "คำขออนุมัติสิทธิ์"
-                      : "จัดการระดับพนักงาน"}
+                      ? t("คำขออนุมัติสิทธิ์")
+                      : t("จัดการพนักงาน")}
                 </h1>
                 <p className="text-xs text-slate-500 font-semibold">
                   {view === "dashboard"
-                    ? "วิเคราะห์ยอดขายสะสม ยอดสั่งซื้อ และรายรับทั้งหมดของร้าน"
+                    ? t("วิเคราะห์ยอดขายสะสม ยอดสั่งซื้อ และรายรับทั้งหมดของร้าน")
                     : view === "approvals"
-                      ? "อนุมัติหรือปฏิเสธคำขอสิทธิ์การใช้งานจากพนักงาน"
-                      : "จัดการและเปลี่ยนบทบาทสิทธิ์ (Admin / Staff / Customer) ในระบบ"}
+                      ? t("อนุมัติหรือปฏิเสธคำขอสิทธิ์การใช้งานจากพนักงาน")
+                      : t("จัดการและเปลี่ยนบทบาทสิทธิ์ (Admin / Staff / Customer) ในระบบ")}
                 </p>
               </div>
             </div>
@@ -644,7 +646,7 @@ function AdminDashboard() {
               className="flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl px-3.5 py-2 transition"
             >
               <ArrowLeft size={14} />
-              <span>สั่งอาหาร (หน้าร้าน)</span>
+              <span>{t("สั่งอาหาร (หน้าลูกค้า)")}</span>
             </a>
           </div>
         </header>

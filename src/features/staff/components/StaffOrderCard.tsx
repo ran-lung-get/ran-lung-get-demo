@@ -1,5 +1,6 @@
 import { RotateCcw, Check, Trash2 } from "lucide-react";
 import type { OrderHistory } from "../types";
+import { useLanguage } from "../../../lib/i18n";
 
 export function StaffOrderCard({
   order,
@@ -12,18 +13,19 @@ export function StaffOrderCard({
   regressOrderStatus: (id: string) => void;
   cancelOrder: (id: string) => void;
 }) {
+  const { t, tMenu } = useLanguage();
   const isDineIn = order.orderType === "dine-in";
   const isTakeaway = order.orderType === "takeaway";
   const isDelivery = order.orderType === "delivery";
-  let typeBadge = "ทานที่ร้าน";
+  let typeBadge = t("ทานที่ร้าน");
   let typeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
   let borderLeftColor = "border-l-[#fcc14a]";
   if (isTakeaway) {
-    typeBadge = "กลับบ้าน";
+    typeBadge = t("กลับบ้าน");
     typeColor = "bg-blue-50 text-blue-800 border-blue-200";
     borderLeftColor = "border-l-[#5a6e7a]";
   } else if (isDelivery) {
-    typeBadge = "เดลิเวอรี่";
+    typeBadge = t("จัดส่ง");
     typeColor = "bg-amber-50 text-amber-800 border-amber-200";
     borderLeftColor = "border-l-[#002e47]";
   }
@@ -33,21 +35,21 @@ export function StaffOrderCard({
   const isDelivering = (s: string) => s === "กำลังจัดส่ง" || s === "delivering";
   const isWaiting = (s: string) => s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending";
 
-  let nextBtnText = "เริ่มทำครัว";
+  let nextBtnText = t("เริ่มทำอาหาร");
   let nextBtnColor = "bg-[#002e47] text-white hover:bg-[#003957]";
   if (isCooking(order.status)) {
-    nextBtnText = isDelivery ? "ปรุงเสร็จ · รอไรเดอร์" : "ปรุงสำเร็จ";
+    nextBtnText = isDelivery ? t("ทำเสร็จแล้ว") + " · " + t("รอไรเดอร์มารับ") : t("ทำเสร็จแล้ว");
     nextBtnColor = "bg-blue-600 text-white hover:bg-blue-700";
   } else if (isReady(order.status)) {
     if (isDelivery) {
-      nextBtnText = "มอบให้ไรเดอร์ (กำลังส่ง)";
+      nextBtnText = t("เริ่มจัดส่ง");
       nextBtnColor = "bg-indigo-600 text-white hover:bg-indigo-700";
     } else {
-      nextBtnText = "ส่งเสิร์ฟสำเร็จ";
+      nextBtnText = t("ส่งมอบสำเร็จ");
       nextBtnColor = "bg-emerald-600 text-white hover:bg-emerald-700";
     }
   } else if (isDelivering(order.status)) {
-    nextBtnText = "ส่งถึงแล้ว · สำเร็จ";
+    nextBtnText = t("สำเร็จ");
     nextBtnColor = "bg-slate-800 text-white hover:bg-slate-900";
   }
 
@@ -65,22 +67,22 @@ export function StaffOrderCard({
         </span>
       </div>
       <div className="pt-2 border-t border-slate-100">
-        <p className="text-[10px] font-bold text-slate-400">รายละเอียดลูกค้า:</p>
+        <p className="text-[10px] font-bold text-slate-400">{t("รายละเอียดลูกค้า")}:</p>
         <p className="text-xs font-black text-[#002e47] mt-0.5">
-          {order.customerName || "คุณลูกค้า"} {isDineIn && order.tableNumber && `(โต๊ะ ${order.tableNumber})`}
+          {order.customerName || t("คุณลูกค้า")} {isDineIn && order.tableNumber && `(${t("โต๊ะ")} ${order.tableNumber})`}
         </p>
       </div>
       <div className="space-y-1.5">
         {(order.items || []).map((i, idx) => (
           <div key={idx} className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-700">{i?.name || "รายการอาหาร"}</span>
+            <span className="font-semibold text-slate-700">{i?.name ? tMenu(i.name, "name") : t("รายการอาหาร")}</span>
             <span className="font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">x{i?.qty || 1}</span>
           </div>
         ))}
       </div>
       {order.note && (
         <div className="p-2 bg-red-50/50 border border-red-100 rounded-xl text-[10px] font-black text-red-700">
-          💡 หมายเหตุ: {order.note}
+          💡 {t("หมายเหตุ")}: {order.note}
         </div>
       )}
       <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">

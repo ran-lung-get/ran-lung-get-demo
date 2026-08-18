@@ -24,6 +24,7 @@ export type MenuItemDB = {
   image: string | null;
   image_url: string | null;
   category: string;
+  tags?: string[] | null;
   is_available: boolean;
   is_spicy: boolean;
   sort_order: number;

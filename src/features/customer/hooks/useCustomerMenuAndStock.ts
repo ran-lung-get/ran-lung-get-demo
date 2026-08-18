@@ -29,6 +29,7 @@ export function useCustomerMenuAndStock() {
             price: Number(item.price),
             image: item.image_url || item.image || "",
             category: item.category,
+            tags: Array.isArray(item.tags) ? item.tags : [],
             isAvailable: (item.is_available !== false) && !outOfStockIds.includes(item.id),
             isSpicy: item.is_spicy ?? false,
             options: item.options || undefined,

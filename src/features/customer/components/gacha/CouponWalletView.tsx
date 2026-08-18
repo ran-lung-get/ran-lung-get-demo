@@ -68,8 +68,18 @@ export function CouponWalletView({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {coupons.map((coupon, idx) => {
           const config = getRarityConfig(coupon.rarity);
-          const couponName = language === "th" ? coupon.name : coupon.nameEn;
-          const couponDesc = language === "th" ? coupon.description : coupon.descriptionEn;
+          const couponName =
+            language === "th"
+              ? coupon.name
+              : language === "zh" && coupon.nameZh
+              ? coupon.nameZh
+              : coupon.nameEn || coupon.name;
+          const couponDesc =
+            language === "th"
+              ? coupon.description
+              : language === "zh" && coupon.descriptionZh
+              ? coupon.descriptionZh
+              : coupon.descriptionEn || coupon.description;
 
           return (
             <motion.div
@@ -101,7 +111,7 @@ export function CouponWalletView({
                 </p>
                 {coupon.minSpend && (
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    *{language === "th" ? `เมื่อสั่งซื้อขั้นต่ำ ฿${coupon.minSpend}` : `Min. spend ฿${coupon.minSpend}`}
+                    *{language === "th" ? `เมื่อสั่งซื้อขั้นต่ำ ฿${coupon.minSpend}` : language === "zh" ? `最低消费 ฿${coupon.minSpend}` : `Min. spend ฿${coupon.minSpend}`}
                   </p>
                 )}
               </div>

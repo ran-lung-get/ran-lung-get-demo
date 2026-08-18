@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { PlusCircle, AlertTriangle, Edit2, Trash2, X } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
+import { useLanguage } from "../../../lib/i18n";
 
 export function StockManagementView({ handleLogout: _handleLogout }: { handleLogout?: () => void }) {
+  const { t, tMenu } = useLanguage();
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterLowStock, setFilterLowStock] = useState(false);
@@ -229,8 +231,8 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
       {/* Title bar */}
       <div className="bg-white border border-[#ece4d6] rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div>
-          <h2 className="text-base font-black text-[#002e47]">จัดการคลังวัตถุดิบ & สต็อก (Stock Management)</h2>
-          <p className="text-xs text-slate-500 font-semibold mt-0.5">รวมวัตถุดิบทั้งหมด {ingredients.length} ชนิด</p>
+          <h2 className="text-base font-black text-[#002e47]">{t("สต็อกวัตถุดิบ")}</h2>
+          <p className="text-xs text-slate-500 font-semibold mt-0.5">{t("รวมวัตถุดิบทั้งหมด")} {ingredients.length} {t("รายการ")}</p>
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
@@ -239,7 +241,7 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
             onClick={fetchIngredients}
             className="bg-[#002e47]/5 border hover:bg-[#002e47]/10 text-[#002e47] text-xs font-black px-3.5 py-2.5 rounded-xl transition cursor-pointer"
           >
-            🔄 โหลดใหม่
+            🔄 {t("โหลดใหม่")}
           </button>
           <button
             type="button"
@@ -247,7 +249,7 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
             className="bg-[#fcc14a] hover:bg-[#fcc14a]/90 text-[#002e47] text-xs font-black px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <PlusCircle size={15} />
-            <span>เพิ่มวัตถุดิบ</span>
+            <span>{t("เพิ่มวัตถุดิบ")}</span>
           </button>
         </div>
       </div>
@@ -262,7 +264,7 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
               !filterLowStock ? "bg-[#002e47] text-white shadow-inner" : "text-[#5a6e7a] hover:text-[#002e47] hover:bg-slate-50"
             }`}
           >
-            วัตถุดิบทั้งหมด ({ingredients.length})
+            {t("วัตถุดิบทั้งหมด")} ({ingredients.length})
           </button>
           <button
             type="button"
@@ -272,7 +274,7 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
             }`}
           >
             {lowStockCount > 0 && <span className="h-2 w-2 rounded-full bg-current animate-pulse shrink-0" />}
-            <span>ของใกล้หมด / ต่ำกว่าเกณฑ์ ({lowStockCount})</span>
+            <span>{t("ของใกล้หมด / ต่ำกว่าเกณฑ์")} ({lowStockCount})</span>
           </button>
         </div>
       </div>
@@ -280,11 +282,11 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
       {/* Ingredients Grid/List */}
       {loading ? (
         <div className="bg-white border border-[#ece4d6] rounded-3xl p-16 text-center text-slate-400 font-bold shadow-xs">
-          กำลังดึงข้อมูลคลังสต็อก...
+          {t("กำลังดาวน์โหลด...")}
         </div>
       ) : filteredIngredients.length === 0 ? (
         <div className="bg-white border border-[#ece4d6] rounded-3xl p-16 text-center text-slate-400 font-bold shadow-xs">
-          {filterLowStock ? "🎉 เยี่ยมมาก! ไม่มีวัตถุดิบใดที่ต่ำกว่าเกณฑ์แจ้งเตือน" : "❌ ไม่พบรายการวัตถุดิบ"}
+          {filterLowStock ? t("ไม่มีวัตถุดิบใดที่ต่ำกว่าเกณฑ์แจ้งเตือน") : t("ไม่พบรายการวัตถุดิบ")}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -307,7 +309,7 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                   <div className="flex justify-between items-start gap-2">
                     <div>
                       <h3 className="font-black text-[#002e47] text-sm flex items-center gap-1.5">
-                        {ing.name}
+                        {tMenu(ing.name, "name")}
                         {isLow && (
                           <span className="text-red-500" title="ของใกล้หมดสต็อก!">
                             <AlertTriangle size={15} className="fill-red-100" />
@@ -315,7 +317,7 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                         )}
                       </h3>
                       <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                        สถานะ: {isLow ? <span className="text-red-600 font-black">ต่ำกว่าเกณฑ์ (Low)</span> : <span className="text-emerald-600 font-black">ปกติ (Good)</span>}
+                        {t("สถานะ")}: {isLow ? <span className="text-red-600 font-black">{t("สินค้าหมด")}</span> : <span className="text-emerald-600 font-black">{t("พร้อมจำหน่าย")}</span>}
                       </p>
                     </div>
 
@@ -333,11 +335,11 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                       <div className={`h-full ${progressColor} transition-all duration-500`} style={{ width: `${percentage}%` }} />
                     </div>
                     <div className="flex justify-between text-[9px] text-slate-400 font-bold">
-                      <span>เหลือน้อย</span>
+                      <span>{t("ของใกล้หมด / ต่ำกว่าเกณฑ์")}</span>
                       <span>
-                        เกณฑ์เตือน: {threshold} {ing.unit}
+                        {t("เกณฑ์เตือน")}: {threshold} {ing.unit}
                       </span>
-                      <span>พอดี</span>
+                      <span>{t("พร้อมจำหน่าย")}</span>
                     </div>
                   </div>
                 </div>
@@ -345,7 +347,7 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                 {/* Quick actions */}
                 <div className="pt-4 border-t border-slate-100 flex flex-col gap-2.5">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[9px] font-bold text-slate-400">เติมด่วน:</span>
+                    <span className="text-[9px] font-bold text-slate-400">{t("เติมด่วน")}:</span>
                     <div className="flex gap-1">
                       {ing.unit === "g" ? (
                         <>
@@ -371,14 +373,14 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                             onClick={() => handleQuickAdd(ing.id, 10)}
                             className="px-2 py-1 bg-slate-50 hover:bg-[#002e47] hover:text-white border border-slate-200 text-slate-600 rounded-lg text-[9px] font-black transition cursor-pointer"
                           >
-                            +10 ชิ้น
+                            +10
                           </button>
                           <button
                             type="button"
                             onClick={() => handleQuickAdd(ing.id, 50)}
                             className="px-2 py-1 bg-slate-50 hover:bg-[#002e47] hover:text-white border border-slate-200 text-slate-600 rounded-lg text-[9px] font-black transition cursor-pointer"
                           >
-                            +50 ชิ้น
+                            +50
                           </button>
                         </>
                       )}
@@ -392,13 +394,13 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                       className="flex-1 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 font-bold text-[10px] rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Edit2 size={11} />
-                      <span>แก้ไข / เติมละเอียด</span>
+                      <span>{t("แก้ไข")}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteIng(ing.id)}
                       className="p-1.5 bg-red-50 border border-red-100 text-red-600 rounded-xl hover:bg-red-100 transition cursor-pointer"
-                      title="ลบวัตถุดิบ"
+                      title={t("ลบ")}
                     >
                       <Trash2 size={11} />
                     </button>
@@ -425,9 +427,9 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
             <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4 shrink-0">
               <div>
                 <h3 className="text-base font-black flex items-center gap-2">
-                  {isAddModalOpen ? "➕ เพิ่มวัตถุดิบใหม่" : "📝 แก้ไขวัตถุดิบ"}
+                  {isAddModalOpen ? `➕ ${t("เพิ่มวัตถุดิบ")}` : `📝 ${t("แก้ไข")}`}
                 </h3>
-                <p className="text-xs text-slate-500 font-semibold mt-0.5">ระบุจำนวนหน่วยและเกณฑ์แจ้งเตือนคลังเหลือน้อย</p>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">{t("สต็อกวัตถุดิบ")}</p>
               </div>
               <button
                 type="button"
@@ -443,19 +445,19 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-500 block mb-1.5">ชื่อวัตถุดิบ</label>
+                <label className="text-xs font-bold text-slate-500 block mb-1.5">{t("ชื่อวัตถุดิบ")}</label>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="เช่น พริกขี้หนูสวน, เนื้อปู"
+                  placeholder="เช่น หมูสับ, กุ้ง, ไข่"
                   className="w-full px-3 py-2 border border-[#ece4d6] rounded-xl text-xs font-bold text-[#002e47] focus:outline-none focus:ring-2 focus:ring-[#002e47]/10"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1.5">ปริมาณสต็อก</label>
+                  <label className="text-xs font-bold text-slate-500 block mb-1.5">{t("ปริมาณสต็อก")}</label>
                   <input
                     type="number"
                     value={formQty}
@@ -465,22 +467,22 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1.5">หน่วยนับ</label>
+                  <label className="text-xs font-bold text-slate-500 block mb-1.5">{t("หน่วยนับ")}</label>
                   <select
                     value={formUnit}
                     onChange={(e) => setFormUnit(e.target.value)}
                     className="w-full px-3 py-2 border border-[#ece4d6] rounded-xl text-xs font-bold text-[#002e47] focus:outline-none focus:ring-2 focus:ring-[#002e47]/10 bg-white"
                   >
-                    <option value="g">กรัม (g)</option>
-                    <option value="pcs">ชิ้น/ฟอง (pcs)</option>
-                    <option value="ml">มิลลิลิตร (ml)</option>
-                    <option value="kg">กิโลกรัม (kg)</option>
+                    <option value="g">g</option>
+                    <option value="pcs">pcs</option>
+                    <option value="ml">ml</option>
+                    <option value="kg">kg</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 block mb-1.5">ระดับแจ้งเตือนสต็อกต่ำสุด (Threshold)</label>
+                <label className="text-xs font-bold text-slate-500 block mb-1.5">{t("เกณฑ์เตือน")} (Threshold)</label>
                 <input
                   type="number"
                   value={formThreshold}
@@ -499,14 +501,14 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
                 }}
                 className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs cursor-pointer transition"
               >
-                ยกเลิก
+                {t("ยกเลิก")}
               </button>
               <button
                 type="button"
                 onClick={isAddModalOpen ? handleSaveNew : handleSaveEdit}
                 className="px-4 py-2 rounded-xl bg-[#002e47] hover:bg-[#002e47]/90 text-white font-black text-xs cursor-pointer transition shadow-xs"
               >
-                💾 บันทึกข้อมูล
+                💾 {t("บันทึกข้อมูล")}
               </button>
             </div>
           </div>

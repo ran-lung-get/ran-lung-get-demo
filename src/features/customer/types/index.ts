@@ -13,6 +13,7 @@ export type MenuItem = {
   price: number;
   image: string;
   category: string;
+  tags?: string[];
   spicy?: boolean;
   options?: { id: string; name: string; choices: { id: string; label: string; price?: number }[] }[];
   addons?: Addon[];

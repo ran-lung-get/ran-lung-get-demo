@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, Shield, ShieldCheck, UserCheck, UserX, Trash2 } from "lucide-react";
+import { useLanguage } from "../../../lib/i18n";
 
 export function AdminStaffView({
   users,
@@ -16,12 +17,13 @@ export function AdminStaffView({
   deleteUser: (id: string, name: string) => void;
   isApprovalsTab?: boolean;
 }) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
 
   if (loading) {
     return (
       <div className="text-center py-20 font-bold text-gray-500">
-        กำลังดาวน์โหลดรายชื่อผู้ใช้งาน...
+        {t("กำลังดาวน์โหลดรายชื่อผู้ใช้งาน...")}
       </div>
     );
   }
@@ -43,14 +45,14 @@ export function AdminStaffView({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
         <h2 className="text-sm font-black text-[#002e47]">
           {isApprovalsTab
-            ? "⏳ คำขออนุมัติสิทธิ์ (รอตรวจสอบ)"
-            : "👥 รายชื่อผู้ใช้ระบบและสิทธิ์การเข้าถึง"}
+            ? `⏳ ${t("คำขออนุมัติสิทธิ์ (รอตรวจสอบ)")}`
+            : `👥 ${t("รายชื่อผู้ใช้ระบบและสิทธิ์การเข้าถึง")}`}
         </h2>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
             type="text"
-            placeholder="ค้นหาชื่อ, อีเมล, สิทธิ์..."
+            placeholder={t("ค้นหาชื่อ, อีเมล, สิทธิ์...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all w-full sm:w-64"
@@ -61,17 +63,17 @@ export function AdminStaffView({
         <table className="w-full text-left border-collapse text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-[#ece4d6] text-[#5a6e7a] font-bold">
-              <th className="py-3 px-4">ชื่อผู้ใช้ / อีเมล</th>
-              <th className="py-3 px-4">ระดับสิทธิ์ (Role)</th>
-              <th className="py-3 px-4">สถานะบัญชี</th>
-              <th className="py-3 px-4 text-right">ปรับบทบาทสิทธิ์พนักงาน</th>
+              <th className="py-3 px-4">{t("ชื่อผู้ใช้ / อีเมล")}</th>
+              <th className="py-3 px-4">{t("ระดับสิทธิ์ (Role)")}</th>
+              <th className="py-3 px-4">{t("สถานะบัญชี")}</th>
+              <th className="py-3 px-4 text-right">{t("ปรับบทบาทสิทธิ์พนักงาน")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
             {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan={4} className="py-8 text-center text-slate-400 italic">
-                  ไม่พบข้อมูลรายชื่อในระบบ
+                  {t("ไม่พบข้อมูลรายชื่อในระบบ")}
                 </td>
               </tr>
             ) : (
@@ -128,10 +130,10 @@ export function AdminStaffView({
                       >
                         {isActive ? <UserCheck size={11} /> : <UserX size={11} />}
                         {isActive
-                          ? "ใช้งานได้"
+                          ? t("เปิดใช้งาน")
                           : isApprovalsTab
-                            ? "รออนุมัติ / ระงับชั่วคราว"
-                            : "ระงับชั่วคราว"}
+                            ? t("รอการอนุมัติ")
+                            : t("ระงับการใช้งาน")}
                       </button>
                     </td>
                     <td className="py-3 px-4 text-right space-x-1.5">
@@ -173,10 +175,10 @@ export function AdminStaffView({
                           type="button"
                           onClick={() => deleteUser(user.id, user.display_name)}
                           className="px-2.5 py-1 rounded text-[10px] font-bold border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition cursor-pointer active:scale-95 flex items-center gap-1 shrink-0 ml-1"
-                          title="ลบผู้ใช้งาน"
+                          title={t("ลบ")}
                         >
                           <Trash2 size={11} />
-                          <span>ลบ</span>
+                          <span>{t("ลบ")}</span>
                         </button>
                       </div>
                     </td>
