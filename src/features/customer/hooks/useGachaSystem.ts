@@ -254,6 +254,20 @@ export function useGachaSystem() {
     [state.claimedSetIds, state.cards]
   );
 
+  // Add coupon directly (e.g. from Fortune Wheel / Mini-games)
+  const addCoupon = useCallback((coupon: CouponReward) => {
+    setState((prev) => {
+      const uniqueCoupon: CouponReward = {
+        ...coupon,
+        id: `${coupon.id}-${Date.now()}`,
+      };
+      return {
+        ...prev,
+        coupons: [uniqueCoupon, ...prev.coupons],
+      };
+    });
+  }, []);
+
   // Remove used coupon
   const removeCoupon = useCallback((couponId: string) => {
     setState((prev) => ({
@@ -266,6 +280,7 @@ export function useGachaSystem() {
     state,
     hasDailyFree,
     addTickets,
+    addCoupon,
     performPulls,
     claimSetReward,
     removeCoupon,

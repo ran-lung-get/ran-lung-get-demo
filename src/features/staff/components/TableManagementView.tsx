@@ -11,7 +11,7 @@ export function TableManagementView({
   orders: OrderHistory[];
   onRefreshOrders: () => Promise<void>;
 }) {
-  const { t, tMenu } = useLanguage();
+  const { t, tMenu, tTable } = useLanguage();
   const [tables, setTables] = useState<any[]>([
     { id: "1", label: "โต๊ะ 1", status: "available", capacity: 4, table_type: "normal" },
     { id: "2", label: "โต๊ะ 2", status: "occupied", capacity: 4, table_type: "normal" },
@@ -397,7 +397,7 @@ export function TableManagementView({
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-black text-base text-[#002e47]">{table.label}</span>
+                          <span className="font-black text-base text-[#002e47]">{tTable(table.label)}</span>
                           <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs ${statusBadgeClass}`}>
                             {statusLabel}
                           </span>
@@ -447,7 +447,7 @@ export function TableManagementView({
             <div className="flex flex-col flex-1 h-full text-[#002e47]">
               <div className="flex justify-between items-start pb-4 border-b border-slate-100 mb-5">
                 <div>
-                  <h3 className="text-lg font-black">{selectedTable.label}</h3>
+                  <h3 className="text-lg font-black">{tTable(selectedTable.label)}</h3>
                   <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border inline-block mt-1 ${
                     selectedTable.status === "occupied"
                       ? "bg-red-500 text-white border-red-600"
@@ -522,7 +522,7 @@ export function TableManagementView({
                   onClick={() => setConfirmDialog({
                     isOpen: true,
                     title: t("ยืนยันการเคลียร์โต๊ะ"),
-                    message: `${t("ยืนยันการเคลียร์โต๊ะ")} ${selectedTable.label}?`,
+                    message: `${t("ยืนยันการเคลียร์โต๊ะ")} ${tTable(selectedTable.label)}?`,
                     onConfirm: async () => { await clearTableAndOrders(selectedTable.label); }
                   })}
                   className="w-full py-3 px-4 rounded-xl border border-red-200 text-red-700 bg-red-50/30 hover:bg-red-50 font-bold text-xs flex items-center justify-between transition cursor-pointer"
@@ -536,7 +536,7 @@ export function TableManagementView({
                   onClick={() => setConfirmDialog({
                     isOpen: true,
                     title: `⚠️ ${t("ยืนยันการลบโต๊ะ")}`,
-                    message: `${t("ยืนยันการลบโต๊ะ")} ${selectedTable.label}?`,
+                    message: `${t("ยืนยันการลบโต๊ะ")} ${tTable(selectedTable.label)}?`,
                     onConfirm: async () => { await deleteTable(selectedTable.id, selectedTable.label); }
                   })}
                   className="w-full py-3 px-4 rounded-xl border border-red-300 text-red-800 bg-red-100/50 hover:bg-red-100 font-bold text-xs flex items-center justify-between transition cursor-pointer"
@@ -712,7 +712,7 @@ export function TableManagementView({
               <div>
                 <h3 className="text-lg font-black flex items-center gap-2">🔄 {t("ย้าย / รวมออเดอร์")}</h3>
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  {t("เลือกโต๊ะปลายทาง")} <span className="font-extrabold text-[#002e47] underline">{selectedTable.label}</span>
+                  {t("เลือกโต๊ะปลายทาง")} <span className="font-extrabold text-[#002e47] underline">{tTable(selectedTable.label)}</span>
                 </p>
               </div>
               <button
@@ -728,21 +728,21 @@ export function TableManagementView({
                 {[...tables]
                   .sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10))
                   .filter((t) => t.id !== selectedTable.id)
-                  .map((t) => {
-                    const activeOrders = getActiveOrdersForTable(t.label);
-                    const isOccupied = t.status === "occupied";
+                  .map((tItem) => {
+                    const activeOrders = getActiveOrdersForTable(tItem.label);
+                    const isOccupied = tItem.status === "occupied";
                     return (
                       <button
-                        key={t.id}
+                        key={tItem.id}
                         type="button"
                         onClick={() => {
-                          const actionText = isOccupied ? `รวมออเดอร์กับ ${t.label}` : `ย้ายออเดอร์ทั้งหมดไปที่ ${t.label}`;
+                          const actionText = isOccupied ? `${t("รวมออเดอร์กับ")} ${tTable(tItem.label)}` : `${t("ย้ายออเดอร์ทั้งหมดไปที่")} ${tTable(tItem.label)}`;
                           setConfirmDialog({
                             isOpen: true,
-                            title: isOccupied ? "ยืนยันการรวมออเดอร์" : "ยืนยันการย้ายโต๊ะ",
-                            message: `คุณต้องการ${actionText} ใช่หรือไม่?`,
+                            title: isOccupied ? t("ยืนยันการรวมออเดอร์") : t("ยืนยันการย้ายโต๊ะ"),
+                            message: `${t("คุณต้องการ")}${actionText} ${t("ใช่หรือไม่")}?`,
                             onConfirm: async () => {
-                              await moveAllOrders(selectedTable.label, t.label);
+                              await moveAllOrders(selectedTable.label, tItem.label);
                               setIsMoveSelectorOpen(false);
                             },
                           });
@@ -750,14 +750,14 @@ export function TableManagementView({
                         className={`border-2 rounded-md p-4 text-left transition flex flex-col justify-between min-h-[110px] cursor-pointer ${isOccupied ? "bg-red-50/10 border-red-100 hover:bg-red-50/50" : "bg-emerald-50/10 border-emerald-100 hover:bg-emerald-50/50"}`}
                       >
                         <div className="w-full flex items-center justify-between">
-                          <span className="font-extrabold text-sm">{t.label}</span>
+                          <span className="font-extrabold text-sm">{tTable(tItem.label)}</span>
                           <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${isOccupied ? "bg-red-500 text-white border-red-600" : "bg-emerald-500 text-white border-emerald-600"}`}>
-                            {isOccupied ? "มีลูกค้า" : "ว่าง"}
+                            {isOccupied ? t("มีลูกค้า") : t("ว่าง")}
                           </span>
                         </div>
                         {isOccupied && (
                           <div className="text-[10px] text-red-700 font-extrabold mt-2">
-                            {activeOrders.length > 0 ? `ค้างอยู่ ${activeOrders.length} ออเดอร์` : "นั่งโต๊ะเปล่า"}
+                            {activeOrders.length > 0 ? `${t("ค้างอยู่")} ${activeOrders.length} ${t("ออเดอร์")}` : t("มีลูกค้า")}
                           </div>
                         )}
                       </button>

@@ -709,7 +709,7 @@ function KitchenMonitor() {
                 <div className="bg-white border border-[#ece4d6] p-3 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-2.5 shrink-0 shadow-xs mb-6">
                   <div className="flex items-center gap-1.5 text-xs font-black text-[#002e47] shrink-0">
                     <ChefHat size={14} className="text-[#fcc14a]" />
-                    <span>ยอดรวมเมนูเตาอาหาร:</span>
+                    <span>{t("ยอดรวมเมนูเตาอาหาร")}:</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {menuSummary.map(([name, qty]) => (
@@ -717,7 +717,7 @@ function KitchenMonitor() {
                         key={name}
                         className="flex items-center gap-1.5 bg-[#002e47]/5 border border-[#002e47]/10 rounded-xl px-3 py-1 text-xs shrink-0 font-bold"
                       >
-                        <span className="text-[#002e47]">{name}</span>
+                        <span className="text-[#002e47]">{tMenu(name, "name")}</span>
                         <span className="bg-[#fcc14a] text-[#002e47] font-black px-1.5 py-0.2 rounded-md text-[10px]">
                           x{qty}
                         </span>

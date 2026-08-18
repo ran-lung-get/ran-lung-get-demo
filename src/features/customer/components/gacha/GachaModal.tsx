@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Ticket } from "lucide-react";
+import { X, Ticket, Gamepad2, Sparkles } from "lucide-react";
 import type {
   GachaBannerType,
   GachaPullResult,
@@ -16,29 +16,44 @@ import { GachaHistoryView } from "./GachaHistoryView";
 import { GachaRatesModal } from "./GachaRatesModal";
 import { GachaCinematic } from "./GachaCinematic";
 import { playClaimReward } from "../../utils/gachaAudio";
+import { WokMasterGame, UncleGetRpgGame, BanditShooterGame } from "../minigames";
 
 export function GachaModal({
   isOpen,
   onClose,
   onApplyCoupon,
+  initialTab = "wish",
+  onSelectDish,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onApplyCoupon?: (coupon: CouponReward) => void;
+  initialTab?: "wish" | "games" | "album" | "wallet" | "history";
+  onSelectDish?: (dishName: string) => void;
 }) {
   const { t } = useLanguage();
   const {
     state,
     hasDailyFree,
     addTickets,
+    addCoupon,
     performPulls,
     claimSetReward,
     removeCoupon,
   } = useGachaSystem();
 
-  const [activeTab, setActiveTab] = useState<"wish" | "album" | "wallet" | "history">("wish");
+  const [activeTab, setActiveTab] = useState<"wish" | "games" | "album" | "wallet" | "history">(
+    initialTab
+  );
+  const [activeMiniGame, setActiveMiniGame] = useState<"rpg" | "wok" | "shooter">("shooter");
   const [activeBanner, setActiveBanner] = useState<GachaBannerType>("coupon");
   const [showRatesModal, setShowRatesModal] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // Cinematic State
   const [cinematicData, setCinematicData] = useState<{
@@ -176,6 +191,11 @@ export function GachaModal({
           {[
             { id: "wish", label: t("ตู้คำอธิษฐาน") },
             {
+              id: "games",
+              label: t("🎮 มินิเกม"),
+              badge: "ฟรีตั๋ว",
+            },
+            {
               id: "album",
               label: t("สมุดสะสมการ์ด"),
               badge: `${totalCardsUnlocked}/13`,
@@ -257,6 +277,84 @@ export function GachaModal({
                 onPull={handlePull}
                 onOpenRates={() => setShowRatesModal(true)}
               />
+            </div>
+          )}
+
+          {activeTab === "games" && (
+            <div className="space-y-3">
+              {/* Mini Games Selector Sub-tabs */}
+              <div className="grid grid-cols-3 gap-1.5 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+                {[
+                  {
+                    id: "shooter",
+                    label: t("ดวล 8-Bit ยิงโจร"),
+                    emoji: "🤠",
+                    color: "from-amber-600 to-red-600",
+                  },
+                  {
+                    id: "rpg",
+                    label: t("ศึก 8-Bit Dragon Quest"),
+                    emoji: "⚔️",
+                    color: "from-blue-600 to-indigo-600",
+                  },
+                  {
+                    id: "wok",
+                    label: t("ลุงเกตุควงกระทะ"),
+                    emoji: "🍳",
+                    color: "from-amber-500 to-red-500",
+                  },
+                ].map((gm) => (
+                  <button
+                    key={gm.id}
+                    type="button"
+                    onClick={() => setActiveMiniGame(gm.id as any)}
+                    className={`py-2 px-1 rounded-xl text-xs font-black transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                      activeMiniGame === gm.id
+                        ? `bg-linear-to-r ${gm.color} text-white shadow-lg`
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="text-sm sm:text-base">{gm.emoji}</span>
+                    <span className="truncate">{gm.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Game Screen Area */}
+              {activeMiniGame === "shooter" && (
+                <BanditShooterGame
+                  onAwardTickets={(amount) => {
+                    addTickets(amount);
+                    setTicketToast(true);
+                    setTimeout(() => setTicketToast(false), 2500);
+                  }}
+                  onAwardCoupon={(coupon) => {
+                    addCoupon(coupon);
+                  }}
+                  onClose={onClose}
+                  onSelectDish={onSelectDish}
+                />
+              )}
+              {activeMiniGame === "rpg" && (
+                <UncleGetRpgGame
+                  onAwardTickets={(amount) => {
+                    addTickets(amount);
+                    setTicketToast(true);
+                    setTimeout(() => setTicketToast(false), 2500);
+                  }}
+                  onClose={onClose}
+                />
+              )}
+              {activeMiniGame === "wok" && (
+                <WokMasterGame
+                  onAwardTickets={(amount) => {
+                    addTickets(amount);
+                    setTicketToast(true);
+                    setTimeout(() => setTicketToast(false), 2500);
+                  }}
+                  onClose={onClose}
+                />
+              )}
             </div>
           )}
 

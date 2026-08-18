@@ -34,6 +34,7 @@ import {
   SuccessFlash,
   RandomDishModal,
   GachaModal,
+  MiniGamesModal,
 } from "../../features/customer/components";
 
 import {
@@ -122,6 +123,9 @@ function LiffApp() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showRandomModal, setShowRandomModal] = useState(false);
   const [showGachaModal, setShowGachaModal] = useState(false);
+  const [gachaInitialTab, setGachaInitialTab] = useState<
+    "wish" | "games" | "album" | "wallet" | "history"
+  >("wish");
   const [earnedTicketsAmount, setEarnedTicketsAmount] = useState<number>(0);
   const [activeCoupon, setActiveCoupon] = useState<ActiveCoupon | null>(null);
 
@@ -243,7 +247,14 @@ function LiffApp() {
                   subtotal={subtotal}
                   onOpenMenu={() => setOverlay("menu")}
                   onOpenRandomModal={() => setShowRandomModal(true)}
-                  onOpenGacha={() => setShowGachaModal(true)}
+                  onOpenGacha={() => {
+                    setGachaInitialTab("wish");
+                    setShowGachaModal(true);
+                  }}
+                  onOpenMiniGames={() => {
+                    setGachaInitialTab("games");
+                    setShowGachaModal(true);
+                  }}
                   hasActiveOrder={hasActiveOrder}
                   activeOrderNumber={activeOrderNumber}
                   onGoToStatus={() => setTab("status")}
@@ -441,7 +452,14 @@ function LiffApp() {
               onNavigate={(tNav) => {
                 setSidebar(false);
                 if (tNav === "home" || tNav === "status") setTab(tNav);
-                if (tNav === "gacha") setShowGachaModal(true);
+                if (tNav === "gacha") {
+                  setGachaInitialTab("wish");
+                  setShowGachaModal(true);
+                }
+                if (tNav === "minigames") {
+                  setGachaInitialTab("games");
+                  setShowGachaModal(true);
+                }
                 if (tNav === "history") setOverlay("history");
                 if (tNav === "contact") setOverlay("contact");
               }}
@@ -454,17 +472,6 @@ function LiffApp() {
                 }
               }}
               profile={profile}
-              onLogout={async () => {
-                setLiffReady(false);
-                localStorage.removeItem("ran-lung-get-guest");
-                await supabase.auth.signOut().catch(() => {});
-                try {
-                  liffLogout();
-                } catch {
-                  /* ignore */
-                }
-                navigate({ to: "/login" });
-              }}
             />
           )}
         </AnimatePresence>
@@ -519,15 +526,29 @@ function LiffApp() {
           }}
         />
 
-        {/* Gacha & Collectible Cards Modal */}
+        {/* Gacha & Collectible Cards Modal (Unified with Mini-Games) */}
         <AnimatePresence>
           {showGachaModal && (
             <GachaModal
               isOpen={showGachaModal}
+              initialTab={gachaInitialTab}
               onClose={() => setShowGachaModal(false)}
               onApplyCoupon={(coupon) => {
                 setActiveCoupon(coupon);
                 setCartDrawer(true);
+              }}
+              onSelectDish={(dishName) => {
+                const item = menuItems.find(
+                  (m) =>
+                    m.name.includes(dishName) ||
+                    dishName.includes(m.name) ||
+                    dishName.replace(/\s*\(.*?\)\s*/g, "") === m.name.replace(/\s*\(.*?\)\s*/g, "")
+                );
+                if (item) {
+                  setSelectedItem(item);
+                } else {
+                  setOverlay("menu");
+                }
               }}
             />
           )}

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { OrderHistory } from "../types";
 import { OrderTimer } from "./OrderTimer";
+import { useLanguage } from "../../../lib/i18n";
 
 const BRAND = "#002e47";
 const GOLD = "#fcc14a";
@@ -23,6 +24,7 @@ export function OrderCard({
   advanceOrderStatus: (id: string, current: string) => void;
   regressOrderStatus: (id: string, current: string) => void;
 }) {
+  const { t, tMenu, tTable } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -34,80 +36,80 @@ export function OrderCard({
   const isRefund = order.status === "ขอคืนเงิน";
 
   let borderClass = "border-[#ece4d6]";
-  let actionBtnText = "เริ่มทำ";
+  let actionBtnText = t("เริ่มทำ");
   let actionBtnColor = "bg-[#002e47] text-white hover:bg-[#001f30]";
   let ActionIcon: any = null;
   
   if (isRefund) {
     borderClass = "border-red-500 shadow-[0_8px_20px_rgba(239,68,68,0.12)] bg-red-50/15";
-    actionBtnText = "โอนเงินคืน & ยกเลิก";
+    actionBtnText = t("โอนเงินคืน & ยกเลิก");
     actionBtnColor = "bg-red-600 hover:bg-red-700 text-white";
   } else if (isWaiting) {
     borderClass = "border-amber-400/80 shadow-[0_8px_20px_rgba(245,158,11,0.06)]";
-    actionBtnText = "เริ่มปรุงอาหาร";
+    actionBtnText = t("เริ่มปรุงอาหาร");
     actionBtnColor = "bg-blue-600 hover:bg-blue-700 text-white";
   } else if (isCooking) {
     borderClass = "border-blue-400/80 shadow-[0_8px_20px_rgba(37,99,235,0.06)]";
     if (order.orderType === "delivery") {
-      actionBtnText = "ปรุงเสร็จ · รอไรเดอร์";
+      actionBtnText = t("ทำเสร็จแล้ว") + " · " + t("รอไรเดอร์มารับ");
       actionBtnColor = "bg-emerald-600 hover:bg-emerald-700 text-white";
     } else {
-      actionBtnText = "ทำเสร็จแล้ว";
+      actionBtnText = t("ทำเสร็จแล้ว");
       actionBtnColor = "bg-emerald-600 hover:bg-emerald-700 text-white";
     }
   } else if (isReady) {
     borderClass = "border-emerald-400/80 shadow-[0_8px_20px_rgba(16,185,129,0.06)]";
     if (order.orderType === "delivery") {
-      actionBtnText = "ส่งมอบให้ไรเดอร์ (เริ่มนำส่ง)";
+      actionBtnText = t("เริ่มจัดส่ง");
       actionBtnColor = "bg-indigo-600 hover:bg-indigo-700 text-white";
       ActionIcon = Bike;
     } else if (order.orderType === "takeaway") {
-      actionBtnText = "ลูกค้ารับแล้ว / ปิดคิว";
+      actionBtnText = t("ส่งมอบสำเร็จ");
       actionBtnColor = "bg-slate-700 hover:bg-slate-800 text-white";
     } else {
-      actionBtnText = "เสิร์ฟแล้ว / ปิดคิว";
+      actionBtnText = t("ส่งมอบสำเร็จ");
       actionBtnColor = "bg-slate-700 hover:bg-slate-800 text-white";
     }
   } else if (isDelivering) {
     borderClass = "border-indigo-400/80 shadow-[0_8px_20px_rgba(99,102,241,0.08)] bg-indigo-50/20";
-    actionBtnText = "จัดส่งสำเร็จ / ปิดคิว";
+    actionBtnText = t("สำเร็จ");
     actionBtnColor = "bg-slate-800 hover:bg-slate-900 text-white";
     ActionIcon = CheckCircle;
   }
 
   let bannerBg = "bg-amber-100 text-[#002e47]";
-  let typeLabel = "ทานที่ร้าน";
+  let typeLabel = t("ทานที่ร้าน");
   let typeIcon = (
     <div className="p-1 rounded-lg bg-amber-500/20 text-[#002e47] flex items-center justify-center shrink-0">
       <Utensils size={18} className="stroke-[2.5]" />
     </div>
   );
-  let detailsText = order.tableNumber || "ไม่ระบุโต๊ะ";
+  let detailsText = order.tableNumber ? tTable(order.tableNumber) : t("ทานที่ร้าน");
   let detailsLarge = true;
   let cardBg = "bg-[#fffdf5]";
   let leftBorderClass = "border-l-[8px] border-l-amber-500";
 
   if (order.orderType === "delivery") {
     bannerBg = "bg-blue-100 text-blue-800 border-b border-blue-200";
-    typeLabel = "จัดส่งถึงที่ (Delivery)";
+    typeLabel = t("จัดส่ง");
     typeIcon = (
       <div className="p-1 rounded-lg bg-blue-600/20 text-blue-800 flex items-center justify-center shrink-0">
         <Bike size={18} className="stroke-[2.5]" />
       </div>
     );
-    detailsText = order.customerName || "คุณลูกค้า";
+    detailsText = order.customerName || t("คุณลูกค้า");
     detailsLarge = false;
     cardBg = "bg-[#f4faff]";
     leftBorderClass = "border-l-[8px] border-l-blue-600";
   } else if (order.orderType === "takeaway") {
     bannerBg = "bg-purple-100 text-purple-800 border-b border-purple-200";
-    typeLabel = "รับกลับบ้าน (Takeaway)";
+    typeLabel = t("กลับบ้าน");
     typeIcon = (
       <div className="p-1 rounded-lg bg-purple-600/20 text-purple-800 flex items-center justify-center shrink-0">
         <ShoppingBag size={18} className="stroke-[2.5]" />
       </div>
     );
-    detailsText = order.customerName || "คุณลูกค้า";
+    detailsText = order.customerName || t("คุณลูกค้า");
     detailsLarge = false;
     cardBg = "bg-[#faf8ff]";
     leftBorderClass = "border-l-[8px] border-l-purple-500";
@@ -156,7 +158,7 @@ export function OrderCard({
       {/* Card Info Bar */}
       <div className="px-4 py-2 bg-[#002e47]/5 border-b border-slate-200/60 flex items-center justify-between">
         <span className="text-xs font-extrabold text-[#002e47]">
-          ออเดอร์ {order.orderNumber}
+          {t("ออเดอร์")} {order.orderNumber}
         </span>
         {!isCompleted && <OrderTimer id={order.id} />}
       </div>
@@ -172,11 +174,11 @@ export function OrderCard({
             <div key={idx} className="flex items-start justify-between gap-3">
               <div className="flex-1">
                 <span className="text-[15px] sm:text-base font-black text-[#002e47] leading-snug block">
-                  {name}
+                  {tMenu(name, "name")}
                 </span>
                 {choices && (
                   <span className="text-[10px] font-bold text-[#5a6e7a] mt-0.5 bg-[#f1ece4]/80 px-1.5 py-0.5 rounded inline-block">
-                    {choices}
+                    {t(choices)}
                   </span>
                 )}
               </div>
@@ -196,7 +198,7 @@ export function OrderCard({
         {order.note && (
           <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl">
             <span className="text-[9px] font-bold text-red-600 uppercase tracking-wider block mb-0.5">
-              หมายเหตุลูกค้า:
+              💡 {t("หมายเหตุ")}:
             </span>
             <span className="text-xs font-extrabold text-red-700 animate-pulse block leading-normal">
               * {order.note}

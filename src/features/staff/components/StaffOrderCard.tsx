@@ -13,7 +13,7 @@ export function StaffOrderCard({
   regressOrderStatus: (id: string) => void;
   cancelOrder: (id: string) => void;
 }) {
-  const { t, tMenu } = useLanguage();
+  const { t, tMenu, tTable } = useLanguage();
   const isDineIn = order.orderType === "dine-in";
   const isTakeaway = order.orderType === "takeaway";
   const isDelivery = order.orderType === "delivery";
@@ -69,7 +69,7 @@ export function StaffOrderCard({
       <div className="pt-2 border-t border-slate-100">
         <p className="text-[10px] font-bold text-slate-400">{t("รายละเอียดลูกค้า")}:</p>
         <p className="text-xs font-black text-[#002e47] mt-0.5">
-          {order.customerName || t("คุณลูกค้า")} {isDineIn && order.tableNumber && `(${t("โต๊ะ")} ${order.tableNumber})`}
+          {order.customerName || t("คุณลูกค้า")} {isDineIn && order.tableNumber && `(${tTable(order.tableNumber)})`}
         </p>
       </div>
       <div className="space-y-1.5">
