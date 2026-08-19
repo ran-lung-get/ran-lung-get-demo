@@ -38,12 +38,13 @@ import {
   KitchenSidebarContent,
   DashboardView,
 } from "../features/kitchen";
+import { generateUniqueOrderNumber } from "../lib/utils";
 
 export const Route = createFileRoute("/kitchen")({
   head: () => ({
     meta: [
-      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
-      { name: "description", content: "หน้าจอแสดงผลและจัดการคิวอาหารในห้องครัว ร้านลุงเก็ต" },
+      { title: "DineOS" },
+      { name: "description", content: "หน้าจอแสดงผลและจัดการคิวอาหารในห้องครัว DineOS" },
     ],
   }),
   component: KitchenMonitor,
@@ -240,7 +241,7 @@ function KitchenMonitor() {
     }
     
     const delivery = orderType === "delivery" ? 40 : 0;
-    const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
+    const orderNum = generateUniqueOrderNumber(orders);
     const name = CUSTOMER_NAMES[Math.floor(Math.random() * CUSTOMER_NAMES.length)];
     const tableNum = isDineIn ? TABLES[Math.floor(Math.random() * TABLES.length)] : "";
     const randomNote = Math.random() > 0.4 ? NOTES[Math.floor(Math.random() * NOTES.length)] : "";
@@ -399,7 +400,7 @@ function KitchenMonitor() {
               <div>
                 <h1 className="text-base sm:text-lg font-black tracking-tight" style={{ color: BRAND }}>
                   {view === "kitchen" 
-                    ? "จอจัดการครัวลุงเกตุ" 
+                    ? "จอจัดการครัว DineOS" 
                     : view === "refunds"
                     ? "คำขอคืนเงิน & ยกเลิกออเดอร์"
                     : "แดชบอร์ดภาพรวมร้านค้า"
@@ -465,7 +466,7 @@ function KitchenMonitor() {
               <div>
                 <h1 className="text-sm font-black tracking-tight" style={{ color: BRAND }}>
                   {view === "kitchen" 
-                    ? "ครัวลุงเกตุ" 
+                    ? "ครัว DineOS" 
                     : view === "refunds"
                     ? "คำขอคืนเงิน"
                     : "แดชบอร์ดหลังบ้าน"
@@ -483,7 +484,7 @@ function KitchenMonitor() {
                   ) : view === "refunds" ? (
                     "จัดการคัดลอกโอนเงินคืนลูกค้า"
                   ) : (
-                    "ภาพรวมร้านค้าลุงเกตุ"
+                    "ภาพรวมร้านค้า DineOS"
                   )}
                 </p>
               </div>

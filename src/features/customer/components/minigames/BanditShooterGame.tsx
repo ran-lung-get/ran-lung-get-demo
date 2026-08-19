@@ -796,7 +796,7 @@ export function BanditShooterGame({
               <PixelHostageUncleGet status="tied" />
             </div>
             <p className="text-[10px] sm:text-xs font-bold text-stone-800 leading-relaxed mt-2">
-              {t("โจรบุกปล้นร้านลุงเกตุ! เล็งยิงโจรให้ไว อย่าให้โดนตัวประกัน!")}
+              {t("โจรบุกปล้นร้าน DineOS! เล็งยิงโจรให้ไว อย่าให้โดนตัวประกัน!")}
             </p>
           </div>
 

@@ -29,12 +29,13 @@ import {
   StockManagementView,
 } from "../../features/staff";
 import { useLanguage } from "../../lib/i18n";
+import { generateUniqueOrderNumber } from "../../lib/utils";
 
 export const Route = createFileRoute("/staff/")({
   head: () => ({
     meta: [
-      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
-      { name: "description", content: "ระบบจัดการออเดอร์ ผังโต๊ะ และการบริการหน้าร้าน ร้านลุงเก็ต" },
+      { title: "DineOS" },
+      { name: "description", content: "ระบบจัดการออเดอร์ ผังโต๊ะ และการบริการหน้าร้าน DineOS" },
     ],
   }),
   component: KitchenMonitor,
@@ -238,12 +239,12 @@ function KitchenMonitor() {
   }, [soundEnabled]);
 
   const triggerMockOrder = () => {
-    const num = Math.floor(Math.random() * 9000) + 1000;
+    const orderNum = generateUniqueOrderNumber(orders);
     const names = ["คุณ มานะ", "คุณ สมรัก", "คุณ ณเดช", "คุณ ญาญ่า", "คุณ กิ๊ฟ", "คุณ นิว"];
     const tbs = ["โต๊ะ 1", "โต๊ะ 2", "โต๊ะ 3", "โต๊ะ 4", "โต๊ะ 5"];
     const newOrder: OrderHistory = {
       id: "mock_" + Date.now(),
-      orderNumber: "AK-" + num,
+      orderNumber: orderNum,
       date:
         new Date().toLocaleDateString("th-TH") +
         " · " +
@@ -612,7 +613,7 @@ function KitchenMonitor() {
               </button>
               <div>
                 <h1 className="text-sm font-black tracking-tight" style={{ color: BRAND }}>
-                  {view === "kitchen" && "ครัวลุงเกตุ"}
+                  {view === "kitchen" && "ครัว DineOS"}
                   {view === "tables" && "ผังโต๊ะอาหาร"}
                   {view === "menu" && "จัดการเมนู"}
                   {view === "stock" && "คลังสต็อกวัตถุดิบ"}

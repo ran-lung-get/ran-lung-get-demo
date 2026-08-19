@@ -283,7 +283,7 @@ export function StatusScreen({
                 {t("หมายเลขออเดอร์")}
               </p>
               <p className="text-sm font-bold" style={{ color: BRAND }}>
-                {activeOrder ? activeOrder.orderNumber : "#AK-2847"}
+                {activeOrder ? activeOrder.orderNumber : "#DO-001"}
               </p>
             </div>
             <div className="space-y-2">
@@ -378,7 +378,7 @@ export function StatusScreen({
                     {t("ได้รับตั๋วสุ่มกาชาจากออเดอร์นี้!")}
                   </p>
                   <p className="text-[11px] text-slate-300">
-                    {t("นำตั๋วไปสุ่มลุ้นรับส่วนลด 50% และสะสมการ์ดลุงเกตุ")}
+                    {t("นำตั๋วไปสุ่มลุ้นรับส่วนลด 50% และสะสมการ์ด DineOS")}
                   </p>
                 </div>
               </div>
@@ -409,7 +409,7 @@ export function StatusScreen({
               href="tel:0891234567"
               className="w-full py-3.5 rounded-full font-bold text-sm bg-white border border-[#ece4d6] text-[#002e47] cursor-pointer active:scale-95 flex items-center justify-center gap-2 hover:bg-slate-50 transition"
             >
-              <span>📞 {t("ติดต่อร้านลุงเกตุ (ด่วน)")}</span>
+              <span>📞 {t("ติดต่อ DineOS (ด่วน)")}</span>
             </a>
           </div>
         </div>

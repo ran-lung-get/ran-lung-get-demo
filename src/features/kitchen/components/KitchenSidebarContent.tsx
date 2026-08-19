@@ -31,7 +31,7 @@ export function KitchenSidebarContent({
               ระบบจัดการร้าน
             </h2>
             <p className="text-[10px] font-bold text-[#fcc14a] tracking-wider uppercase">
-              หลังบ้านลุงเกตุ
+              DineOS KITCHEN
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export function KitchenSidebarContent({
       {/* Footer Info */}
       <div className="p-4 border-t border-white/10 bg-white/2 shrink-0">
         <p className="text-[9px] text-white/40 text-center font-semibold">
-          ระบบจัดการร้านค้า v1.2.0 · ครัวลุงเกตุ
+          ระบบจัดการร้านค้า v1.2.0 · DineOS
         </p>
       </div>
     </div>

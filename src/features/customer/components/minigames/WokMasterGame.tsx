@@ -199,7 +199,7 @@ export function WokMasterGame({ onAwardTickets }: WokMasterGameProps) {
           </div>
           <div>
             <h4 className="font-black text-sm text-white flex items-center gap-1.5">
-              {t("ลุงเกตุควงกระทะ")}
+              {t("DineOS ควงกระทะ")}
               <span className="text-[10px] bg-red-500/30 text-red-300 border border-red-500/40 px-1.5 py-0.2 rounded font-black">
                 {t("ผัดจับจังหวะ")}
               </span>
@@ -275,7 +275,7 @@ export function WokMasterGame({ onAwardTickets }: WokMasterGameProps) {
                 <span className="text-5xl drop-shadow-md select-none">{currentDish.emoji}</span>
               </div>
               <div className="absolute bottom-2 font-black text-[10px] text-amber-400 tracking-widest uppercase">
-                RAN LUNG GET
+                DINEOS
               </div>
             </motion.div>
 
@@ -333,7 +333,7 @@ export function WokMasterGame({ onAwardTickets }: WokMasterGameProps) {
           </div>
 
           <div>
-            <h3 className="text-xl font-black text-white">{t("เกมลุงเกตุควงกระทะ")}</h3>
+            <h3 className="text-xl font-black text-white">{t("เกม DineOS ควงกระทะ")}</h3>
             <p className="text-xs text-slate-300 mt-1 max-w-xs leading-relaxed">
               {t("จับจังหวะสะบัดกระทะให้ลงในโซนสีทอง ")}
               <span className="text-amber-300 font-bold">"PERFECT"</span>
@@ -370,7 +370,7 @@ export function WokMasterGame({ onAwardTickets }: WokMasterGameProps) {
               {gameState === "victory" ? t("🎉 ยอดเชฟกระทะเหล็ก!") : t("🍲 จบการผัดกระทะ!")}
             </h3>
             <p className="text-xs text-slate-300 mt-0.5">
-              {score >= 2500 ? t("ฝีมือระดับปรมาจารย์แห่งร้านลุงเกตุ!") : t("พยายามได้ดีมาก ฝึกฝนอีกนิดจะเก่งขึ้นแน่นอน!")}
+              {score >= 2500 ? t("ฝีมือระดับปรมาจารย์แห่ง DineOS!") : t("พยายามได้ดีมาก ฝึกฝนอีกนิดจะเก่งขึ้นแน่นอน!")}
             </p>
           </div>
 

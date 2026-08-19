@@ -1,6 +1,6 @@
-# Supabase — ร้านลุงเก้ต
+# Supabase — DineOS
 
-โฟลเดอร์นี้เก็บ Database Schema และ Migration files สำหรับโปรเจกต์ร้านอาหารรานลุงเก้ต
+โฟลเดอร์นี้เก็บ Database Schema และ Migration files สำหรับโปรเจกต์ร้านอาหาร DineOS
 
 ---
 

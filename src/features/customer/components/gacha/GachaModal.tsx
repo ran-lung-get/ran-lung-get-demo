@@ -40,6 +40,9 @@ export function GachaModal({
     performPulls,
     claimSetReward,
     removeCoupon,
+    recycleCoupon,
+    recycleAllCoupons,
+    clearAllCoupons,
   } = useGachaSystem();
 
   const [activeTab, setActiveTab] = useState<"wish" | "games" | "album" | "wallet" | "history">(
@@ -134,7 +137,7 @@ export function GachaModal({
           {/* Title */}
           <div>
             <h2 className="text-base font-black leading-tight flex items-center gap-1.5">
-              <span>{t("ตู้คำอธิษฐาน & สะสมการ์ดลุงเกตุ")}</span>
+              <span>{t("ตู้คำอธิษฐาน & สะสมการ์ด DineOS")}</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
                 GACHA & CARDS
               </span>
@@ -299,7 +302,7 @@ export function GachaModal({
                   },
                   {
                     id: "wok",
-                    label: t("ลุงเกตุควงกระทะ"),
+                    label: t("DineOS ควงกระทะ"),
                     emoji: "🍳",
                     color: "from-amber-500 to-red-500",
                   },
@@ -376,6 +379,10 @@ export function GachaModal({
                 onClose();
               }}
               onOpenGacha={() => setActiveTab("wish")}
+              onDeleteCoupon={removeCoupon}
+              onRecycleCoupon={recycleCoupon}
+              onClearAllCoupons={clearAllCoupons}
+              onRecycleAllCoupons={recycleAllCoupons}
             />
           )}
 

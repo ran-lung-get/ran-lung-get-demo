@@ -49,7 +49,7 @@ export const MENU: MenuItem[] = [
     price: 70,
     image: '/meal/fried_rice.jpg',
     category: "rice",
-    tags: ["ข้าวผัด", "เด็กทานได้", "กระเทียมเจียว", "จานด่วน"],
+    tags: ["ข้าวผัด", "Signature", "เด็กทานได้", "กระเทียมเจียว", "จานด่วน"],
   },
   {
     id: "m_pad_phong_kari",

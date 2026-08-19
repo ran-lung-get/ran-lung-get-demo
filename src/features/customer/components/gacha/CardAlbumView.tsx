@@ -68,7 +68,7 @@ export function CardAlbumView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="text-[11px] font-bold tracking-widest text-amber-400 uppercase flex items-center gap-1.5">
-              <Award size={14} /> {t("สมุดสะสมการ์ดลุงเกตุ")} (Card Album)
+              <Award size={14} /> {t("สมุดสะสมการ์ด DineOS")} (Card Album)
             </span>
             <h3 className="text-xl font-black text-white mt-1">
               {t("สะสมแล้ว")} {totalUnlocked} / {totalAvailable} {t("ใบ")} ({percentage}%)

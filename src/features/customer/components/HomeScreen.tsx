@@ -497,17 +497,17 @@ export function HomeScreen({
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <span className="px-2.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider">
-                      {t("ตู้คำอธิษฐาน & มินิเกมลุงเกตุ")}
+                      {t("ตู้คำอธิษฐาน & มินิเกม DineOS")}
                     </span>
                     <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
                       {t("สุ่มฟรีประจำวัน & เล่นเกมได้ตั๋ว!")} 🎫
                     </span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
-                    {t("ตู้คำอธิษฐาน, สมุดสะสมการ์ด & 3 มินิเกมลุงเกตุ")}
+                    {t("ตู้คำอธิษฐาน, สมุดสะสมการ์ด & 3 มินิเกม DineOS")}
                   </h3>
                   <p className="text-xs text-slate-300 font-light mt-1 max-w-2xl leading-relaxed">
-                    {t("ลุ้นรับคูปองส่วนลด 50%, การ์ดระดับตำนาน UR และเล่นเกมศึก 8-Bit Dragon Quest, ลุงเกตุควงกระทะ & วงล้อเสี่ยงทายดวงชะตา")}
+                    {t("ลุ้นรับคูปองส่วนลด 50%, การ์ดระดับตำนาน UR และเล่นเกมศึก 8-Bit Dragon Quest, DineOS ควงกระทะ & วงล้อเสี่ยงทายดวงชะตา")}
                   </p>
                 </div>
               </div>
@@ -628,7 +628,7 @@ export function HomeScreen({
                   <div>
                     <div className="relative h-36 w-full overflow-hidden rounded-xl mb-3">
                       <img src={encodeURI(String(m.image))} alt={tMenu(m.name, "name")} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      {m.category === "signature" && (
+                      {(m.category === "signature" || (Array.isArray(m.tags) && m.tags.some((t) => t.toLowerCase() === "signature" || t === "แนะนำ" || t === "ยอดนิยม"))) && (
                         <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#002e47]/85 text-[#fcc14a] backdrop-blur-md border border-[#fcc14a]/30">
                           Signature
                         </span>

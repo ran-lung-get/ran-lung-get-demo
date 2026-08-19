@@ -245,7 +245,7 @@ export function RandomDishModal({
 
                     {/* Dish Type Badge */}
                     <div className="absolute top-2.5 left-2.5 flex gap-1">
-                      {displayDish.category === "signature" && (
+                      {(displayDish.category === "signature" || (Array.isArray(displayDish.tags) && displayDish.tags.some((t) => t.toLowerCase() === "signature" || t === "แนะนำ" || t === "ยอดนิยม"))) && (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#002e47]/90 text-[#fcc14a] backdrop-blur-md border border-[#fcc14a]/30">
                           ⭐ {t("Signature")}
                         </span>
