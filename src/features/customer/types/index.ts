@@ -33,16 +33,27 @@ export type CartLine = {
   image: string;
 };
 
+export type OrderItem = {
+  name: string;
+  qty: number;
+  price: number;
+  image?: string;
+  addons?: Addon[] | { id?: string; name: string; price?: number }[];
+  options?: Record<string, string>;
+  note?: string;
+};
+
 export type OrderHistory = {
   id: string;
   orderNumber: string;
   date: string;
-  items: { name: string; qty: number; price: number; image: string }[];
+  items: OrderItem[];
   subtotal: number;
   delivery: number;
   total: number;
   status: "สำเร็จ" | "กำลังจัดส่ง" | "กำลังเตรียม" | "รอรับออเดอร์" | "ขอคืนเงิน" | "ยกเลิกแล้ว" | "รอดำเนินการ";
   orderType?: OrderType;
+  customerName?: string;
   cancelReason?: string;
   cancelNote?: string;
   refundPromptPay?: string;

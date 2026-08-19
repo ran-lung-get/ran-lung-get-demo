@@ -545,68 +545,6 @@ export function TableManagementView({
                   <Trash2 size={14} className="text-red-500" />
                 </button>
               </div>
-
-              {/* Table Orders List */}
-              <div className="flex-1 flex flex-col border-t border-slate-100 pt-4 overflow-hidden">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-700">
-                    {t("รายการอาหารบนโต๊ะ")} ({getTableOrders(selectedTable.label, selectedTable.id).length} {t("ออเดอร์")})
-                  </span>
-                  {getTableOrders(selectedTable.label, selectedTable.id).length > 0 && (
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {t("ยอดรวม")}: ฿{getTableOrders(selectedTable.label, selectedTable.id).reduce((sum, o) => sum + o.total, 0)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[280px] no-scrollbar">
-                  {getTableOrders(selectedTable.label, selectedTable.id).length > 0 ? (
-                    getTableOrders(selectedTable.label, selectedTable.id).map((order) => {
-                      const isOrderDone = order.status === "สำเร็จ" || order.status === "completed";
-                      return (
-                        <div
-                          key={order.id}
-                          className={`rounded-xl p-3.5 space-y-2 border transition ${
-                            isOrderDone
-                              ? "bg-slate-50/80 border-slate-200"
-                              : "bg-amber-50/60 border-amber-200"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="font-extrabold text-[11px] text-[#002e47]">
-                              {order.orderNumber}
-                            </span>
-                            <span
-                              className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                                isOrderDone
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-amber-500 text-white"
-                              }`}
-                            >
-                              {isOrderDone ? `🍽️ ${t("สำเร็จ")}` : t(order.status)}
-                            </span>
-                          </div>
-                          <div className="space-y-1 text-xs text-slate-600 font-bold">
-                            {(order.items || []).map((it, idx) => (
-                              <div key={idx} className="flex justify-between">
-                                <span>{it?.name ? tMenu(it.name, "name") : t("รายการอาหาร")} x{it?.qty || 1}</span>
-                                <span>฿{(it?.price || 0) * (it?.qty || 1)}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 text-xs">
-                            <span className="font-black text-[#002e47]">{t("ยอดรวม")}: ฿{order.total || 0}</span>
-                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.5 rounded">{t("สำเร็จ")}</span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center text-slate-400 py-8 text-xs italic font-bold">
-                      {t("ไม่มีประวัติออเดอร์บนโต๊ะนี้")}
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 py-12 text-center my-auto">

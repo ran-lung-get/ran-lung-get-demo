@@ -171,25 +171,58 @@ export function OrderCard({
           const choices = parts[1] ? parts[1].replace(")", "") : "";
 
           return (
-            <div key={idx} className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <span className="text-[15px] sm:text-base font-black text-[#002e47] leading-snug block">
-                  {tMenu(name, "name")}
-                </span>
-                {choices && (
-                  <span className="text-[10px] font-bold text-[#5a6e7a] mt-0.5 bg-[#f1ece4]/80 px-1.5 py-0.5 rounded inline-block">
-                    {t(choices)}
+            <div key={idx} className="space-y-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <span className="text-[15px] sm:text-base font-black text-[#002e47] leading-snug block">
+                    {tMenu(name, "name")}
                   </span>
-                )}
+                  {choices && (
+                    <span className="text-[10px] font-bold text-[#5a6e7a] mt-0.5 bg-[#f1ece4]/80 px-1.5 py-0.5 rounded inline-block">
+                      {t(choices)}
+                    </span>
+                  )}
+                </div>
+                <div className="shrink-0 flex items-center justify-center">
+                  <span 
+                    className="text-base font-black text-[#002e47] px-2.5 py-1 rounded-lg border border-[#002e47]/10 shadow-xs min-w-[42px] text-center"
+                    style={{ background: GOLD }}
+                  >
+                    x{item.qty}
+                  </span>
+                </div>
               </div>
-              <div className="shrink-0 flex items-center justify-center">
-                <span 
-                  className="text-base font-black text-[#002e47] px-2.5 py-1 rounded-lg border border-[#002e47]/10 shadow-xs min-w-[42px] text-center"
-                  style={{ background: GOLD }}
-                >
-                  x{item.qty}
-                </span>
-              </div>
+
+              {/* Addons display */}
+              {Array.isArray(item.addons) && item.addons.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pl-1">
+                  {item.addons.map((a: any, aIdx: number) => (
+                    <span
+                      key={aIdx}
+                      className="text-[11px] font-black text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-xs"
+                    >
+                      <span className="text-amber-700 font-extrabold">+</span> {t(a.name) || a.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Options & Item Note display */}
+              {((item.options && Object.keys(item.options).length > 0) || item.note) && (
+                <div className="flex flex-wrap gap-1.5 pl-1 text-[11px]">
+                  {item.options &&
+                    Object.entries(item.options).map(([k, v]) => (
+                      <span key={k} className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-md">
+                        {t(String(v))}
+                      </span>
+                    ))}
+                  {item.note && (
+                    <span className="text-red-700 font-bold bg-red-50 border border-red-200 px-2 py-0.5 rounded-md">
+                      *{item.note}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

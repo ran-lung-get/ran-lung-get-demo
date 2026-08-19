@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { supabase } from "../../lib/supabase";
-import { adjustStockFromOrder } from "../../lib/supabase.service";
 import {
   ChefHat,
   Volume2,
@@ -15,11 +14,13 @@ import {
   BookOpen,
   Inbox,
   Bike,
+  AlertTriangle,
 } from "lucide-react";
 
 import {
   type OrderHistory,
   playNotificationSound,
+  playCancelSound,
   StaffOrderCard,
   StaffHistoryOrderRow,
   EmptyColumnMessage,
@@ -29,7 +30,9 @@ import {
   StockManagementView,
 } from "../../features/staff";
 import { useLanguage } from "../../lib/i18n";
+import { LanguageSelector } from "../../components/LanguageSelector";
 import { generateUniqueOrderNumber } from "../../lib/utils";
+import { clearAllOrdersData, adjustStockFromOrder } from "../../lib/supabase.service";
 
 export const Route = createFileRoute("/staff/")({
   head: () => ({
@@ -53,13 +56,27 @@ function KitchenMonitor() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [view, setView] = useState<"kitchen" | "tables" | "menu" | "stock">("kitchen");
+  const [isClearing, setIsClearing] = useState(false);
+  const [cancelAlert, setCancelAlert] = useState<{
+    orderNumber: string;
+    customerName?: string;
+    tableNumber?: string;
+    status: string;
+    reason?: string;
+    refundPromptPay?: string;
+    total?: number;
+  } | null>(null);
+
+  const knownCancelledRef = useRef<Set<string>>(new Set());
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
 
   const isWaiting = (s: string) => s === "รอดำเนินการ" || s === "รอรับออเดอร์" || s === "pending";
   const isCooking = (s: string) => s === "กำลังทำ" || s === "กำลังเตรียม" || s === "preparing";
   const isReady = (s: string) => s === "พร้อมเสิร์ฟ" || s === "ready";
   const isDelivering = (s: string) => s === "กำลังจัดส่ง" || s === "delivering";
   const isCompleted = (s: string) => s === "สำเร็จ" || s === "completed";
-  const isCancelled = (s: string) => s === "ยกเลิก" || s === "ยกเลิกแล้ว" || s === "cancelled";
+  const isRefund = (s: string) => s === "ขอคืนเงิน" || s === "refund_requested" || s === "refunded";
+  const isCancelled = (s: string) => s === "ยกเลิก" || s === "ยกเลิกแล้ว" || s === "cancelled" || isRefund(s);
 
   const handleLogout = async () => {
     document.body.style.display = "none";
@@ -125,6 +142,7 @@ function KitchenMonitor() {
           else if (o.status === "delivering") localStatus = "กำลังจัดส่ง";
           else if (o.status === "completed") localStatus = "สำเร็จ";
           else if (o.status === "cancelled") localStatus = "ยกเลิก";
+          else if (o.status === "refund_requested" || o.status === "ขอคืนเงิน") localStatus = "ขอคืนเงิน";
           else if (o.status) localStatus = o.status;
 
           let formattedDate = "";
@@ -161,6 +179,9 @@ function KitchenMonitor() {
                   qty: Number(item.quantity) || 1,
                   price: Number(item.unit_price) || 0,
                   image: item.image || "",
+                  addons: Array.isArray(item.addons) ? item.addons : undefined,
+                  options: item.options && typeof item.options === "object" ? item.options : undefined,
+                  note: item.note || undefined,
                 }))
               : [],
             subtotal: Number(o.subtotal) || 0,
@@ -172,7 +193,32 @@ function KitchenMonitor() {
             tableNumber: o.table_number || "",
             queueNumber: o.queue_number || "",
             note: o.special_instructions || "",
+            refundPromptPay: o.refund_promptpay || undefined,
           };
+        });
+
+        // ตรวจจับออเดอร์ที่ถูกยกเลิก/ขอคืนเงินใหม่
+        const newlyCancelled = mappedOrders.find(
+          (o) => (isRefund(o.status) || o.status === "ยกเลิก") && !knownCancelledRef.current.has(o.id)
+        );
+        if (newlyCancelled && knownCancelledRef.current.size > 0) {
+          if (soundEnabled) playCancelSound();
+          setCancelAlert({
+            orderNumber: newlyCancelled.orderNumber,
+            customerName: newlyCancelled.customerName,
+            tableNumber: newlyCancelled.tableNumber,
+            status: newlyCancelled.status,
+            reason: newlyCancelled.note,
+            refundPromptPay: newlyCancelled.refundPromptPay,
+            total: newlyCancelled.total,
+          });
+        }
+
+        mappedOrders.forEach((o) => {
+          if (isRefund(o.status) || o.status === "ยกเลิก") {
+            knownCancelledRef.current.add(o.id);
+          }
+          knownOrderIdsRef.current.add(o.id);
         });
 
         setOrders((prev) => {
@@ -196,7 +242,14 @@ function KitchenMonitor() {
     const saved = localStorage.getItem("ran-lung-get-orders");
     if (saved) {
       try {
-        setOrders(JSON.parse(saved));
+        const parsed: OrderHistory[] = JSON.parse(saved);
+        parsed.forEach((o) => {
+          if (isRefund(o.status) || o.status === "ยกเลิก") {
+            knownCancelledRef.current.add(o.id);
+          }
+          knownOrderIdsRef.current.add(o.id);
+        });
+        setOrders(parsed);
       } catch (e) {
         console.error(e);
       }
@@ -223,12 +276,37 @@ function KitchenMonitor() {
       if (e.key === "ran-lung-get-orders" && e.newValue) {
         try {
           const newOrders: OrderHistory[] = JSON.parse(e.newValue);
-          setOrders((prev) => {
-            const prevIds = new Set(prev.map((o) => o.id));
-            const hasNew = newOrders.some((o) => !prevIds.has(o.id));
-            if (hasNew && soundEnabled) playNotificationSound();
-            return newOrders;
+          
+          // ตรวจจับออเดอร์ยกเลิก/ขอคืนเงินใหม่ใน storage
+          const newlyCancelled = newOrders.find(
+            (o) => (isRefund(o.status) || o.status === "ยกเลิก") && !knownCancelledRef.current.has(o.id)
+          );
+          if (newlyCancelled && knownCancelledRef.current.size > 0) {
+            if (soundEnabled) playCancelSound();
+            setCancelAlert({
+              orderNumber: newlyCancelled.orderNumber,
+              customerName: newlyCancelled.customerName,
+              tableNumber: newlyCancelled.tableNumber,
+              status: newlyCancelled.status,
+              reason: newlyCancelled.note || newlyCancelled.cancelReason,
+              refundPromptPay: newlyCancelled.refundPromptPay,
+              total: newlyCancelled.total,
+            });
+          }
+
+          const hasNewWaiting = newOrders.some(
+            (o) => !knownOrderIdsRef.current.has(o.id) && isWaiting(o.status)
+          );
+          if (hasNewWaiting && soundEnabled) playNotificationSound();
+
+          newOrders.forEach((o) => {
+            if (isRefund(o.status) || o.status === "ยกเลิก") {
+              knownCancelledRef.current.add(o.id);
+            }
+            knownOrderIdsRef.current.add(o.id);
           });
+
+          setOrders(newOrders);
         } catch (err) {
           console.error("Sync error:", err);
         }
@@ -250,12 +328,12 @@ function KitchenMonitor() {
         " · " +
         new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
       items: [
-        { name: "กระเพราหมูกรอบ (ข้าวราด)", qty: 1, price: 70, image: "" },
+        { name: "กระเพราหมูกรอบ (ข้าวราด)", qty: 1, price: 70, image: "", addons: [{ name: "ไข่ดาว", price: 10 }] },
         { name: "น้ำลำไย", qty: 2, price: 40, image: "" },
       ],
-      subtotal: 150,
+      subtotal: 160,
       delivery: 0,
-      total: 150,
+      total: 160,
       status: "รอดำเนินการ",
       orderType: "dine-in",
       customerName: names[Math.floor(Math.random() * names.length)],
@@ -267,6 +345,7 @@ function KitchenMonitor() {
       localStorage.setItem("ran-lung-get-orders", JSON.stringify(next));
       return next;
     });
+    void adjustStockFromOrder(newOrder.items, "deduct");
     if (soundEnabled) playNotificationSound();
   };
 
@@ -347,10 +426,6 @@ function KitchenMonitor() {
     try {
       const { error } = await supabase.from("orders").update({ status: dbStatus }).eq("id", id);
       if (error) throw error;
-      if (dbStatus === "completed") {
-        const itemsToAdjust = targetOrder.items.map((i) => ({ name: i.name, qty: i.qty }));
-        await adjustStockFromOrder(itemsToAdjust, "deduct");
-      }
     } catch {
       console.warn("Offline status update completed locally.");
     }
@@ -411,17 +486,34 @@ function KitchenMonitor() {
       // Ignored
     }
     if (targetOrder) {
+      if (targetOrder.items && targetOrder.items.length > 0) {
+        void adjustStockFromOrder(targetOrder.items, "add");
+      }
       await syncTableStatusForOrder(targetOrder, nextList);
     }
   };
 
-  const clearAllOrders = () => {
-    if (!confirm("คุณต้องการล้างรายการออเดอร์ทั้งหมดเพื่อเริ่มต้นใหม่ใช่หรือไม่?")) return;
-    setOrders([]);
-    localStorage.removeItem("ran-lung-get-orders");
+  const clearAllOrders = async () => {
+    if (!confirm("คุณต้องการล้างรายการออเดอร์ทั้งหมดเพื่อเริ่มต้นใหม่ใช่หรือไม่?\n(ระบบจะลบข้อมูลออเดอร์ทั้งหมดออกจากฐานข้อมูล และรีเซ็ตสถานะโต๊ะทั้งหมด)")) return;
+    setIsClearing(true);
     try {
-      window.dispatchEvent(new CustomEvent("ran-lung-get-orders-cleared"));
-    } catch {}
+      await clearAllOrdersData();
+      setOrders([]);
+      localStorage.setItem("ran-lung-get-orders", JSON.stringify([]));
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "ran-lung-get-orders",
+        newValue: JSON.stringify([]),
+      }));
+      try {
+        window.dispatchEvent(new CustomEvent("ran-lung-get-orders-cleared"));
+      } catch {}
+    } catch (e) {
+      console.error("clearAllOrders error:", e);
+      setOrders([]);
+      localStorage.setItem("ran-lung-get-orders", JSON.stringify([]));
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const stats = useMemo(() => {
@@ -433,6 +525,7 @@ function KitchenMonitor() {
       ready: orders.filter((o) => isReady(o.status)).length,
       delivering: orders.filter((o) => o.status === "กำลังจัดส่ง" || o.status === "delivering").length,
       completed: orders.filter((o) => isCompleted(o.status)).length,
+      cancelled: orders.filter((o) => isCancelled(o.status)).length,
     };
   }, [orders]);
 
@@ -453,6 +546,7 @@ function KitchenMonitor() {
     if (statusFilter === "กำลังทำ") return list.filter((o) => isCooking(o.status));
     if (statusFilter === "พร้อมเสิร์ฟ") return list.filter((o) => isReady(o.status));
     if (statusFilter === "สำเร็จ") return list.filter((o) => isCompleted(o.status));
+    if (statusFilter === "ยกเลิก" || statusFilter === "cancelled") return list.filter((o) => isCancelled(o.status));
     return list.filter((o) => o.status === statusFilter);
   }, [orders, statusFilter, typeFilter]);
 
@@ -595,6 +689,7 @@ function KitchenMonitor() {
                   )}
                 </>
               )}
+              <LanguageSelector variant="light" />
             </div>
           </div>
         </header>
@@ -627,6 +722,7 @@ function KitchenMonitor() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <LanguageSelector variant="light" compact />
               {(view === "kitchen" || view === "tables") && (
                 <button
                   type="button"
@@ -642,6 +738,54 @@ function KitchenMonitor() {
 
         {/* Main Content */}
         <main className="p-3 sm:p-4 lg:p-6 w-full mx-auto flex-1 flex flex-col">
+          {/* Cancellation Alert Banner */}
+          <AnimatePresence>
+            {cancelAlert && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white shadow-xl flex items-center justify-between gap-4 border-2 border-rose-400 z-30"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 animate-bounce">
+                    <AlertTriangle size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="bg-white text-rose-700 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase shadow-xs">
+                        {cancelAlert.status === "ขอคืนเงิน" ? "🚨 มีการขอคืนเงิน" : "⚠️ ยกเลิกออเดอร์"}
+                      </span>
+                      <p className="text-sm font-black tracking-wide">
+                        ออเดอร์ #{cancelAlert.orderNumber} {cancelAlert.tableNumber && `(${cancelAlert.tableNumber})`}
+                      </p>
+                    </div>
+                    <p className="text-xs text-rose-100 mt-1 font-medium flex items-center gap-2 flex-wrap">
+                      <span>{cancelAlert.reason ? `เหตุผล: ${cancelAlert.reason}` : "ลูกค้ายกเลิกคำสั่งซื้อนี้"}</span>
+                      {cancelAlert.refundPromptPay && (
+                        <span className="font-bold text-amber-200 bg-black/25 px-2 py-0.5 rounded-lg border border-amber-300/30">
+                          พร้อมเพย์: {cancelAlert.refundPromptPay}
+                        </span>
+                      )}
+                      {cancelAlert.total !== undefined && (
+                        <span className="font-black text-white bg-white/20 px-2 py-0.5 rounded-lg">
+                          ฿{cancelAlert.total.toLocaleString()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCancelAlert(null)}
+                  className="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-black transition cursor-pointer shrink-0 border border-white/20 active:scale-95"
+                >
+                  {t("รับทราบ")} ✕
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {view === "tables" ? (
             <TableManagementView orders={orders} onRefreshOrders={fetchSupabaseOrders} />
           ) : view === "menu" ? (
@@ -660,6 +804,7 @@ function KitchenMonitor() {
                     { id: "พร้อมเสิร์ฟ", label: t("พร้อมเสิร์ฟ"), count: stats.ready, dotColor: "bg-emerald-500" },
                     { id: "กำลังจัดส่ง", label: t("ไรเดอร์กำลังส่ง"), count: stats.delivering, dotColor: "bg-indigo-500" },
                     { id: "สำเร็จ", label: t("เสร็จสิ้น"), count: stats.completed },
+                    { id: "ยกเลิก", label: t("ยกเลิก / ขอคืนเงิน"), count: stats.cancelled, dotColor: "bg-rose-500" },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -846,6 +991,55 @@ function KitchenMonitor() {
                         filteredOrders.map((o) =>
                           statusFilter === "สำเร็จ" ? (
                             <StaffHistoryOrderRow key={o.id} order={o} />
+                          ) : isCancelled(o.status) ? (
+                            <div key={o.id} className="bg-rose-50/70 border border-rose-200 rounded-2xl p-4 space-y-2.5 shadow-xs">
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-black text-rose-800 bg-rose-200/80 px-2.5 py-0.5 rounded-full">
+                                    {o.status === "ขอคืนเงิน" ? "🚨 ขอคืนเงิน" : "🚫 ยกเลิกแล้ว"}
+                                  </span>
+                                  <span className="font-black text-[#002e47] text-sm">#{o.orderNumber || o.id}</span>
+                                  {o.tableNumber && (
+                                    <span className="text-xs font-bold text-slate-600">({o.tableNumber})</span>
+                                  )}
+                                  <span className="text-xs text-slate-400 font-medium">· {o.date}</span>
+                                </div>
+                                <span className="text-sm font-black text-[#002e47]">฿{o.total.toLocaleString()}</span>
+                              </div>
+                              <div className="space-y-1 text-xs text-slate-700 bg-white/80 p-3 rounded-xl border border-rose-100">
+                                {(o.items || []).map((item, idx) => (
+                                  <div key={idx} className="flex justify-between">
+                                    <span className="font-bold text-[#002e47]">
+                                      {item.name} × {item.qty}
+                                      {Array.isArray(item.addons) && item.addons.length > 0 && (
+                                        <span className="text-amber-700 font-normal ml-1">
+                                          (+ {item.addons.map((a: any) => a.name).join(", ")})
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="text-slate-500">฿{item.price * item.qty}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {(o.cancelReason || o.cancelNote || (o as any).refundPromptPay || o.note) && (
+                                <div className="bg-rose-100/70 border border-rose-200 rounded-xl p-2.5 text-xs text-rose-900 font-bold space-y-1">
+                                  {(o.cancelReason || o.note) && (
+                                    <p>💡 <span className="font-normal text-rose-800">{t("เหตุผล")}:</span> {o.cancelReason || o.note}</p>
+                                  )}
+                                  {o.cancelNote && (
+                                    <p>📝 <span className="font-normal text-rose-800">{t("รายละเอียด")}:</span> {o.cancelNote}</p>
+                                  )}
+                                  {(o as any).refundPromptPay && (
+                                    <p className="flex items-center gap-1">
+                                      💳 <span className="font-normal text-rose-800">{t("พร้อมเพย์/บัญชีรับเงิน")}:</span>
+                                      <span className="text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded font-black">
+                                        {(o as any).refundPromptPay}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <StaffOrderCard
                               key={o.id}

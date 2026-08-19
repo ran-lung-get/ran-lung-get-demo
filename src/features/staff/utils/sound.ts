@@ -23,6 +23,30 @@ export function playNotificationSound() {
   }
 }
 
+export function playCancelSound() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    [0, 0.15, 0.3].forEach((delay) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(480, ctx.currentTime + delay);
+      osc.frequency.exponentialRampToValueAtTime(240, ctx.currentTime + delay + 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.14);
+    });
+  } catch (err) {
+    console.warn("Cancel sound failed:", err);
+  }
+}
+
 export const getTimestampFromOrderId = (id: string) => {
   if (id.startsWith("hist_")) {
     const tsString = id.replace("hist_", "");

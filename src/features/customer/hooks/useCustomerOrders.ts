@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../../lib/supabase";
+import { adjustStockFromOrder } from "../../../lib/supabase.service";
 import { generateUniqueOrderNumber } from "../../../lib/utils";
 import type { CartLine, OrderType, OrderHistory } from "../types";
 
@@ -222,7 +223,15 @@ export function useCustomerOrders({
         }) +
         " · " +
         new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-      items: cart.map((l) => ({ name: l.name, qty: l.qty, price: l.price, image: l.image })),
+      items: cart.map((l) => ({
+        name: l.name,
+        qty: l.qty,
+        price: l.price,
+        image: l.image,
+        addons: l.addons && l.addons.length > 0 ? l.addons : undefined,
+        options: l.options && Object.keys(l.options).length > 0 ? l.options : undefined,
+        note: l.note ? l.note : undefined,
+      })),
       subtotal: activeSubtotal,
       delivery: activeDeliveryFee,
       total: activeSubtotal + activeDeliveryFee,
@@ -236,6 +245,9 @@ export function useCustomerOrders({
     localStorage.setItem("ran-lung-get-orders", JSON.stringify(updatedHistory));
     setActiveOrderNumber(orderNum);
     setHasActiveOrder(true);
+
+    // ปรับปรุง/ตัดสต็อกวัตถุดิบและท็อปปิ้งเสริมตามเมนูทันที
+    void adjustStockFromOrder(newOrder.items, "deduct");
 
     if (finalOrderType === "dine-in" && selectedTable) {
       setTables((prev) => {
@@ -320,6 +332,9 @@ export function useCustomerOrders({
         image: item.image || null,
         unit_price: item.price,
         quantity: item.qty,
+        addons: item.addons && item.addons.length > 0 ? item.addons : null,
+        options: item.options && Object.keys(item.options).length > 0 ? item.options : null,
+        note: item.note || null,
         line_total: item.price * item.qty,
         created_at: new Date().toISOString(),
       }));

@@ -16,6 +16,8 @@ import {
 import type { OrderHistory } from "../types";
 import { BRAND, GOLD, INK_MUTED, SURFACE } from "../constants/colors";
 import { useLanguage } from "../../../lib/i18n";
+import { supabase } from "../../../lib/supabase";
+import { adjustStockFromOrder } from "../../../lib/supabase.service";
 
 export function StatusScreen({
   onOpenSidebar,
@@ -172,7 +174,7 @@ export function StatusScreen({
       try {
         const history: OrderHistory[] = JSON.parse(saved);
         const updated = history.map(o => {
-          if (o.orderNumber === activeOrder.orderNumber) {
+          if (o.orderNumber === activeOrder.orderNumber || o.id === activeOrder.id) {
             return {
               ...o,
               status: "ขอคืนเงิน" as const,
@@ -188,6 +190,27 @@ export function StatusScreen({
           key: "ran-lung-get-orders",
           newValue: JSON.stringify(updated)
         }));
+
+        // คืนสต็อกวัตถุดิบ
+        if (activeOrder.items && activeOrder.items.length > 0) {
+          void adjustStockFromOrder(activeOrder.items, "add");
+        }
+
+        // อัปเดตสถานะใน Supabase Orders
+        void (async () => {
+          try {
+            await (supabase as any)
+              .from("orders")
+              .update({
+                status: "refund_requested",
+                special_instructions: `ขอคืนเงิน: ${selectedReason} (พร้อมเพย์: ${promptPayNumber})`,
+                refund_promptpay: promptPayNumber,
+              })
+              .or(`order_number.eq.${activeOrder.orderNumber},id.eq.${activeOrder.id}`);
+          } catch (dbErr) {
+            console.warn("Supabase cancel sync:", dbErr);
+          }
+        })();
       } catch (e) {
         console.error("Cancel failed:", e);
       }
@@ -287,14 +310,21 @@ export function StatusScreen({
               </p>
             </div>
             <div className="space-y-2">
-              {orderItems.map((o, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span style={{ color: BRAND }}>
-                    {tMenu(o.name)} <span style={{ color: INK_MUTED }}>× {o.qty}</span>
-                  </span>
-                  <span className="font-medium" style={{ color: BRAND }}>
-                    ฿{o.price * o.qty}
-                  </span>
+              {orderItems.map((o: any, i) => (
+                <div key={i} className="space-y-0.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span style={{ color: BRAND }}>
+                      {tMenu(o.name)} <span style={{ color: INK_MUTED }}>× {o.qty}</span>
+                    </span>
+                    <span className="font-medium" style={{ color: BRAND }}>
+                      ฿{o.price * o.qty}
+                    </span>
+                  </div>
+                  {Array.isArray(o.addons) && o.addons.length > 0 && (
+                    <p className="text-[11px] font-semibold text-amber-700 pl-1">
+                      + {o.addons.map((a: any) => t(a.name) || a.name).join(", ")}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -394,13 +424,13 @@ export function StatusScreen({
 
           {/* Cancellation Actions */}
           <div className="mt-6 space-y-3">
-            {currentStatus === "รอรับออเดอร์" && (
+            {!isCompleted && !isCancelled && !isRefunded && (
               <button
                 type="button"
                 onClick={() => setShowCancelDialog(true)}
-                className="w-full py-3.5 rounded-full font-bold text-sm transition-all hover:bg-red-50 border border-red-200 text-red-500 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full font-bold text-sm transition-all bg-red-50 hover:bg-red-100/90 border border-red-200 text-red-600 cursor-pointer active:scale-95 flex items-center justify-center gap-2 shadow-xs"
               >
-                <span>{t("ยกเลิกและขอคืนเงิน")}</span>
+                <span>🚫 {t("ยกเลิกและคืนเงิน")}</span>
               </button>
             )}
 
