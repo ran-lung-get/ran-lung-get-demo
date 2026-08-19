@@ -65,6 +65,25 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
   useEffect(() => {
     fetchIngredients();
 
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "ran-lung-get-mock-ingredients" && e.newValue) {
+        try {
+          setIngredients(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+
+    const handleCustomUpdate = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setIngredients(e.detail);
+      } else {
+        fetchIngredients();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("ran-lung-get-stock-updated", handleCustomUpdate);
+
     const ch = supabase
       .channel("ingredients-staff-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "ingredients" }, () => {
@@ -73,6 +92,8 @@ export function StockManagementView({ handleLogout: _handleLogout }: { handleLog
       .subscribe();
 
     return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("ran-lung-get-stock-updated", handleCustomUpdate);
       supabase.removeChannel(ch);
     };
   }, []);

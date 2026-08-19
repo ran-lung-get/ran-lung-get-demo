@@ -26,6 +26,7 @@ import {
   AdminResetModal,
 } from "../../features/admin";
 import { useLanguage } from "../../lib/i18n";
+import { LanguageSelector } from "../../components/LanguageSelector";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -168,6 +169,10 @@ function AdminDashboard() {
               name: item.name,
               qty: item.quantity,
               price: Number(item.unit_price),
+              image: item.image || "",
+              addons: Array.isArray(item.addons) ? item.addons : undefined,
+              options: item.options && typeof item.options === "object" ? item.options : undefined,
+              note: item.note || undefined,
             })),
             subtotal: Number(o.subtotal),
             delivery: Number(o.delivery_fee),
@@ -570,6 +575,7 @@ function AdminDashboard() {
           </button>
           <span className="font-black text-sm tracking-wide">{t("ระบบจัดการหลังบ้าน")} (Admin)</span>
         </div>
+        <LanguageSelector variant="dark" compact />
       </header>
 
       {/* Mobile Navigation Drawer */}
@@ -641,13 +647,16 @@ function AdminDashboard() {
               </div>
             </div>
 
-            <a
-              href="/customer"
-              className="flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl px-3.5 py-2 transition"
-            >
-              <ArrowLeft size={14} />
-              <span>{t("สั่งอาหาร (หน้าลูกค้า)")}</span>
-            </a>
+            <div className="flex items-center gap-3">
+              <LanguageSelector variant="light" />
+              <a
+                href="/customer"
+                className="flex items-center gap-1.5 text-xs font-bold text-[#002e47] bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl px-3.5 py-2 transition"
+              >
+                <ArrowLeft size={14} />
+                <span>{t("สั่งอาหาร (หน้าลูกค้า)")}</span>
+              </a>
+            </div>
           </div>
         </header>
 

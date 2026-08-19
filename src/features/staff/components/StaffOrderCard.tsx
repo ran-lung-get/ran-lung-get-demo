@@ -72,11 +72,48 @@ export function StaffOrderCard({
           {order.customerName || t("คุณลูกค้า")} {isDineIn && order.tableNumber && `(${tTable(order.tableNumber)})`}
         </p>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {(order.items || []).map((i, idx) => (
-          <div key={idx} className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-700">{i?.name ? tMenu(i.name, "name") : t("รายการอาหาร")}</span>
-            <span className="font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">x{i?.qty || 1}</span>
+          <div key={idx} className="space-y-1">
+            <div className="flex justify-between items-start text-xs gap-2">
+              <span className="font-bold text-slate-800 leading-tight">
+                {i?.name ? tMenu(i.name, "name") : t("รายการอาหาร")}
+              </span>
+              <span className="font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[11px] shrink-0">
+                x{i?.qty || 1}
+              </span>
+            </div>
+
+            {/* Addons display */}
+            {Array.isArray(i?.addons) && i.addons.length > 0 && (
+              <div className="flex flex-wrap gap-1 pl-1.5">
+                {i.addons.map((a: any, aIdx: number) => (
+                  <span
+                    key={aIdx}
+                    className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/90 px-1.5 py-0.5 rounded-md flex items-center gap-0.5"
+                  >
+                    <span className="text-amber-600 font-extrabold">+</span> {t(a.name) || a.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Options & Item Note display */}
+            {((i?.options && Object.keys(i.options).length > 0) || i?.note) && (
+              <div className="flex flex-wrap gap-1 pl-1.5 text-[10px]">
+                {i.options &&
+                  Object.entries(i.options).map(([k, v]) => (
+                    <span key={k} className="bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.2 rounded">
+                      {t(String(v))}
+                    </span>
+                  ))}
+                {i.note && (
+                  <span className="text-red-700 font-bold bg-red-50 border border-red-100 px-1.5 py-0.2 rounded">
+                    *{i.note}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

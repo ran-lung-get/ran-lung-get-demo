@@ -364,88 +364,197 @@ export async function deleteIngredient(id: string) {
 }
 
 /**
- * ปรับปรุงสต็อกวัตถุดิบอัตโนมัติตามเมนูและตัวเลือกในออเดอร์
+ * ปรับปรุงสต็อกวัตถุดิบอัตโนมัติตามเมนู ตัวเลือก และท็อปปิ้งเสริม (Addons) ในออเดอร์
+ * รองรับทั้งการตัดสต็อกเมื่อสั่ง (deduct) และการคืนสต็อกเมื่อยกเลิก (add)
  */
 export async function adjustStockFromOrder(
-  orderItems: { name: string; qty: number }[],
-  direction: "deduct" | "add"
+  orderItems: {
+    name: string;
+    qty: number;
+    addons?: { id?: string; name: string; price?: number }[];
+    options?: Record<string, string>;
+    note?: string;
+  }[],
+  direction: "deduct" | "add" = "deduct"
 ) {
+  if (!orderItems || orderItems.length === 0) return;
+
   try {
     const client = supabase as any;
-    
-    // ดึงวัตถุดิบทั้งหมดที่มีอยู่ในระบบ
-    const { data: ingredients, error: ingError } = await client
-      .from("ingredients")
-      .select("*");
-      
-    if (ingError || !ingredients) {
-      console.error("[adjustStockFromOrder] failed to fetch ingredients:", ingError);
-      return;
+
+    // 1. ดึงวัตถุดิบทั้งหมดที่มีอยู่ในระบบ (Supabase หรือ Local Storage)
+    let ingredients: any[] = [];
+    try {
+      const { data, error } = await client.from("ingredients").select("*");
+      if (!error && data && data.length > 0) {
+        ingredients = data;
+      }
+    } catch {}
+
+    if (ingredients.length === 0 && typeof window !== "undefined") {
+      const local = localStorage.getItem("ran-lung-get-mock-ingredients");
+      if (local) {
+        try {
+          ingredients = JSON.parse(local);
+        } catch {}
+      }
     }
 
-    const coefficient = direction === "deduct" ? -1 : 1;
+    if (ingredients.length === 0) {
+      ingredients = [
+        { id: "ing_1", name: "หมูสับ", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_2", name: "หมูกรอบ", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_3", name: "หมูชิ้น", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_4", name: "ไก่สับ", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_5", name: "ไก่ต้ม", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_6", name: "เนื้อ", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_7", name: "หมึก", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_8", name: "กุ้ง", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_9", name: "หอยลาย", quantity: 1000, unit: "g", min_threshold: 200 },
+        { id: "ing_10", name: "ไข่ไก่", quantity: 100, unit: "pcs", min_threshold: 15 },
+        { id: "ing_11", name: "ไส้กรอก", quantity: 50, unit: "pcs", min_threshold: 10 },
+        { id: "ing_12", name: "กุนเชียง", quantity: 50, unit: "pcs", min_threshold: 10 },
+      ];
+    }
+
+    // Map: ingredientName -> accumulated change amount
+    const deductionMap = new Map<string, number>();
+
+    const addDeduction = (ingName: string, amount: number) => {
+      const current = deductionMap.get(ingName) || 0;
+      deductionMap.set(ingName, current + amount);
+    };
 
     for (const item of orderItems) {
-      const name = item.name;
-      const qty = item.qty;
-      const updates: { id: string; newQty: number }[] = [];
+      const name = item.name || "";
+      const qty = Number(item.qty) || 1;
 
-      // 1. ตรวจสอบเนื้อสัตว์ / วัตถุดิบหลักในชื่อเมนู
-      const proteins = [
-        { key: "หมูสับ", name: "หมูสับ", req: 120 },
-        { key: "หมูกรอบ", name: "หมูกรอบ", req: 100 },
-        { key: "หมูชิ้น", name: "หมูชิ้น", req: 120 },
-        { key: "ไก่สับ", name: "ไก่สับ", req: 120 },
-        { key: "ไก่ต้ม", name: "ไก่ต้ม", req: 100 },
-        { key: "เนื้อ", name: "เนื้อ", req: 120 },
-        { key: "หมึก", name: "หมึก", req: 120 },
-        { key: "กุ้ง", name: "กุ้ง", req: 120 },
-        { key: "หอยลาย", name: "หอยลาย", req: 120 }
-      ];
+      // 1. ตรวจสอบจากชื่อเมนู (Main Item Name)
+      if (name.includes("หมูกรอบ")) {
+        addDeduction("หมูกรอบ", 100 * qty);
+      } else if (name.includes("หมูสับ")) {
+        addDeduction("หมูสับ", 120 * qty);
+      } else if (name.includes("หมูชิ้น") || name.includes("หมูนุ่ม")) {
+        addDeduction("หมูชิ้น", 120 * qty);
+      } else if (name.includes("ไก่สับ")) {
+        addDeduction("ไก่สับ", 120 * qty);
+      } else if (name.includes("ไก่ต้ม") || name.includes("ไก่ชิ้น") || (name.includes("ไก่") && !name.includes("ไข่"))) {
+        addDeduction("ไก่ต้ม", 100 * qty);
+      } else if (name.includes("เนื้อ") || name.includes("เนื้อวัว")) {
+        addDeduction("เนื้อ", 120 * qty);
+      } else if (name.includes("หมึก") || name.includes("ปลาหมึก")) {
+        addDeduction("หมึก", 120 * qty);
+      } else if (name.includes("กุ้ง")) {
+        addDeduction("กุ้ง", 120 * qty);
+      } else if (name.includes("หอยลาย") || name.includes("หอย")) {
+        addDeduction("หอยลาย", 120 * qty);
+      } else if (name.includes("ทะเล") || name.includes("ซีฟู้ด")) {
+        addDeduction("กุ้ง", 60 * qty);
+        addDeduction("หมึก", 60 * qty);
+      }
 
-      for (const p of proteins) {
-        if (name.includes(p.key)) {
-          const ing = ingredients.find((i: any) => i.name === p.name);
-          if (ing) {
-            const change = p.req * qty * coefficient;
-            updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
+      // 2. ตรวจสอบจากตัวเลือก (Options เช่น meat: 'crispy_pork' หรือ meat: 'pork')
+      if (item.options) {
+        for (const [_, val] of Object.entries(item.options)) {
+          const valStr = String(val).toLowerCase();
+          if (valStr.includes("crispy_pork") || valStr.includes("หมูกรอบ")) {
+            addDeduction("หมูกรอบ", 100 * qty);
+          } else if (valStr.includes("minced_pork") || valStr.includes("หมูสับ")) {
+            addDeduction("หมูสับ", 120 * qty);
+          } else if (valStr.includes("sliced_pork") || valStr.includes("pork") || valStr.includes("หมู")) {
+            addDeduction("หมูชิ้น", 120 * qty);
+          } else if (valStr.includes("chicken") || valStr.includes("ไก่")) {
+            addDeduction("ไก่ต้ม", 100 * qty);
+          } else if (valStr.includes("beef") || valStr.includes("เนื้อ")) {
+            addDeduction("เนื้อ", 120 * qty);
+          } else if (valStr.includes("squid") || valStr.includes("หมึก")) {
+            addDeduction("หมึก", 120 * qty);
+          } else if (valStr.includes("shrimp") || valStr.includes("กุ้ง")) {
+            addDeduction("กุ้ง", 120 * qty);
+          } else if (valStr.includes("seafood") || valStr.includes("ทะเล")) {
+            addDeduction("กุ้ง", 60 * qty);
+            addDeduction("หมึก", 60 * qty);
           }
         }
       }
 
-      // 2. ตรวจสอบท็อปปิ้งไข่ (ไข่ดาว ไข่เจียว ไข่ต้ม)
+      // 3. ตรวจสอบท็อปปิ้งเสริม (Addons)
+      if (Array.isArray(item.addons)) {
+        for (const addon of item.addons) {
+          const aName = (addon.name || addon.id || "").toLowerCase();
+          if (aName.includes("ไข่") || aName.includes("egg")) {
+            addDeduction("ไข่ไก่", 1 * qty);
+          } else if (aName.includes("หมูกรอบ") || aName.includes("bacon") || aName.includes("crispy")) {
+            addDeduction("หมูกรอบ", 60 * qty);
+          } else if (aName.includes("ไส้กรอก") || aName.includes("sausage")) {
+            addDeduction("ไส้กรอก", 1 * qty);
+          } else if (aName.includes("กุนเชียง")) {
+            addDeduction("กุนเชียง", 1 * qty);
+          } else if (aName.includes("หมูสับ")) {
+            addDeduction("หมูสับ", 60 * qty);
+          } else if (aName.includes("กุ้ง")) {
+            addDeduction("กุ้ง", 60 * qty);
+          }
+        }
+      }
+
+      // 4. ตรวจสอบไข่จากชื่อเมนูตรงๆ (เช่น ไข่ดาว, ไข่เจียว)
       if (name.includes("ไข่ดาว") || name.includes("ไข่เจียว") || name.includes("ไข่ต้ม")) {
-        const ing = ingredients.find((i: any) => i.name === "ไข่ไก่");
-        if (ing) {
-          const change = 1 * qty * coefficient;
-          updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
+        addDeduction("ไข่ไก่", 1 * qty);
+      }
+    }
+
+    if (deductionMap.size === 0) return;
+
+    const coefficient = direction === "deduct" ? -1 : 1;
+    const updatedIngredients = ingredients.map((ing: any) => {
+      // Find matching deduction by name
+      let deduction = 0;
+      for (const [ingKey, amount] of deductionMap.entries()) {
+        if (ing.name === ingKey || ing.name.includes(ingKey) || ingKey.includes(ing.name)) {
+          deduction += amount;
         }
       }
 
-      // 3. ตรวจสอบไส้กรอก
-      if (name.includes("ไส้กรอก")) {
-        const ing = ingredients.find((i: any) => i.name === "ไส้กรอก");
-        if (ing) {
-          const change = 1 * qty * coefficient;
-          updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
-        }
-      }
+      if (deduction === 0) return ing;
 
-      // 4. ตรวจสอบกุนเชียง
-      if (name.includes("กุนเชียง")) {
-        const ing = ingredients.find((i: any) => i.name === "กุนเชียง");
-        if (ing) {
-          const change = 1 * qty * coefficient;
-          updates.push({ id: ing.id, newQty: Math.max(0, Number(ing.quantity) + change) });
-        }
-      }
+      const currentQty = Number(ing.quantity) || 0;
+      const nextQty = Math.max(0, currentQty + deduction * coefficient);
+      return {
+        ...ing,
+        quantity: nextQty,
+        updated_at: new Date().toISOString(),
+      };
+    });
 
-      // ทำการอัปเดตค่ากลับลงฐานข้อมูล
-      for (const update of updates) {
-        await client
-          .from("ingredients")
-          .update({ quantity: update.newQty, updated_at: new Date().toISOString() })
-          .eq("id", update.id);
+    // 1. บันทึกลง LocalStorage และกระจาย Events
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ran-lung-get-mock-ingredients", JSON.stringify(updatedIngredients));
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "ran-lung-get-mock-ingredients",
+          newValue: JSON.stringify(updatedIngredients),
+        })
+      );
+      try {
+        window.dispatchEvent(
+          new CustomEvent("ran-lung-get-stock-updated", { detail: updatedIngredients })
+        );
+      } catch {}
+    }
+
+    // 2. บันทึกลง Supabase Database
+    for (const ing of updatedIngredients) {
+      const original = ingredients.find((i: any) => i.id === ing.id || i.name === ing.name);
+      if (original && Number(original.quantity) !== Number(ing.quantity)) {
+        try {
+          await client
+            .from("ingredients")
+            .update({ quantity: ing.quantity, updated_at: new Date().toISOString() })
+            .eq("id", ing.id);
+        } catch (dbErr) {
+          console.warn(`[adjustStockFromOrder] Supabase update skipped for ${ing.name}:`, dbErr);
+        }
       }
     }
   } catch (err) {

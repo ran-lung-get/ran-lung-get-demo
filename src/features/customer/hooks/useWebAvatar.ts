@@ -10,7 +10,7 @@ export function useWebAvatar(navigate?: UseNavigateResult<string>) {
     (window as any).ChatWidgetConfig = {
       mode: "realtime-widget",
       avatarUrl: "Botnoi",
-      widgetId: "ran-lung-get",
+      widgetId: "bothotel",
       greetingInstruction: "",
       enableBubble: "false",
       cameraOffset: "0,0,0.5",

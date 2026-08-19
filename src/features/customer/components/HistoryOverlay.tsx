@@ -209,6 +209,11 @@ export function HistoryOverlay({
                             <p className="text-sm font-medium truncate" style={{ color: BRAND }}>
                               {tMenu(item.name)}
                             </p>
+                            {Array.isArray(item.addons) && item.addons.length > 0 && (
+                              <p className="text-[11px] font-semibold text-amber-700">
+                                + {item.addons.map((a: any) => t(a.name) || a.name).join(", ")}
+                              </p>
+                            )}
                             <p className="text-xs" style={{ color: INK_MUTED }}>
                               {t("จำนวน")}: {item.qty} · ฿{item.price} {t("/ชิ้น")}
                             </p>

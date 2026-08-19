@@ -39,6 +39,7 @@ import {
   DashboardView,
 } from "../features/kitchen";
 import { generateUniqueOrderNumber } from "../lib/utils";
+import { adjustStockFromOrder } from "../lib/supabase.service";
 
 export const Route = createFileRoute("/kitchen")({
   head: () => ({
@@ -263,6 +264,7 @@ function KitchenMonitor() {
     
     const updated = [newOrder, ...orders];
     updateOrdersAndNotify(updated);
+    void adjustStockFromOrder(newOrder.items, "deduct");
     if (soundEnabled) {
       playNotificationSound();
     }
