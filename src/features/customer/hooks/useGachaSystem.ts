@@ -268,12 +268,61 @@ export function useGachaSystem() {
     });
   }, []);
 
-  // Remove used coupon
+  // Remove / delete single coupon
   const removeCoupon = useCallback((couponId: string) => {
     setState((prev) => ({
       ...prev,
       coupons: prev.coupons.filter((c) => c.id !== couponId),
     }));
+  }, []);
+
+  // Recycle single coupon into Gacha tickets based on rarity
+  const recycleCoupon = useCallback((coupon: CouponReward): number => {
+    const ticketValue = getCouponRecycleTicketValue(coupon.rarity || 3);
+    setState((prev) => ({
+      ...prev,
+      tickets: prev.tickets + ticketValue,
+      coupons: prev.coupons.filter((c) => c.id !== coupon.id),
+    }));
+    return ticketValue;
+  }, []);
+
+  // Recycle multiple or all coupons into Gacha tickets
+  const recycleAllCoupons = useCallback((couponIds?: string[]): number => {
+    let targetCoupons = state.coupons;
+    if (couponIds && couponIds.length > 0) {
+      targetCoupons = state.coupons.filter((c) => couponIds.includes(c.id));
+    }
+    if (targetCoupons.length === 0) return 0;
+
+    const totalTickets = targetCoupons.reduce(
+      (sum, c) => sum + getCouponRecycleTicketValue(c.rarity || 3),
+      0
+    );
+
+    const idsToRemove = new Set(targetCoupons.map((c) => c.id));
+    setState((prev) => ({
+      ...prev,
+      tickets: prev.tickets + totalTickets,
+      coupons: prev.coupons.filter((c) => !idsToRemove.has(c.id)),
+    }));
+    return totalTickets;
+  }, [state.coupons]);
+
+  // Clear all coupons from wallet
+  const clearAllCoupons = useCallback((couponIds?: string[]) => {
+    if (couponIds && couponIds.length > 0) {
+      const idsToRemove = new Set(couponIds);
+      setState((prev) => ({
+        ...prev,
+        coupons: prev.coupons.filter((c) => !idsToRemove.has(c.id)),
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        coupons: [],
+      }));
+    }
   }, []);
 
   return {
@@ -284,5 +333,22 @@ export function useGachaSystem() {
     performPulls,
     claimSetReward,
     removeCoupon,
+    recycleCoupon,
+    recycleAllCoupons,
+    clearAllCoupons,
   };
+}
+
+export function getCouponRecycleTicketValue(rarity: GachaRarity): number {
+  switch (rarity) {
+    case 6:
+      return 6; // UR -> 6 Tickets
+    case 5:
+      return 3; // SSR -> 3 Tickets
+    case 4:
+      return 2; // SR -> 2 Tickets
+    case 3:
+    default:
+      return 1; // R -> 1 Ticket
+  }
 }

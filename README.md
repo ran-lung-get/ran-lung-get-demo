@@ -1,4 +1,4 @@
-# 🍜 ร้านลุงเกตุ (Ran Lung Get) - LINE LIFF Epicurean Delivery
+# 🍜 DineOS - LINE LIFF Epicurean Delivery & Restaurant Management System
 
 เว็บแอปพลิเคชันสั่งอาหารระดับพรีเมียมที่ออกแบบมาให้ทำงานได้อย่างราบรื่นและสวยงามผ่าน **LINE Front-end Framework (LIFF)**
 
@@ -73,7 +73,7 @@ npm run preview
 ## 📂 Project Structure (โครงสร้างโฟลเดอร์หลัก)
 
 ```text
-ran-lung-get/
+dineos/
 ├── public/              # รูปภาพประกอบและไอคอนต่างๆ
 ├── src/
 │   ├── routes/

@@ -24,7 +24,7 @@ export function CustomerSidebar({
   const items = [
     { id: "home", label: t("หน้าแรก"), icon: HomeIcon },
     { id: "gacha", label: t("ตู้คำอธิษฐาน & สะสมการ์ด"), icon: Sparkles, badge: "NEW!" },
-    { id: "minigames", label: t("ศูนย์มินิเกมลุงเกตุ"), icon: Gamepad2, badge: "HOT" },
+    { id: "minigames", label: t("ศูนย์มินิเกม DineOS"), icon: Gamepad2, badge: "HOT" },
     { id: "status", label: t("สถานะการสั่งซื้อ"), icon: ClipboardList },
     { id: "history", label: t("ประวัติการสั่งซื้อ"), icon: History },
     { id: "contact", label: t("ติดต่อเรา"), icon: MessageCircle },

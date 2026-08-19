@@ -5,8 +5,8 @@ export const GACHA_CARDS: CollectibleCard[] = [
   // ── 6★ UR (Prism Rainbow / Divine) ──
   {
     id: "card_ur_uncle_get",
-    name: "ลุงเกตุ เทพเจ้ากระทะเหล็ก",
-    nameEn: "God Chef Lung Get",
+    name: "DineOS เทพเจ้ากระทะเหล็ก",
+    nameEn: "God Chef DineOS",
     title: "ปรมาจารย์เพลิงวิญญาณแห่งสะพานปลา",
     rarity: 6,
     category: "character",
@@ -351,17 +351,17 @@ export const GACHA_COUPONS: CouponReward[] = [
 export const GACHA_SETS: CardSet[] = [
   {
     id: "set_legend_lung_get",
-    name: "เซ็ตตำนานลุงเกตุ (Legend of Lung Get)",
-    nameEn: "Legend of Lung Get Set",
-    description: "สะสมการ์ดระดับ UR ทั้ง 2 ใบ: ลุงเกตุ เทพกระทะเหล็ก และ หมูกรอบเพลิงสวรรค์",
+    name: "เซ็ตตำนาน DineOS (Legend of DineOS)",
+    nameEn: "Legend of DineOS Set",
+    description: "สะสมการ์ดระดับ UR ทั้ง 2 ใบ: DineOS เทพกระทะเหล็ก และ หมูกรอบเพลิงสวรรค์",
     requiredCardIds: ["card_ur_uncle_get", "card_ur_golden_moo_grob"],
     rewardDescription: "รับสถานะ VIP Gold Badge + ตั๋วสุ่มฟรี 20 ใบ + คูปองลด 50%",
     rewardType: "coupon",
     rewardCoupon: {
       id: "coupon_set_legend_master",
-      name: "คูปองเซ็ตตำนานลุงเกตุ 50%",
+      name: "คูปองเซ็ตตำนาน DineOS 50%",
       nameEn: "Master Legend 50% Off",
-      nameZh: "龙葛特传奇大师 50% 折扣券",
+      nameZh: "DineOS传奇大师 50% 折扣券",
       description: "ลดทันที 50% พิเศษเฉพาะผู้สะสมเซ็ตตำนานครบ",
       descriptionEn: "50% off for Master Legend collectors",
       descriptionZh: "传奇大师专属 50% 特别折扣",
@@ -372,7 +372,7 @@ export const GACHA_SETS: CardSet[] = [
       image: "/logoHome.png",
     },
     rewardTickets: 20,
-    badgeTitle: "👑 จอมทัพกระทะทองคำลุงเกตุ",
+    badgeTitle: "👑 จอมทัพกระทะทองคำ DineOS",
   },
   {
     id: "set_wok_master",

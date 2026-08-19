@@ -127,7 +127,7 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
     setMenuMode("main");
     setEarnedTickets(0);
     setBattleLog([
-      t("⚔️ ผู้กล้าลุงเกตุ ชักตะหลิวเหล็กกล้าก้าวเข้าสู่สนามรบ!"),
+      t("⚔️ ผู้กล้า DineOS ชักตะหลิวเหล็กกล้าก้าวเข้าสู่สนามรบ!"),
       `${t("ปรากฏตัวแล้ว!")} "${firstEnemy.name}"!`,
     ]);
     setGameState("battle");
@@ -180,7 +180,7 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
       if (isCrit) {
         addLog(`💥 CRITICAL HIT! เพลงดาบสร้างดาเมจ ${dmg} แต้ม!`);
       } else {
-        addLog(`🗡️ ลุงเกตุ ฟาดตะหลิวใส่ ${enemy.name} เป็นดาเมจ ${dmg} แต้ม!`);
+        addLog(`🗡️ DineOS ฟาดตะหลิวใส่ ${enemy.name} เป็นดาเมจ ${dmg} แต้ม!`);
       }
 
       checkEnemyDefeated(remainingHp);
@@ -268,7 +268,7 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
 
     setIsDefending(true);
     setPlayerMp((mp) => Math.min(maxPlayerMp, mp + 15));
-    addLog(`🛡️ ลุงเกตุ ยกฝาหม้อขึ้นตั้งการ์ด! (ลดดาเมจ 60% + ฟื้น 15 MP)`);
+    addLog(`🛡️ DineOS ยกฝาหม้อขึ้นตั้งการ์ด! (ลดดาเมจ 60% + ฟื้น 15 MP)`);
 
     setTimeout(enemyTurn, 1000);
   };
@@ -327,14 +327,14 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
       enemyDmg = Math.floor(enemyDmg * 1.4);
       addLog(enemy.specialMsg);
     } else {
-      addLog(`👿 ${enemy.name} โจมตีใส่ผู้กล้าลุงเกตุ!`);
+      addLog(`👿 ${enemy.name} โจมตีใส่ผู้กล้า DineOS!`);
     }
 
     if (isDefending) {
       enemyDmg = Math.floor(enemyDmg * 0.4);
       addLog(`🛡️ ฝาหม้อช่วยป้องกัน! ได้รับดาเมจเพียง ${enemyDmg} แต้ม!`);
     } else {
-      addLog(`💥 ลุงเกตุได้รับความเสียหาย ${enemyDmg} แต้ม!`);
+      addLog(`💥 DineOS ได้รับความเสียหาย ${enemyDmg} แต้ม!`);
     }
 
     play8bitHit();
@@ -347,7 +347,7 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
     if (nextPlayerHp <= 0) {
       setTimeout(() => {
         setGameState("gameover");
-        addLog("💀 ผู้กล้าลุงเกตุหมดสติลง... ความหิวเข้าครอบงำ!");
+        addLog("💀 ผู้กล้า DineOS หมดสติลง... ความหิวเข้าครอบงำ!");
         const tickets = currentStageIdx >= 1 ? 2 : 1;
         setEarnedTickets(tickets);
         onAwardTickets(tickets);
@@ -519,7 +519,7 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
               <div className="flex-1 flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-black text-white text-xs sm:text-sm">
-                    {t("ผู้กล้าลุงเกตุ")}
+                    {t("ผู้กล้า DineOS")}
                   </span>
                   {atkBuffTurns > 0 && (
                     <span className="text-[9px] border border-white px-1 font-black">
@@ -720,7 +720,7 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
             </h3>
             <p className="text-xs text-zinc-400 mt-0.5 max-w-xs leading-relaxed">
               {t("สวมบทบาทเป็น ")}
-              <span className="text-white font-bold">"{t("ผู้กล้าลุงเกตุ")}"</span>
+              <span className="text-white font-bold">"{t("ผู้กล้า DineOS")}"</span>
               {t(" ถือตะหลิวคู่ใจประลองยุทธสไตล์ Turn-based RPG 8-Bit ปราบ 3 จอมมารวัตถุดิบ!")}
             </p>
           </div>
@@ -781,7 +781,7 @@ export function UncleGetRpgGame({ onAwardTickets }: UncleGetRpgGameProps) {
             <p className="text-xs text-zinc-400 mt-0.5">
               {gameState === "victory"
                 ? t("ความสงบสุขแห่งกระทะทองคำกลับคืนมาอีกครั้ง!")
-                : t("ลุงเกตุหมดสติลง กลับไปฝึกวิชาผัดกระทะแล้วมาสู้ใหม่!")}
+                : t("DineOS หมดสติลง กลับไปฝึกวิชาผัดกระทะแล้วมาสู้ใหม่!")}
             </p>
           </div>
 

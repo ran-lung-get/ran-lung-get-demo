@@ -40,7 +40,7 @@ replaceBlock(
         }}
       />
       <main
-        aria-label="แอปพลิเคชันสั่งอาหาร ร้านลุงเก็ต"
+        aria-label="แอปพลิเคชันสั่งอาหาร DineOS"
         className="relative overflow-hidden bg-[var(--linen)] no-scrollbar z-10"
         style={{
           width: "min(430px, 100vw)",
@@ -54,7 +54,7 @@ replaceBlock(
       className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-[var(--linen)]"
     >
       <main
-        aria-label="แอปพลิเคชันสั่งอาหาร ร้านลุงเก็ต"
+        aria-label="แอปพลิเคชันสั่งอาหาร DineOS"
         className="relative overflow-hidden bg-[var(--linen)] no-scrollbar z-10 w-full"
         style={{
           height: "100vh",

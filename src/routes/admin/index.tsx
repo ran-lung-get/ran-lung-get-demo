@@ -30,8 +30,8 @@ import { useLanguage } from "../../lib/i18n";
 export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
-      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
-      { name: "description", content: "ระบบจัดการคลัง สต็อก เมนู และบัญชีผู้ใช้ ร้านลุงเก็ต" },
+      { title: "DineOS" },
+      { name: "description", content: "ระบบจัดการคลัง สต็อก เมนู และบัญชีผู้ใช้ DineOS" },
     ],
   }),
   component: AdminDashboard,
@@ -251,8 +251,8 @@ function AdminDashboard() {
         const mockUsers = [
           {
             id: "u-1",
-            display_name: "แอดมินลุงเกตุ",
-            email: "admin@lungget.com",
+            display_name: "แอดมิน DineOS",
+            email: "admin@dineos.app",
             role: "admin",
             is_active: true,
             picture_url: null,
@@ -260,7 +260,7 @@ function AdminDashboard() {
           {
             id: "u-2",
             display_name: "สมศรี แม่ครัว",
-            email: "cook@lungget.com",
+            email: "cook@dineos.app",
             role: "staff",
             is_active: true,
             picture_url: null,

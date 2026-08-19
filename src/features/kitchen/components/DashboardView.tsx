@@ -12,7 +12,7 @@ import { getTimestampFromOrderId } from "../utils/sound";
 const BASE_RECENT_ORDERS: OrderHistory[] = [
   {
     id: "mock_recent_1",
-    orderNumber: "AK-2910",
+    orderNumber: "DO-2910",
     date: "25 มิ.ย. 2569 · 11:15 น.",
     items: [{ name: "กระเพราหมูกรอบ (ข้าวราด) (เผ็ดกลาง, ไข่ดาวสุกกรอบๆ)", qty: 1, price: 80, image: "" }],
     subtotal: 80,
@@ -25,7 +25,7 @@ const BASE_RECENT_ORDERS: OrderHistory[] = [
   },
   {
     id: "mock_recent_2",
-    orderNumber: "AK-2909",
+    orderNumber: "DO-2909",
     date: "25 มิ.ย. 2569 · 11:02 น.",
     items: [
       { name: "ผัดซีอิ๊ว (เส้นใหญ่) (ไม่เผ็ด)", qty: 2, price: 70, image: "" },
@@ -41,7 +41,7 @@ const BASE_RECENT_ORDERS: OrderHistory[] = [
   },
   {
     id: "mock_recent_3",
-    orderNumber: "AK-2908",
+    orderNumber: "DO-2908",
     date: "25 มิ.ย. 2569 · 10:45 น.",
     items: [{ name: "ผัดคะน้าหมูกรอบ (ข้าวราด) (เผ็ดน้อย)", qty: 1, price: 70, image: "" }],
     subtotal: 70,
@@ -54,7 +54,7 @@ const BASE_RECENT_ORDERS: OrderHistory[] = [
   },
   {
     id: "mock_recent_4",
-    orderNumber: "AK-2907",
+    orderNumber: "DO-2907",
     date: "25 มิ.ย. 2569 · 10:30 น.",
     items: [
       { name: "กระเพราหมูสับ (ข้าวราด) (เผ็ดมาก)", qty: 1, price: 60, image: "" },
@@ -70,7 +70,7 @@ const BASE_RECENT_ORDERS: OrderHistory[] = [
   },
   {
     id: "mock_recent_5",
-    orderNumber: "AK-2906",
+    orderNumber: "DO-2906",
     date: "25 มิ.ย. 2569 · 10:15 น.",
     items: [{ name: "ข้าวผัดกระเทียม (ข้าวผัด) (ไม่เผ็ด)", qty: 1, price: 70, image: "" }],
     subtotal: 70,

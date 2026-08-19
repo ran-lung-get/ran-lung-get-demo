@@ -76,7 +76,7 @@ export function ContactOverlay({ onBack }: { onBack: () => void }) {
             {/* Shop info overlay on Map */}
             <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between pointer-events-none">
               <div className="text-white">
-                <h2 className="text-xl font-bold">ร้านลุงเก็ต</h2>
+                <h2 className="text-xl font-bold">DineOS</h2>
                 <p className="text-xs text-white/80 mt-1">อาหารตามสั่ง · Street Food</p>
               </div>
 

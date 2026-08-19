@@ -168,7 +168,7 @@ export function PaymentOverlay({
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-500">{t("ร้านอาหารตามสั่ง ลุงเกตุ")}</p>
+              <p className="text-xs font-semibold text-slate-500">{t("DineOS")}</p>
               <p className="text-2xl font-black" style={{ color: BRAND }}>
                 ฿{total.toLocaleString()}
               </p>
@@ -205,7 +205,7 @@ export function PaymentOverlay({
         {/* Security Badge */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 pt-1">
           <ShieldCheck size={14} className="text-emerald-500" />
-          <span>{t("ระบบรับออเดอร์ส่งตรงถึงครัวร้านลุงเกตุทันที")}</span>
+          <span>{t("ระบบรับออเดอร์ส่งตรงถึงครัว DineOS ทันที")}</span>
         </div>
 
         {/* Submit Button */}

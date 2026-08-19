@@ -142,7 +142,7 @@ export function CardDetailModal({
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-slate-300">
                 <Layers size={13} className="text-slate-400" />
-                <span>{language === "th" ? "เรื่องเล่าร้านลุงเกตุ:" : language === "zh" ? "龙葛特风味传说:" : "Uncle Get's Kitchen Lore:"}</span>
+                <span>{language === "th" ? "เรื่องเล่า DineOS:" : language === "zh" ? "DineOS 风味传说:" : "DineOS Kitchen Lore:"}</span>
               </div>
               <p className="text-slate-300 leading-relaxed font-light italic">
                 "{card.lore}"

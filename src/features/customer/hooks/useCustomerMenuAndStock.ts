@@ -22,19 +22,24 @@ export function useCustomerMenuAndStock() {
           .select("*")
           .order("sort_order");
         if (!error && dbItems && dbItems.length > 0) {
-          const mapped = dbItems.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            desc: item.description || "",
-            price: Number(item.price),
-            image: item.image_url || item.image || "",
-            category: item.category,
-            tags: Array.isArray(item.tags) ? item.tags : [],
-            isAvailable: (item.is_available !== false) && !outOfStockIds.includes(item.id),
-            isSpicy: item.is_spicy ?? false,
-            options: item.options || undefined,
-            addons: item.addons || undefined,
-          }));
+          const mapped = dbItems.map((item: any) => {
+            const defaultItem = MENU.find((m) => m.id === item.id);
+            return {
+              id: item.id,
+              name: item.name,
+              desc: item.description || item.desc || defaultItem?.desc || "",
+              price: Number(item.price),
+              image: item.image_url || item.image || defaultItem?.image || "",
+              category: item.category || defaultItem?.category || "main",
+              tags: Array.isArray(item.tags) && item.tags.length > 0 
+                ? item.tags 
+                : (defaultItem?.tags || []),
+              isAvailable: (item.is_available !== false) && !outOfStockIds.includes(item.id),
+              isSpicy: item.is_spicy ?? defaultItem?.isSpicy ?? false,
+              options: item.options || defaultItem?.options || undefined,
+              addons: item.addons || defaultItem?.addons || undefined,
+            };
+          });
           setMenuItems(mapped);
           localStorage.setItem("ran-lung-get-menu-items", JSON.stringify(mapped));
         } else {

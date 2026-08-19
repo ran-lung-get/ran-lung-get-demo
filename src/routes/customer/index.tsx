@@ -55,10 +55,10 @@ export { MENU };
 export const Route = createFileRoute("/customer/")({
   head: () => ({
     meta: [
-      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
-      { name: "description", content: "สั่งอาหารจานด่วน สด สะอาด อร่อย ส่งไว จากร้านลุงเก็ต" },
-      { property: "og:title", content: "ร้านลุงเก็ต (Ran Lung Get)" },
-      { property: "og:description", content: "สั่งอาหารจานด่วน สด สะอาด อร่อย ส่งไว จากร้านลุงเก็ต" },
+      { title: "DineOS" },
+      { name: "description", content: "สั่งอาหารจานด่วน สด สะอาด อร่อย ส่งไว จาก DineOS" },
+      { property: "og:title", content: "DineOS" },
+      { property: "og:description", content: "สั่งอาหารจานด่วน สด สะอาด อร่อย ส่งไว จาก DineOS" },
     ],
   }),
   component: LiffApp,
@@ -219,7 +219,7 @@ function LiffApp() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-[var(--linen)]">
       <main
-        aria-label="แอปพลิเคชันสั่งอาหาร ร้านลุงเก็ต"
+        aria-label="แอปพลิเคชันสั่งอาหาร DineOS"
         className="relative overflow-hidden bg-[var(--linen)] no-scrollbar z-10 w-full"
         style={{ height: "100dvh" }}
       >

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../../lib/supabase";
+import { generateUniqueOrderNumber } from "../../../lib/utils";
 import type { CartLine, OrderType, OrderHistory } from "../types";
 
 export function useCustomerOrders({
@@ -180,7 +181,7 @@ export function useCustomerOrders({
   ): boolean => {
     if (!cart || cart.length === 0) return false;
     const finalOrderType = orderType || (selectedTable ? "dine-in" : "delivery");
-    const orderNum = `#AK-${Math.floor(2848 + Math.random() * 100)}`;
+    const orderNum = generateUniqueOrderNumber(orderHistory);
     const selectedTableObj = tables.find(
       (t) => String(t.id) === String(selectedTable) || t.label === selectedTable
     );

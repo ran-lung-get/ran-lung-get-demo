@@ -6,8 +6,8 @@ import { ShoppingBag, User, ChefHat, Headset, ShieldAlert } from "lucide-react";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "ร้านลุงเก็ต (Ran Lung Get)" },
-      { name: "description", content: "เข้าสู่ระบบเพื่อสั่งอาหารหรือจัดการร้านลุงเก็ต" },
+      { title: "DineOS" },
+      { name: "description", content: "เข้าสู่ระบบเพื่อสั่งอาหารหรือจัดการ DineOS" },
     ],
   }),
   component: LoginPage,
@@ -276,9 +276,9 @@ function LoginPage() {
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-lg tracking-wider" style={{ fontFamily: "'Prompt', sans-serif" }}>
-                ร้านลุงเก้ต · LUNG GET
+                DineOS
               </span>
-              <span className="text-[11px] text-white/50 tracking-widest uppercase">Authentic Thai Kitchen</span>
+              <span className="text-[11px] text-white/50 tracking-widest uppercase">Authentic Kitchen Operating System</span>
             </div>
           </div>
         </div>
@@ -318,7 +318,7 @@ function LoginPage() {
 
         {/* Bottom Status Footer */}
         <div className="relative z-10 flex justify-between items-center text-xs text-white/50 border-t border-white/10 pt-6">
-          <span>© 2026 ร้านลุงเก้ต. All rights reserved.</span>
+          <span>© 2026 DineOS. All rights reserved.</span>
           <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             ครัวเปิดให้บริการปกติ (08:00 - 21:00)
@@ -364,14 +364,14 @@ function LoginPage() {
               boxShadow: "0 10px 32px rgba(0,0,0,0.35)",
             }}
           >
-            <img src="/logo.png" alt="ร้านลุงเก็ต Logo" className="w-full h-full object-cover" />
+            <img src="/logo.png" alt="DineOS Logo" className="w-full h-full object-cover" />
           </div>
 
           <h1
             className="text-[26px] font-extrabold text-white tracking-tight"
             style={{ fontFamily: "'Prompt', sans-serif" }}
           >
-            ร้านลุงเก้ต
+            DineOS
           </h1>
           <p className="mt-1 text-[13px] font-light" style={{ color: "rgba(255,255,255,0.6)" }}>
             สั่งอาหารง่าย ๆ ผ่านระบบออนไลน์
@@ -914,7 +914,7 @@ function LoginPage() {
         {/* Footer */}
         <div className="py-4 text-center border-t" style={{ borderColor: "rgba(0,46,71,0.07)" }}>
           <p className="text-[10px]" style={{ color: "rgba(0,46,71,0.3)" }}>
-            © 2026 ร้านลุงเก้ต · Powered by Supabase
+            © 2026 DineOS · Powered by Supabase
           </p>
         </div>
 

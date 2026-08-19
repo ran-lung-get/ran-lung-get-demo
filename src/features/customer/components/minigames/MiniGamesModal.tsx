@@ -48,7 +48,7 @@ export function MiniGamesModal({ isOpen, onClose, onSelectDish }: MiniGamesModal
     },
     {
       id: "wok",
-      label: t("ลุงเกตุควงกระทะ"),
+      label: t("DineOS ควงกระทะ"),
       emoji: "🍳",
       color: "from-amber-500 to-red-500",
     },
@@ -84,7 +84,7 @@ export function MiniGamesModal({ isOpen, onClose, onSelectDish }: MiniGamesModal
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                {t("ศูนย์มินิเกมลุงเกตุ (Mini Games)")}
+                {t("ศูนย์มินิเกม DineOS (Mini Games)")}
               </h3>
               <p className="text-[11px] text-amber-300/80 font-medium">
                 {t("เล่นเกมสะสมแต้ม แลกตั๋วสุ่มกาชา & ดูดวงเมนูมงคล")}

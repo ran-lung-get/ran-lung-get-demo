@@ -106,7 +106,7 @@ export function StaffSidebarContent({
       {/* Footer Info */}
       <div className="p-4 border-t border-white/10 bg-white/2 shrink-0 flex flex-col gap-2">
         <p className="text-[9px] text-white/40 text-center font-semibold mt-1">
-          ระบบจัดการร้านค้า v1.2.0 · ครัวลุงเกตุ
+          ระบบจัดการร้านค้า v1.2.0 · DineOS
         </p>
       </div>
     </div>
