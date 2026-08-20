@@ -1,6 +1,5 @@
 import { ChefHat, X, Table, BookOpen, Inbox, Home } from "lucide-react";
 import { useLanguage } from "../../../lib/i18n";
-import { LanguageSelector } from "../../../components/LanguageSelector";
 
 export function StaffSidebarContent({
   view,
@@ -104,12 +103,8 @@ export function StaffSidebarContent({
         </div>
       </div>
 
-      {/* Language Selector & Footer Info */}
-      <div className="p-4 border-t border-white/10 bg-white/2 shrink-0 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold text-white/60">{t("ภาษา / Language")}:</span>
-          <LanguageSelector variant="dark" />
-        </div>
+      {/* Footer Info */}
+      <div className="p-4 border-t border-white/10 bg-white/2 shrink-0">
         <p className="text-[9px] text-white/40 text-center font-semibold">
           ระบบจัดการร้านค้า v1.2.0 · DineOS
         </p>
