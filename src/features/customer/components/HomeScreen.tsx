@@ -479,34 +479,48 @@ export function HomeScreen({
       {(onOpenGacha || onOpenMiniGames) && (
         <div className="px-5 md:px-12 mt-6 max-w-7xl mx-auto w-full">
           <div
-            className="w-full relative rounded-3xl p-5 sm:p-6 text-white shadow-2xl overflow-hidden border border-amber-400/35"
-            style={{
-              background: "linear-gradient(135deg, #001a29 0%, #002e47 40%, #1e1035 75%, #052e16 100%)",
-            }}
+            className="w-full relative rounded-3xl p-5 sm:p-6 bg-white shadow-xs overflow-hidden border border-[#ece4d6] transition-all"
           >
-            {/* Ambient background glows */}
-            <div className="absolute top-0 right-0 h-48 w-48 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-1/3 h-40 w-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
               {/* Left Info Area */}
               <div className="flex items-start sm:items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-linear-to-tr from-amber-400 via-orange-400 to-yellow-300 text-slate-950 flex items-center justify-center font-black shadow-xl shadow-amber-500/25 shrink-0 text-2xl">
-                  <ThumbsUp size={28} className="stroke-[2.5] text-slate-950 fill-slate-950/15" />
+                <div
+                  className="h-14 w-14 rounded-2xl flex items-center justify-center font-black shadow-xs shrink-0 text-2xl"
+                  style={{
+                    background: "rgba(0, 46, 71, 0.06)",
+                    color: BRAND,
+                    border: "1px solid #ece4d6",
+                  }}
+                >
+                  <ThumbsUp size={26} className="stroke-[2.2]" style={{ color: BRAND }} />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <span className="px-2.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider">
+                    <span
+                      className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider"
+                      style={{
+                        background: "rgba(0, 46, 71, 0.07)",
+                        color: BRAND,
+                        border: "1px solid rgba(0, 46, 71, 0.12)",
+                      }}
+                    >
                       {t("ตู้คำอธิษฐาน & มินิเกม DineOS")}
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                    <span
+                      className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
+                      style={{
+                        background: "rgba(252, 193, 74, 0.25)",
+                        color: "#92400e",
+                        border: "1px solid rgba(252, 193, 74, 0.5)",
+                      }}
+                    >
                       {t("สุ่มฟรีประจำวัน & เล่นเกมได้ตั๋ว!")} 🎫
                     </span>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
+                  <h3 className="text-lg sm:text-xl font-black leading-tight" style={{ color: BRAND }}>
                     {t("ตู้คำอธิษฐาน, สมุดสะสมการ์ด & 3 มินิเกม DineOS")}
                   </h3>
-                  <p className="text-xs text-slate-300 font-light mt-1 max-w-2xl leading-relaxed">
+                  <p className="text-xs text-slate-500 font-normal mt-1 max-w-2xl leading-relaxed">
                     {t("ลุ้นรับคูปองส่วนลด 50%, การ์ดระดับตำนาน UR และเล่นเกมศึก 8-Bit Dragon Quest, DineOS ควงกระทะ & วงล้อเสี่ยงทายดวงชะตา")}
                   </p>
                 </div>
@@ -518,7 +532,11 @@ export function HomeScreen({
                   <button
                     type="button"
                     onClick={onOpenGacha}
-                    className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-linear-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-1 sm:flex-none px-4 py-3 rounded-2xl font-black text-xs shadow-md shadow-amber-500/15 hover:shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-amber-400/40"
+                    style={{
+                      background: GOLD,
+                      color: BRAND,
+                    }}
                   >
                     <Sparkles size={15} />
                     <span>{t("หมุนกาชา (Wish)")}</span>
@@ -529,7 +547,7 @@ export function HomeScreen({
                   <button
                     type="button"
                     onClick={onOpenMiniGames}
-                    className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-black text-xs border border-white/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 backdrop-blur-xs"
+                    className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-[#002e47]/5 hover:bg-[#002e47]/10 text-[#002e47] font-black text-xs border border-[#002e47]/15 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <Gamepad2 size={15} />
                     <span>{t("เล่นมินิเกม (Games)")}</span>
